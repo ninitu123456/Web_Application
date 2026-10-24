@@ -3,8 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
+    "start": "node server/server.js",
+    "dev": "node --watch server/server.js",
+    "test:backend": "node --test server/tests/*.test.js",
+    "test:backend:integration": "node --test server/tests/*.integration.js",
+    "backend:check-db": "node server/scripts/check-db.js",
     "db:init": "node database/scripts/cli.js init",
     "db:migrate": "node database/scripts/cli.js migrate",
     "db:seed": "node database/scripts/cli.js seed",
@@ -17,7 +24,9 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
+    "cors": "^2.8.6",
     "dotenv": "^17.2.3",
+    "express": "^5.3.0",
     "mysql2": "^3.15.3"
   }
 }
