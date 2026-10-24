@@ -1,0 +1,22 @@
+CREATE TABLE `items` (
+  `item_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `category_id` BIGINT UNSIGNED NOT NULL,
+  `location_id` BIGINT UNSIGNED NOT NULL,
+  `title` VARCHAR(200) NOT NULL,
+  `description` TEXT NOT NULL,
+  `type` ENUM('LOST','FOUND') NOT NULL,
+  `color` VARCHAR(80) NULL,
+  `private_identifiers` TEXT NULL,
+  `event_date` DATE NOT NULL,
+  `status` ENUM('OPEN','CLAIM_PENDING','CLAIMED','RETURNED','CLOSED') NOT NULL DEFAULT 'OPEN',
+  `created_at` DATETIME NOT NULL,
+  `updated_at` DATETIME NOT NULL,
+  PRIMARY KEY (`item_id`),
+  KEY `idx_items_user_id` (`user_id`),
+  KEY `idx_items_category_id` (`category_id`),
+  KEY `idx_items_location_id` (`location_id`),
+  CONSTRAINT `fk_items_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_items_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`category_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_items_location` FOREIGN KEY (`location_id`) REFERENCES `locations` (`location_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

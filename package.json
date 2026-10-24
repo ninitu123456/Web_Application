@@ -1,0 +1,23 @@
+{
+  "name": "findit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "db:init": "node database/scripts/cli.js init",
+    "db:migrate": "node database/scripts/cli.js migrate",
+    "db:seed": "node database/scripts/cli.js seed",
+    "db:setup": "node database/scripts/cli.js setup",
+    "db:verify": "node database/scripts/cli.js verify",
+    "db:build": "node database/scripts/build.js",
+    "db:test": "node --test database/tests/*.test.js",
+    "db:test:integration": "node --test database/tests/mysql.integration.js",
+    "db:test:isolated": "node database/scripts/test-isolated.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "dotenv": "^17.2.3",
+    "mysql2": "^3.15.3"
+  }
+}
