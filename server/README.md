@@ -2,6 +2,8 @@
 
 Backend JavaScript ES Modules, Express 5 và MySQL2 promise pool. Dùng chung `package.json`, dependencies và `.env` tại gốc với bộ database đã có. Đã bổ sung Authentication JWT và hồ sơ người dùng; xem [AUTH.md](AUTH.md).
 
+Item/Search và các sửa lỗi ownership, transaction ảnh, audit và cleanup được mô tả trong [ITEMS.md](ITEMS.md). Chạy toàn bộ integration trên MySQL tạm bằng `npm.cmd run test:integration:isolated`.
+
 ## Chạy trong VS Code
 
 Yêu cầu Node.js >= 20 và MySQL `findit_db` đang hoạt động. Trong terminal tại gốc repository:
@@ -79,7 +81,7 @@ Luồng hiện tại: `/api/health` → controller → service → repository �
 
 Pool tối đa 10 connections, hàng đợi tối đa 20. Acquisition, kết nối và mỗi truy vấn có timeout 5 giây riêng; tổng thời gian request có thể gồm nhiều giai đoạn này. Connection đến muộn sau acquisition timeout được release. Mỗi lần lấy connection đều thiết lập UTC và strict SQL mode trước khi dùng, sau đó release trong `finally`. Connection có lỗi fatal/query timeout bị destroy để tránh tái sử dụng khi lệnh vẫn còn đang chạy. BIGINT được giữ dưới dạng chuỗi như bộ database hiện có.
 
-Server xác minh kết nối và đúng database trước khi listen; lỗi DB hoặc config khiến tiến trình thoát khác 0. Không tự chạy migrations hoặc seed khi bật HTTP. Khi nhận SIGINT/SIGTERM, server ngừng nhận request, đợi HTTP đóng rồi đóng pool; shutdown có giới hạn 10 giây. Server không thay đổi schema hoặc dữ liệu.
+Server xác minh kết nối và đúng database trước khi listen; lỗi DB hoặc config khiến tiến trình thoát khác 0. Không tự chạy migrations hoặc seed khi bật HTTP. Khi nhận SIGINT/SIGTERM, server ngừng nhận request, đợi HTTP và cleanup ảnh đóng rồi đóng pool; shutdown có giới hạn 10 giây. Server không tự thay đổi schema. Khi Cloudinary được cấu hình, worker khôi phục các tác vụ ảnh còn chờ từ journal khi khởi động và mỗi 60 giây; xem `ITEMS.md`.
 
 ## Health check và lỗi HTTP
 

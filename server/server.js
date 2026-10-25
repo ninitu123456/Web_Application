@@ -14,6 +14,7 @@ import { createUserService } from './services/user.service.js';
 import { createItemRepository } from './repositories/item.repository.js';
 import { createItemService } from './services/item.service.js';
 import { createImageStorage } from './config/cloudinary.js';
+import { createImageOperations, startImageCleanup } from './services/image-operations.js';
 
 export async function startServer(config = readConfig()) {
   const authConfig = readAuthConfig({ JWT_SECRET: config.auth?.secret, JWT_EXPIRES_IN: config.auth?.expiresIn });
@@ -24,7 +25,8 @@ export async function startServer(config = readConfig()) {
   const authService = createAuthService(users, createTokenService(authConfig));
   const userService = createUserService(users);
   const itemRepository = createItemRepository(pool);
-  const itemService = createItemService(itemRepository, imageStorage);
+  const imageOperations = createImageOperations(pool, imageStorage);
+  const itemService = createItemService(itemRepository, imageStorage, imageOperations);
   let server;
   try {
     await healthService.check();
@@ -40,6 +42,7 @@ export async function startServer(config = readConfig()) {
     throw error;
   }
   console.log(`FindIT backend listening at http://${config.host}:${server.address().port}`);
+  const stopCleanup = imageStorage ? startImageCleanup(imageOperations) : async () => {};
   let closing;
   function close() {
     if (closing) return closing;
@@ -52,6 +55,7 @@ export async function startServer(config = readConfig()) {
       deadline.unref();
       try {
         await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+        await stopCleanup();
         await pool.end();
       } finally { clearTimeout(deadline); }
     })();

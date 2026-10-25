@@ -33,10 +33,32 @@ export async function withConnection(pool, operation) {
     return await operation(connection);
   } catch (error) {
     // A timed-out command must never continue on a connection returned to the pool.
-    if (error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' || error.fatal) { connection.destroy(); destroyed = true; }
+    const cause = error.cause ?? error;
+    if (error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' || cause.code === 'PROTOCOL_SEQUENCE_TIMEOUT' || error.fatal || cause.fatal) { connection.destroy(); destroyed = true; }
     throw error;
   } finally { if (!destroyed) connection.release(); }
 }
 export function query(pool, sql, values = []) {
   return withConnection(pool, (connection) => connection.query({ sql, timeout: databaseTimeout }, values));
+}
+
+export function transaction(pool, operation) {
+  return withConnection(pool, (connection) => inTransaction(connection, operation));
+}
+
+export async function inTransaction(connection, operation) {
+  await connection.beginTransaction();
+  try {
+    const result = await operation(connection);
+    await connection.commit();
+    return result;
+  } catch (error) {
+    if (error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' || error.fatal) {
+      error.fatal = true;
+      throw error;
+    }
+    try { await connection.rollback(); }
+    catch { error.fatal = true; }
+    throw error;
+  }
 }

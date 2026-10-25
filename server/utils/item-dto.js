@@ -14,6 +14,6 @@ export function itemDto(item) {
   };
   if (item.category_name !== undefined) result.category = { id: id(item.category_id), name: item.category_name };
   if (item.location_name !== undefined) result.location = { id: id(item.location_id), name: item.location_name };
-  if (item.images !== undefined) result.images = item.images.map((image) => ({ id: id(image.image_id), url: image.image_url }));
+  result.images = (item.images ?? []).map((image) => ({ id: id(image.image_id), url: image.image_url }));
   return result;
 }

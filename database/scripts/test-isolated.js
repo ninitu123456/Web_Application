@@ -48,14 +48,34 @@ try {
     catch { await delay(250); }
   }
   if (!admin) throw new Error('Temporary MySQL startup timed out');
+  // Verify the actual server before any setup/test writes. Ignore installed
+  // service settings and all database/cloud credentials in the local .env.
+  const [[instance]] = await admin.query('SELECT @@datadir AS directory, @@port AS port');
+  if (resolve(instance.directory) !== resolve(data) || Number(instance.port) !== port) throw new Error('Temporary MySQL identity mismatch');
   const password = randomBytes(24).toString('hex');
   await admin.query("ALTER USER 'root'@'localhost' IDENTIFIED BY ?", [password]);
   console.log('Temporary MySQL is ready; executing integration tests.');
-  const child = spawn(process.execPath, ['--test', fileURLToPath(new URL('../tests/mysql.integration.js', import.meta.url))], {
-    windowsHide: true, stdio: 'inherit', env: { ...process.env, DB_HOST: '127.0.0.1', DB_PORT: String(port), DB_USER: 'root', DB_PASSWORD: password, DB_NAME: 'findit_db' }
-  });
-  const code = await new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', resolve); });
-  if (code !== 0) throw new Error('Isolated MySQL integration tests failed');
+  const env = { ...process.env, DB_HOST: '127.0.0.1', DB_PORT: String(port), DB_USER: 'root', DB_PASSWORD: password, DB_NAME: 'findit_db',
+    JWT_SECRET: randomBytes(32).toString('hex'), JWT_EXPIRES_IN: '3600',
+    CLOUDINARY_CLOUD_NAME: '', CLOUDINARY_API_KEY: '', CLOUDINARY_API_SECRET: '', CLOUDINARY_URL: '',
+    SEED_ADMIN_EMAIL: 'admin@isolated.example.test', SEED_USER_EMAIL: 'user@isolated.example.test',
+    SEED_ADMIN_PASSWORD: randomBytes(24).toString('hex'), SEED_USER_PASSWORD: randomBytes(24).toString('hex'),
+    FINDIT_ISOLATED_DATADIR: data
+  };
+  async function execute(args) {
+    const child = spawn(process.execPath, args, { windowsHide: true, stdio: 'inherit', env });
+    const code = await new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', resolve); });
+    if (code !== 0) throw new Error('Isolated MySQL integration tests failed');
+  }
+  if (process.argv.includes('--all')) {
+    await execute([fileURLToPath(new URL('./cli.js', import.meta.url)), 'setup']);
+    // One runner reports all suites and cannot silently skip a failed command.
+    await execute(['--test',
+      fileURLToPath(new URL('../../server/tests/mysql.integration.js', import.meta.url)),
+      fileURLToPath(new URL('../../server/tests/items.integration.js', import.meta.url)),
+      fileURLToPath(new URL('../../server/tests/auth/auth.integration.js', import.meta.url)),
+      fileURLToPath(new URL('../tests/mysql.integration.js', import.meta.url))]);
+  } else await execute(['--test', fileURLToPath(new URL('../tests/mysql.integration.js', import.meta.url))]);
 } catch (error) {
   console.error(error.message);
   try { console.error(await readFile(log, 'utf8')); } catch { /* No log if executable was unavailable. */ }

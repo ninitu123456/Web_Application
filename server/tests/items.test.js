@@ -1,9 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validateCreateItem, validateUpdateItem, validateSearch } from '../validation/item.validation.js';
-import { createItemService } from '../services/item.service.js';
+import { createItemService as buildItemService } from '../services/item.service.js';
 import { createItemRepository } from '../repositories/item.repository.js';
 import { serve } from './helpers.js';
+
+// Unit doubles only. Real transaction, journal and locking are exercised in
+// items.integration.js against a newly created database on the isolated server.
+function createItemService(repository, storage) {
+  repository.withLockedItem = async (id, operation) => operation(repository);
+  repository.recordClose ??= async () => {};
+  repository.completeImageOperation ??= async () => {};
+  return buildItemService(repository, storage, {
+    async run(details, operation) {
+      const result = await operation('unit-operation');
+      if (details.kind === 'DELETE') for (const publicId of details.publicIds) await storage.destroy(publicId);
+      return result;
+    }
+  });
+}
 
 const good = { title: 'Lost AirPods', type: 'LOST', categoryId: 1, locationId: 2, eventDate: '2026-10-25', description: 'Near the library', color: 'White' };
 function record(overrides = {}) {
@@ -43,7 +58,7 @@ test('service binds creation to authenticated owner, exposes only safe fields, a
   await assert.rejects(() => service.update({ id: '11', role: 'USER' }, 4, { title: 'No' }), (error) => error.status === 403);
   assert.equal((await service.update({ id: '10', role: 'USER' }, 4, { title: 'Updated' })).title, 'Updated');
   assert.equal((await service.close({ id: '10', role: 'USER' }, 4)).status, 'CLOSED');
-  await assert.rejects(() => service.update({ id: '10', role: 'USER' }, 4, { title: 'No' }), (error) => error.status === 409);
+  await assert.rejects(() => service.update({ id: '10', role: 'USER' }, 4, { title: 'No' }), (error) => error.status === 400);
 });
 test('reference validation rejects inactive categories and locations', async () => {
   const repo = { async categoryActive() { return false; }, async locationActive() { return true; } };
@@ -79,7 +94,7 @@ test('image upload succeeds with mocked storage and enforces five images per Ite
     }
   };
   const storage = {
-    async upload(buffer, mimetype) { const publicId = `mock/${uploads.length + 1}`; uploads.push({ buffer, mimetype }); return { url: `https://image.test/${publicId}.png`, publicId }; },
+    async upload(buffer, mimetype, publicId) { uploads.push({ buffer, mimetype }); return { url: `https://image.test/${publicId}.png`, publicId }; },
     async destroy() {}
   };
   const service = createItemService(repository, storage);
@@ -87,7 +102,8 @@ test('image upload succeeds with mocked storage and enforces five images per Ite
   const result = await service.uploadImages({ id: '10', role: 'USER' }, 4, [0, 1].map(() => ({ mimetype: 'image/png', buffer: png })));
   assert.equal(result.length, 2);
   assert.equal(uploads.length, 2);
-  assert.deepEqual(result[0], { id: 21, url: 'https://image.test/mock/1.png' });
+  assert.equal(result[0].id, 21);
+  assert.match(result[0].url, /^https:\/\/image.test\/findit\/items\//);
   // Existing 3 plus 2 new images reaches the per-Item maximum exactly.
   await assert.rejects(() => service.uploadImages({ id: '10', role: 'USER' }, 4, [{ mimetype: 'image/png', buffer: png }]), (error) => error.status === 400);
   assert.equal(uploads.length, 2);
@@ -107,7 +123,7 @@ test('cannot delete images from a CLOSED Item', async () => {
     async findById() { return record({ status: 'CLOSED' }); },
     async findImage() { assert.fail('must reject before image lookup'); }
   }, { async destroy() {} });
-  await assert.rejects(() => service.deleteImage({ id: '10', role: 'USER' }, 4, 7), (error) => error.status === 409);
+  await assert.rejects(() => service.deleteImage({ id: '10', role: 'USER' }, 4, 7), (error) => error.status === 400);
 });
 test('repository search binds every filter and uses a fixed ORDER BY with pagination', async () => {
   const statements = [];
