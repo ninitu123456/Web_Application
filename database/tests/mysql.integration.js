@@ -39,7 +39,7 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
     created = true;
     await initialize(connection, ownedName);
     await t.test('empty database migrates and seeds with verified password hashes', async () => {
-      assert.equal(await migrate(connection, ownedName), 11);
+      assert.equal(await migrate(connection, ownedName), 12);
       await seed(connection, ownedName, credentials);
       await verifyMigrations(connection, ownedName);
       assert.deepEqual(await verifySeed(connection, ownedName, credentials), { roles: 2, users: 2, categories: 4, locations: 4, items: 4 });
@@ -135,8 +135,8 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
       const last = files.at(-1);
       await connection.execute("UPDATE _schema_migrations SET status='running', applied_at=NULL WHERE version=?", [last.version]);
       assert.equal(await migrate(connection, ownedName), 1);
-      // Failure before CREATE: safely recreate only the absent table tracked as running.
-      await connection.query('DROP TABLE activity_logs');
+      // Failure after only part of an additive DDL migration: safely create the missing index.
+      await connection.query('DROP INDEX idx_items_created_at ON items');
       await connection.execute("UPDATE _schema_migrations SET status='running', applied_at=NULL WHERE version=?", [last.version]);
       assert.equal(await migrate(connection, ownedName), 1);
       await connection.execute('UPDATE _schema_migrations SET checksum=REPEAT(\'0\',64) WHERE version=?', [last.version]);

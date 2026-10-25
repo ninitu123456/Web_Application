@@ -65,7 +65,7 @@ export async function listTables(connection, database) {
     'SELECT TABLE_NAME AS name, ENGINE AS engine, TABLE_COLLATION AS collation, TABLE_TYPE AS kind FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ?', [database]);
   return rows;
 }
-export async function inspectTable(connection, database, table) {
+export async function inspectTable(connection, database, table, { allowPendingAdditiveIndexes = false } = {}) {
   const problems = [];
   const [columns] = await connection.execute(
     'SELECT COLUMN_NAME AS name, COLUMN_TYPE AS type, IS_NULLABLE AS nullable, COLUMN_DEFAULT AS value_default, EXTRA AS extra, COLLATION_NAME AS collation FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION', [database, table.name]);
@@ -86,7 +86,23 @@ export async function inspectTable(connection, database, table) {
     actualIndexes[index.name].columns.push(index.column_name);
     if (index.prefix_length !== null || index.index_type !== 'BTREE' || index.visible !== 'YES') problems.push(`index options ${index.name}`);
   }
-  if (!isDeepStrictEqual(indexes(table), actualIndexes)) problems.push('indexes/primary/unique');
+  const expectedIndexes = { ...indexes(table) };
+  let additiveIndexes = {};
+  if (table.name === 'items') {
+    additiveIndexes = {
+      idx_items_status_event_date: { unique: false, columns: ['status', 'event_date'] },
+      idx_items_type_status: { unique: false, columns: ['type', 'status'] },
+      idx_items_created_at: { unique: false, columns: ['created_at'] }
+    };
+    if (allowPendingAdditiveIndexes) {
+      for (const [name, definition] of Object.entries(additiveIndexes)) {
+        if (actualIndexes[name] && !isDeepStrictEqual(actualIndexes[name], definition)) problems.push(`index ${name}`);
+      }
+      additiveIndexes = Object.fromEntries(Object.entries(additiveIndexes).filter(([name]) => actualIndexes[name]));
+    }
+    Object.assign(expectedIndexes, additiveIndexes);
+  }
+  if (!isDeepStrictEqual(expectedIndexes, actualIndexes)) problems.push('indexes/primary/unique');
   const [keys] = await connection.execute(
     `SELECT k.CONSTRAINT_NAME AS name, k.COLUMN_NAME AS column_name, k.REFERENCED_TABLE_NAME AS target_table,
       k.REFERENCED_COLUMN_NAME AS target_column, k.REFERENCED_TABLE_SCHEMA AS target_schema, r.DELETE_RULE AS on_delete, r.UPDATE_RULE AS on_update
@@ -114,14 +130,14 @@ export async function inspectTable(connection, database, table) {
   if (triggers.length) problems.push('unexpected triggers');
   return problems.map((problem) => `${table.name}: ${problem}`);
 }
-export async function assertExistingSchema(connection, database, { complete = false } = {}) {
+export async function assertExistingSchema(connection, database, { complete = false, allowPendingAdditiveIndexes = false } = {}) {
   const expected = new Map([...tables, metadata].map((table) => [table.name, table]));
   const existing = await listTables(connection, database);
   const problems = [];
   for (const table of existing) {
     if (!expected.has(table.name)) { problems.push(`unexpected table/view ${table.name}`); continue; }
     if (table.kind !== 'BASE TABLE' || table.engine !== 'InnoDB' || table.collation !== 'utf8mb4_0900_ai_ci') problems.push(`${table.name}: storage options`);
-    problems.push(...await inspectTable(connection, database, expected.get(table.name)));
+    problems.push(...await inspectTable(connection, database, expected.get(table.name), { allowPendingAdditiveIndexes }));
   }
   if (complete) for (const name of expected.keys()) if (!existing.some((table) => table.name === name)) problems.push(`missing table ${name}`);
   if (problems.length) throw new Error(`Schema mismatch; refusing changes:\n${problems.join('\n')}`);

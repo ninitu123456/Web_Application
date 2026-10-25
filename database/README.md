@@ -1,5 +1,7 @@
 # FindIT — MySQL database
 
+Phase 2 adds the append-only migration `012_item_search_indexes.sql`. The migration runner applies and verifies its three item search indexes while preserving the original 001–011 migration files and checksums. The SQL export and `db:build` include those indexes for fresh installs.
+
 Triển khai theo `docs/erd.docx`, `docs/requirements.docx`, `docs/business-rules.docx` và `docs/api-contract.docx`. Database gồm **11 bảng nghiệp vụ** và bảng kỹ thuật `_schema_migrations`.
 
 ## Chuẩn bị và cấu hình

@@ -11,19 +11,25 @@ import { createTokenService } from './utils/jwt.js';
 import { createUserRepository } from './repositories/user.repository.js';
 import { createAuthService } from './services/auth.service.js';
 import { createUserService } from './services/user.service.js';
+import { createItemRepository } from './repositories/item.repository.js';
+import { createItemService } from './services/item.service.js';
+import { createImageStorage } from './config/cloudinary.js';
 
 export async function startServer(config = readConfig()) {
   const authConfig = readAuthConfig({ JWT_SECRET: config.auth?.secret, JWT_EXPIRES_IN: config.auth?.expiresIn });
+  const imageStorage = createImageStorage();
   const pool = createDbPool(config.database);
   const healthService = createHealthService(createHealthRepository(pool));
   const users = createUserRepository(pool);
   const authService = createAuthService(users, createTokenService(authConfig));
   const userService = createUserService(users);
+  const itemRepository = createItemRepository(pool);
+  const itemService = createItemService(itemRepository, imageStorage);
   let server;
   try {
     await healthService.check();
     console.log('MySQL connection verified: findit_db');
-    server = createServer(createApp({ healthService, authService, userService, corsOrigins: config.corsOrigins }));
+    server = createServer(createApp({ healthService, authService, userService, itemService, corsOrigins: config.corsOrigins }));
     await new Promise((resolve, reject) => {
       server.once('error', reject);
       server.listen(config.port, config.host, () => { server.removeListener('error', reject); resolve(); });

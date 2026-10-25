@@ -173,3 +173,7 @@ CREATE TABLE `activity_logs` (
   KEY `idx_activity_logs_user_id` (`user_id`),
   CONSTRAINT `fk_logs_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE INDEX `idx_items_status_event_date` ON `items` (`status`, `event_date`);
+CREATE INDEX `idx_items_type_status` ON `items` (`type`, `status`);
+CREATE INDEX `idx_items_created_at` ON `items` (`created_at`);
