@@ -18,6 +18,16 @@ export function readAppConfig(env = process.env) {
   return { host, port, corsOrigins: [...new Set(origins)] };
 }
 export function readConfig(env = process.env) {
-  try { return { ...readAppConfig(env), database: configFromEnv(env) }; }
+  try { return { ...readAppConfig(env), database: configFromEnv(env), auth: readAuthConfig(env) }; }
   catch (error) { error.code = 'INVALID_CONFIG'; throw error; }
+}
+
+export function readAuthConfig(env = process.env) {
+  const secret = env.JWT_SECRET;
+  if (typeof secret !== 'string' || !secret.trim() || Buffer.byteLength(secret, 'utf8') < 32) {
+    throw new Error('JWT_SECRET must be configured locally with at least 32 bytes');
+  }
+  const expiresIn = Number(env.JWT_EXPIRES_IN ?? 3600);
+  if (!Number.isSafeInteger(expiresIn) || expiresIn <= 0) throw new Error('JWT_EXPIRES_IN must be a positive integer number of seconds');
+  return { secret, expiresIn };
 }

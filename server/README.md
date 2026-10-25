@@ -1,6 +1,6 @@
 # FindIT — Express backend foundation
 
-Backend JavaScript ES Modules, Express 5 và MySQL2 promise pool. Dùng chung `package.json`, dependencies và `.env` tại gốc với bộ database đã có.
+Backend JavaScript ES Modules, Express 5 và MySQL2 promise pool. Dùng chung `package.json`, dependencies và `.env` tại gốc với bộ database đã có. Đã bổ sung Authentication JWT và hồ sơ người dùng; xem [AUTH.md](AUTH.md).
 
 ## Chạy trong VS Code
 
@@ -40,6 +40,8 @@ Các biến HTTP mới đều có mặc định, không cần ghi lại `.env` �
 | `CORS_ORIGINS` | `http://localhost:5173,http://localhost:3000` |
 
 `PORT` phải là số nguyên 1–65535. `CORS_ORIGINS` là danh sách origin HTTP(S) phân cách bằng dấu phẩy, không chứa path, credentials hoặc wildcard. Nếu dùng frontend tại `127.0.0.1` thay vì `localhost`, cần thêm đúng origin đó. Biến môi trường tiến trình ưu tiên hơn `.env`.
+
+Server yêu cầu thêm `JWT_SECRET` riêng tối thiểu 32 byte và `JWT_EXPIRES_IN` là số nguyên giây (mặc định 3600). Thiếu secret thì startup bị từ chối trước khi mở HTTP. Không ghi secret mặc định vào source hoặc thay thế `.env`; xem cách tạo cục bộ trong `AUTH.md`. Script `backend:check-db` và các lệnh `db:*` không yêu cầu JWT secret.
 
 CORS cho phép các origin cấu hình và preflight với Content-Type/Authorization; không bật cookie credentials. Origin ngoài danh sách không nhận header cho phép CORS. CORS là cơ chế trình duyệt, không thay thế xác thực hoặc phân quyền; curl/Postman vẫn gọi được endpoint công khai.
 
@@ -133,4 +135,4 @@ Các npm scripts mới: `start`, `dev`, `test:backend`, `test:backend:integratio
 | `EADDRINUSE` | Cổng HTTP đã được dùng; dừng đúng server của mình hoặc cấu hình PORT khác |
 | Trình duyệt bị CORS | Origin frontend phải khớp cả protocol, hostname và port |
 
-Auth, Item, Claim, Matching và các API nghiệp vụ chưa được triển khai trong giai đoạn foundation này. Kết quả kiểm chứng thực tế nằm trong `TEST-RESULTS.md`.
+Auth và User Foundation hiện có 4 API; cấu trúc bổ sung và hướng dẫn nằm trong `AUTH.md`. Item, Claim, Matching và các API quản trị chưa được triển khai. Kết quả foundation nằm trong `TEST-RESULTS.md`, kết quả Auth/User nằm trong `AUTH-TEST-RESULTS.md`.

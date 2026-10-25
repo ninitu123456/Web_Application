@@ -6,15 +6,24 @@ import { createDbPool } from './config/db.js';
 import { createHealthRepository } from './repositories/health.repository.js';
 import { createHealthService } from './services/health.service.js';
 import { logError } from './utils/logger.js';
+import { readAuthConfig } from './config/env.js';
+import { createTokenService } from './utils/jwt.js';
+import { createUserRepository } from './repositories/user.repository.js';
+import { createAuthService } from './services/auth.service.js';
+import { createUserService } from './services/user.service.js';
 
 export async function startServer(config = readConfig()) {
+  const authConfig = readAuthConfig({ JWT_SECRET: config.auth?.secret, JWT_EXPIRES_IN: config.auth?.expiresIn });
   const pool = createDbPool(config.database);
   const healthService = createHealthService(createHealthRepository(pool));
+  const users = createUserRepository(pool);
+  const authService = createAuthService(users, createTokenService(authConfig));
+  const userService = createUserService(users);
   let server;
   try {
     await healthService.check();
     console.log('MySQL connection verified: findit_db');
-    server = createServer(createApp({ healthService, corsOrigins: config.corsOrigins }));
+    server = createServer(createApp({ healthService, authService, userService, corsOrigins: config.corsOrigins }));
     await new Promise((resolve, reject) => {
       server.once('error', reject);
       server.listen(config.port, config.host, () => { server.removeListener('error', reject); resolve(); });
