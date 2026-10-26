@@ -4,6 +4,8 @@ Backend JavaScript ES Modules, Express 5 và MySQL2 promise pool. Dùng chung `p
 
 Item/Search và các sửa lỗi ownership, transaction ảnh, audit và cleanup được mô tả trong [ITEMS.md](ITEMS.md). Chạy toàn bộ integration trên MySQL tạm bằng `npm.cmd run test:integration:isolated`.
 
+Matching Engine (Phase 3): [MATCHING.md](MATCHING.md). Verification: [MATCHING-TEST-RESULTS.md](MATCHING-TEST-RESULTS.md).
+
 ## Chạy trong VS Code
 
 Yêu cầu Node.js >= 20 và MySQL `findit_db` đang hoạt động. Trong terminal tại gốc repository:
@@ -137,4 +139,4 @@ Các npm scripts mới: `start`, `dev`, `test:backend`, `test:backend:integratio
 | `EADDRINUSE` | Cổng HTTP đã được dùng; dừng đúng server của mình hoặc cấu hình PORT khác |
 | Trình duyệt bị CORS | Origin frontend phải khớp cả protocol, hostname và port |
 
-Auth và User Foundation hiện có 4 API; cấu trúc bổ sung và hướng dẫn nằm trong `AUTH.md`. Item, Claim, Matching và các API quản trị chưa được triển khai. Kết quả foundation nằm trong `TEST-RESULTS.md`, kết quả Auth/User nằm trong `AUTH-TEST-RESULTS.md`.
+Auth và User Foundation hiện có 4 API; cấu trúc bổ sung và hướng dẫn nằm trong `AUTH.md`. Claim và các API quản trị chưa được triển khai. Kết quả foundation nằm trong `TEST-RESULTS.md`, kết quả Auth/User nằm trong `AUTH-TEST-RESULTS.md`.

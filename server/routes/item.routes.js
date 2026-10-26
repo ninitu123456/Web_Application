@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
+import { createMatchingController } from '../controllers/matching.controller.js';
 import { HttpError } from '../utils/http-error.js';
 import { createItemController } from '../controllers/item.controller.js';
 import { authenticate } from '../middleware/authenticate.js';
@@ -12,9 +13,10 @@ const upload = multer({
     callback(null, true);
   }
 });
-export function itemRoutes(authService, itemService) {
+export function itemRoutes(authService, itemService, matchingService) {
   const router = Router(), controller = createItemController(itemService);
   router.get('/', controller.list);
+  if (matchingService) router.get('/:id/matches', authenticate(authService), authorizeRoles('USER', 'ADMIN'), createMatchingController(matchingService));
   router.get('/:id', controller.get);
   router.post('/', authenticate(authService), authorizeRoles('USER', 'ADMIN'), controller.create);
   router.patch('/:id', authenticate(authService), authorizeRoles('USER', 'ADMIN'), controller.update);

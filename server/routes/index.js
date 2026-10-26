@@ -4,13 +4,13 @@ import { authRoutes } from './auth.routes.js';
 import { userRoutes } from './user.routes.js';
 import { itemRoutes } from './item.routes.js';
 
-export function apiRoutes(healthService, authService, userService, itemService) {
+export function apiRoutes(healthService, authService, userService, itemService, matchingService) {
   const router = Router();
   router.use(healthRoutes(healthService));
   if (authService && userService) {
     router.use('/auth', authRoutes(authService));
     router.use('/users', userRoutes(authService, userService));
-    if (itemService) router.use('/items', itemRoutes(authService, itemService));
+    if (itemService) router.use('/items', itemRoutes(authService, itemService, matchingService));
   }
   return router;
 }

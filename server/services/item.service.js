@@ -53,7 +53,7 @@ export function createItemService(repository, imageStorage, imageOperations) {
         await assertReferences(fields, source);
         await source.update(id, fields);
         return itemDto(await source.findById(id));
-      });
+      }, { matching: Object.keys(fields).some((key) => ['categoryId', 'locationId', 'eventDate', 'title', 'description'].includes(key)) });
     },
     async close(identity, id) {
       return repository.withLockedItem(id, async (source) => {
@@ -62,7 +62,7 @@ export function createItemService(repository, imageStorage, imageOperations) {
         if (!await source.close(id)) throw new HttpError(400, 'Trạng thái Item không thể đóng');
         await source.recordClose(identity, item.status);
         return itemDto(await source.findById(id));
-      });
+      }, { matching: true });
     },
     async uploadImages(identity, id, files) {
       open(await owned(identity, id));
