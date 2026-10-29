@@ -12,6 +12,7 @@
     "dev": "node --watch server/server.js",
     "test:backend": "node --test server/tests/*.test.js",
     "test:items": "node --test server/tests/items.test.js",
+    "test:claims": "node --test server/tests/claims.test.js",
     "test:backend:integration": "node --test server/tests/*.integration.js",
     "test:auth": "node --test server/tests/auth/*.test.js",
     "test:auth:integration": "node --test server/tests/auth/*.integration.js",

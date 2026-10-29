@@ -5,7 +5,7 @@ import { apiRoutes } from './routes/index.js';
 import { notFound } from './middleware/not-found.js';
 import { createErrorHandler } from './middleware/error-handler.js';
 
-export function createApp({ healthService, authService, userService, itemService, matchingService, corsOrigins = defaultCorsOrigins, logger } = {}) {
+export function createApp({ healthService, authService, userService, itemService, matchingService, claimService, corsOrigins = defaultCorsOrigins, logger } = {}) {
   if (typeof healthService?.check !== 'function') throw new Error('A health service is required');
   const app = express();
   app.disable('x-powered-by');
@@ -15,9 +15,9 @@ export function createApp({ healthService, authService, userService, itemService
     allowedHeaders: ['Content-Type', 'Authorization'], credentials: false,
     optionsSuccessStatus: 204
   }));
-  app.use(['/api/auth', '/api/users'], (request, response, next) => { response.set('Cache-Control', 'no-store'); next(); });
+  app.use(['/api/auth', '/api/users', '/api/claims', '/api/items'], (request, response, next) => { response.set('Cache-Control', 'no-store'); next(); });
   app.use(express.json({ limit: '100kb' }));
-  app.use('/api', apiRoutes(healthService, authService, userService, itemService, matchingService));
+  app.use('/api', apiRoutes(healthService, authService, userService, itemService, matchingService, claimService));
   app.use(notFound);
   app.use(createErrorHandler(logger));
   return app;

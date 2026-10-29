@@ -5,6 +5,7 @@ import { HttpError } from '../utils/http-error.js';
 import { createItemController } from '../controllers/item.controller.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { authorizeRoles } from '../middleware/authorize-roles.js';
+import { createClaimController } from '../controllers/claim.controller.js';
 
 const upload = multer({
   storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 5 },
@@ -13,10 +14,15 @@ const upload = multer({
     callback(null, true);
   }
 });
-export function itemRoutes(authService, itemService, matchingService) {
+export function itemRoutes(authService, itemService, matchingService, claimService) {
   const router = Router(), controller = createItemController(itemService);
   router.get('/', controller.list);
   if (matchingService) router.get('/:id/matches', authenticate(authService), authorizeRoles('USER', 'ADMIN'), createMatchingController(matchingService));
+  if (claimService) {
+    const claims = createClaimController(claimService);
+    router.get('/:id/claims', authenticate(authService), authorizeRoles('USER', 'ADMIN'), claims.forItem);
+    router.post('/:id/claims', authenticate(authService), authorizeRoles('USER'), claims.create);
+  }
   router.get('/:id', controller.get);
   router.post('/', authenticate(authService), authorizeRoles('USER', 'ADMIN'), controller.create);
   router.patch('/:id', authenticate(authService), authorizeRoles('USER', 'ADMIN'), controller.update);

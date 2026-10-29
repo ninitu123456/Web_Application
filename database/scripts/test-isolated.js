@@ -16,7 +16,10 @@ const data = join(directory, 'data');
 await mkdir(data);
 const log = join(directory, 'mysql.log');
 function start(args) {
-  const process = spawn(binary, args, { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
+  // MySQL's Windows startup helper can fail when inherited cwd contains a
+  // non-ASCII path (for example a localized OneDrive workspace). Keep both
+  // isolated server processes rooted in their own ASCII-named temp directory.
+  const process = spawn(binary, args, { windowsHide: true, cwd: directory, stdio: ['ignore', 'ignore', 'pipe'] });
   let stderr = '';
   process.stderr.on('data', (chunk) => { stderr += chunk; });
   const done = new Promise((resolve, reject) => {
@@ -74,6 +77,7 @@ try {
       fileURLToPath(new URL('../../server/tests/mysql.integration.js', import.meta.url)),
       fileURLToPath(new URL('../../server/tests/items.integration.js', import.meta.url)),
       fileURLToPath(new URL('../../server/tests/matching.integration.js', import.meta.url)),
+      fileURLToPath(new URL('../../server/tests/claims.integration.js', import.meta.url)),
       fileURLToPath(new URL('../../server/tests/auth/auth.integration.js', import.meta.url)),
       fileURLToPath(new URL('../tests/mysql.integration.js', import.meta.url))]);
   } else await execute(['--test', fileURLToPath(new URL('../tests/mysql.integration.js', import.meta.url))]);

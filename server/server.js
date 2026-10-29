@@ -15,6 +15,8 @@ import { createAuthService } from './services/auth.service.js';
 import { createUserService } from './services/user.service.js';
 import { createItemRepository } from './repositories/item.repository.js';
 import { createItemService } from './services/item.service.js';
+import { createClaimRepository } from './repositories/claim.repository.js';
+import { createClaimService } from './services/claim.service.js';
 import { createImageStorage } from './config/cloudinary.js';
 import { createImageOperations, startImageCleanup } from './services/image-operations.js';
 
@@ -30,11 +32,12 @@ export async function startServer(config = readConfig()) {
   const itemRepository = createItemRepository(pool);
   const imageOperations = createImageOperations(pool, imageStorage);
   const itemService = createItemService(itemRepository, imageStorage, imageOperations);
+  const claimService = createClaimService(createClaimRepository(pool));
   let server;
   try {
     await healthService.check();
     console.log('MySQL connection verified: findit_db');
-    server = createServer(createApp({ healthService, authService, userService, itemService, matchingService, corsOrigins: config.corsOrigins }));
+    server = createServer(createApp({ healthService, authService, userService, itemService, matchingService, claimService, corsOrigins: config.corsOrigins }));
     await new Promise((resolve, reject) => {
       server.once('error', reject);
       server.listen(config.port, config.host, () => { server.removeListener('error', reject); resolve(); });
