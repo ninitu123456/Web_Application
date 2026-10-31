@@ -9,8 +9,9 @@ import { randomBytes } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import mysql from 'mysql2/promise';
+import { resolveMysqlBinary } from './mysql-binary.js';
 
-const binary = process.env.MYSQLD_PATH || 'C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqld.exe';
+let binary;
 const directory = await mkdtemp(join(tmpdir(), 'findit-mysql-'));
 const data = join(directory, 'data');
 await mkdir(data);
@@ -39,6 +40,8 @@ async function freePort() {
 }
 let server, admin;
 try {
+  binary = await resolveMysqlBinary();
+  console.log(`MySQL executable: ${binary}`);
   console.log('Initializing a temporary MySQL instance (installed service remains untouched)...');
   await start(['--no-defaults', '--initialize-insecure', `--basedir=${dirname(dirname(binary))}`, `--datadir=${data}`, `--log-error=${log}`]).done;
   const port = await freePort();

@@ -58,8 +58,12 @@ export function createClaimRepository(pool) {
             const [[row]] = await run("SELECT claim_id FROM claims WHERE item_id = ? AND status IN ('PENDING','APPROVED') LIMIT 1", [itemId]);
             if (!row) await run("UPDATE items SET status = 'OPEN', updated_at = UTC_TIMESTAMP() WHERE item_id = ? AND status = 'CLAIM_PENDING'", [itemId]);
           },
+          async claimItem() {
+            const [result] = await run("UPDATE items SET status = 'CLAIMED', updated_at = UTC_TIMESTAMP() WHERE item_id = ? AND status = 'CLAIM_PENDING'", [itemId]);
+            return result.affectedRows;
+          },
           async returnItem() {
-            const [result] = await run("UPDATE items SET status = 'RETURNED', updated_at = UTC_TIMESTAMP() WHERE item_id = ? AND status = 'CLAIM_PENDING'", [itemId]);
+            const [result] = await run("UPDATE items SET status = 'RETURNED', updated_at = UTC_TIMESTAMP() WHERE item_id = ? AND status = 'CLAIMED'", [itemId]);
             return result.affectedRows;
           },
           async audit(actorId, action, claimId, details) {

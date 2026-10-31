@@ -53,7 +53,8 @@ export function createClaimService(repository) {
         ownerOnly(identity, item);
         if (claim.status !== 'PENDING' || item.status !== 'CLAIM_PENDING') throw conflict();
         if (await source.activeClaimExists(claimId)) throw conflict('Item đã có Claim được duyệt');
-        await source.updateClaim(claimId, 'PENDING', 'APPROVED', 'reviewed_at');
+        if (!await source.updateClaim(claimId, 'PENDING', 'APPROVED', 'reviewed_at')) throw conflict();
+        if (!await source.claimItem()) throw conflict();
         await source.audit(identity.id, 'CLAIM_APPROVED', claimId, { itemId: String(itemId) });
         const rejected = await source.rejectOtherPending(claimId);
         for (const rejectedId of rejected) await source.audit(identity.id, 'CLAIM_REJECTED', rejectedId, { itemId: String(itemId), automatic: true });
@@ -70,7 +71,7 @@ export function createClaimService(repository) {
         if (item.type !== 'FOUND') throw conflict('Claim liên kết với Item không hợp lệ');
         ownerOnly(identity, item);
         if (claim.status !== 'PENDING' || item.status !== 'CLAIM_PENDING') throw conflict();
-        await source.updateClaim(claimId, 'PENDING', 'REJECTED', 'reviewed_at');
+        if (!await source.updateClaim(claimId, 'PENDING', 'REJECTED', 'reviewed_at')) throw conflict();
         await source.audit(identity.id, 'CLAIM_REJECTED', claimId, { itemId: String(itemId) });
         await source.resetItemOpen();
         return claimDto(await source.findClaimForUpdate(claimId));
@@ -85,7 +86,7 @@ export function createClaimService(repository) {
         if (!claim) throw missing();
         if (item.type !== 'FOUND') throw conflict('Claim liên kết với Item không hợp lệ');
         ownerOnly(identity, item);
-        if (claim.status !== 'APPROVED' || item.status !== 'CLAIM_PENDING') throw conflict();
+        if (claim.status !== 'APPROVED' || item.status !== 'CLAIMED') throw conflict();
         if (!await source.updateClaim(claimId, 'APPROVED', 'COMPLETED', 'completed_at')) throw conflict();
         if (!await source.returnItem()) throw conflict();
         await source.audit(identity.id, 'CLAIM_COMPLETED', claimId, { itemId: String(itemId) });

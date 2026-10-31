@@ -37,7 +37,8 @@ function fixture({ itemType = 'FOUND', status = 'OPEN' } = {}) {
           return changed;
         },
         async resetItemOpen() { if (!claims.some((claim) => ['PENDING', 'APPROVED'].includes(claim.status))) item.status = 'OPEN'; },
-        async returnItem() { if (item.status !== 'CLAIM_PENDING') return 0; item.status = 'RETURNED'; return 1; },
+        async claimItem() { if (item.status !== 'CLAIM_PENDING') return 0; item.status = 'CLAIMED'; return 1; },
+        async returnItem() { if (item.status !== 'CLAIMED') return 0; item.status = 'RETURNED'; return 1; },
         async audit(userId, action, claimId, details) { logs.push({ userId, action, claimId, details }); }
       };
       return operation(source);
@@ -82,7 +83,7 @@ test('approving rejects competitors, emits audit records, and rejects unsupporte
   const second = await state.service.create(unrelated, 4, { proofDescription: 'private second evidence' });
   const approved = await state.service.approve(owner, first.id);
   assert.equal(approved.status, 'APPROVED'); assert.equal(state.claims[1].status, 'REJECTED');
-  assert.ok(state.claims[1].reviewed_at); assert.equal(state.item.status, 'CLAIM_PENDING');
+  assert.ok(state.claims[1].reviewed_at); assert.equal(state.item.status, 'CLAIMED');
   assert.deepEqual(state.logs.map(({ action }) => action), ['CLAIM_APPROVED', 'CLAIM_REJECTED']);
   assert.equal(JSON.stringify(state.logs).includes('private first evidence'), false);
   await assert.rejects(() => state.service.approve(owner, second.id), (error) => error.status === 409);
@@ -101,11 +102,16 @@ test('rejecting last pending Claim reopens item; rejecting one among pending Cla
   await assert.rejects(() => state.service.reject(owner, b.id), (error) => error.status === 409);
 });
 
-test('approved Claim completion and item return are atomic in the service contract', async () => {
+test('completion requires APPROVED Claim and CLAIMED Item before returning it', async () => {
   const state = fixture();
   const pending = await state.service.create(claimant, 4, { proofDescription: 'proof' });
   await assert.rejects(() => state.service.complete(owner, pending.id), (error) => error.status === 409);
   await state.service.approve(owner, pending.id);
+  assert.equal(state.item.status, 'CLAIMED');
+  state.item.status = 'CLAIM_PENDING';
+  await assert.rejects(() => state.service.complete(owner, pending.id), (error) => error.status === 409);
+  assert.equal(state.claims[0].status, 'APPROVED');
+  state.item.status = 'CLAIMED';
   const done = await state.service.complete(owner, pending.id);
   assert.equal(done.status, 'COMPLETED'); assert.ok(done.reviewedAt); assert.ok(done.completedAt);
   assert.equal(state.item.status, 'RETURNED');
@@ -135,5 +141,29 @@ test('HTTP Claim routes require authentication and reject unrecognized client st
     assert.equal(valid.status, 201); assert.equal(valid.headers.get('cache-control'), 'no-store');
     const mine = await fetch(`${http.url}/api/claims/mine`, { headers: { Authorization: 'Bearer ok' } });
     assert.equal(mine.status, 200); assert.equal((await mine.json()).data[0].proofDescription, 'private proof');
+  } finally { await http.close(); }
+});
+
+test('HTTP ADMIN can claim another owner item, but cannot self-claim or bypass duplicate and state rules', async () => {
+  const state = fixture();
+  const admin = { id: '99', role: 'ADMIN' };
+  const authService = { async authenticate() { return admin; } };
+  const http = await serve({ healthService: { async check() { return {}; } }, authService, userService: {}, itemService: {}, claimService: state.service, logger: () => {} });
+  const create = () => fetch(`${http.url}/api/items/4/claims`, {
+    method: 'POST', headers: { Authorization: 'Bearer admin', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ proofDescription: 'admin private proof' })
+  });
+  try {
+    const made = await create();
+    assert.equal(made.status, 201);
+    assert.equal((await made.json()).data.claimantId, 99);
+    assert.equal((await create()).status, 409);
+    state.item.user_id = admin.id;
+    assert.equal((await create()).status, 403);
+    state.item.user_id = owner.id;
+    state.item.status = 'RETURNED';
+    assert.equal((await create()).status, 409);
+    state.item.status = 'OPEN'; state.item.type = 'LOST';
+    assert.equal((await create()).status, 400);
   } finally { await http.close(); }
 });
