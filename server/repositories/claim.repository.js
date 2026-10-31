@@ -1,4 +1,6 @@
 import { transaction, query, databaseTimeout } from '../config/db.js';
+import { createNotificationRepository } from './notification.repository.js';
+import { createNotificationService } from '../services/notification.service.js';
 
 const claimColumns = 'c.claim_id, c.claimant_id, c.item_id, c.proof_description, c.status, c.submitted_at, c.reviewed_at, c.completed_at';
 export function createClaimRepository(pool) {
@@ -12,6 +14,10 @@ export function createClaimRepository(pool) {
         const run = (sql, values = []) => connection.query({ sql, timeout: databaseTimeout }, values);
         const [[lockedItem]] = await run('SELECT item_id FROM items WHERE item_id = ? FOR UPDATE', [itemId]);
         const source = {
+          async notifyClaim(type, claimId) {
+            const [[row]] = await run('SELECT c.claimant_id, i.user_id FROM claims c JOIN items i ON i.item_id=c.item_id WHERE c.claim_id=?', [claimId]);
+            await createNotificationService(createNotificationRepository(pool, run)).emit(type, claimId, [type === 'NEW_CLAIM' ? row.user_id : row.claimant_id]);
+          },
           async findItem() {
             const [[item]] = await run('SELECT item_id, user_id, type, status FROM items WHERE item_id = ?', [itemId]);
             return item;

@@ -6,6 +6,8 @@ Item/Search và các sửa lỗi ownership, transaction ảnh, audit và cleanup
 
 Matching Engine (Phase 3): [MATCHING.md](MATCHING.md). Verification: [MATCHING-TEST-RESULTS.md](MATCHING-TEST-RESULTS.md).
 
+Notification & Report (Phase 5): [API, transaction và cách chạy Postman](NOTIFICATIONS-REPORTS.md).
+
 ## Chạy trong VS Code
 
 Yêu cầu Node.js >= 20 và MySQL `findit_db` đang hoạt động. Trong terminal tại gốc repository:

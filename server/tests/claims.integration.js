@@ -238,7 +238,8 @@ test('Claim integration: private evidence, state machine, MySQL transactions and
       const [items] = await query(pool, 'SELECT * FROM items WHERE item_id=?', [itemId]);
       const [claims] = await query(pool, 'SELECT * FROM claims WHERE item_id=? ORDER BY claim_id', [itemId]);
       const [logs] = await query(pool, "SELECT * FROM activity_logs WHERE entity_type='CLAIM' AND JSON_UNQUOTE(JSON_EXTRACT(details, '$.itemId'))=? ORDER BY log_id", [String(itemId)]);
-      return { items, claims, logs };
+      const [notifications] = await query(pool, 'SELECT * FROM notifications ORDER BY notification_id');
+      return { items, claims, logs, notifications };
     }
     const claimWrite = (sql) => sql.startsWith('UPDATE claims SET status = ?');
     const auditWrite = (sql) => sql.startsWith('INSERT INTO activity_logs');

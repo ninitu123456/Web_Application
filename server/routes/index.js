@@ -4,8 +4,10 @@ import { authRoutes } from './auth.routes.js';
 import { userRoutes } from './user.routes.js';
 import { itemRoutes } from './item.routes.js';
 import { claimRoutes } from './claim.routes.js';
+import { notificationRoutes } from './notification.routes.js';
+import { reportRoutes } from './report.routes.js';
 
-export function apiRoutes(healthService, authService, userService, itemService, matchingService, claimService) {
+export function apiRoutes(healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService) {
   const router = Router();
   router.use(healthRoutes(healthService));
   if (authService && userService) {
@@ -13,6 +15,11 @@ export function apiRoutes(healthService, authService, userService, itemService, 
     router.use('/users', userRoutes(authService, userService));
     if (itemService) router.use('/items', itemRoutes(authService, itemService, matchingService, claimService));
     if (claimService) router.use('/claims', claimRoutes(authService, claimService));
+    if (notificationService) router.use('/notifications', notificationRoutes(authService, notificationService));
+    if (reportService) {
+      router.use('/reports', reportRoutes(authService, reportService));
+      router.use('/admin/reports', reportRoutes(authService, reportService, true));
+    }
   }
   return router;
 }

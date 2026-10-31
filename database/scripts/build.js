@@ -1,10 +1,12 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { tables, metadata, createTable } from '../schema.js';
+import { phase5Additions, phase5Alter } from '../phase5-schema.js';
 
 const root = new URL('../', import.meta.url);
 await mkdir(new URL('migrations/', root), { recursive: true });
 const statements = [];
+await writeFile(new URL('migrations/013_notification_report_support.sql', root), Object.keys(phase5Additions).map(phase5Alter).join('\n') + '\n');
 for (const [index, table] of tables.entries()) {
   const sql = createTable(table);
   const name = `${String(index + 1).padStart(3, '0')}_${table.name}.sql`;
@@ -18,5 +20,6 @@ await writeFile(new URL('database-schema.sql', root),
   'USE `findit_db`;\nSET time_zone = \'+00:00\';\n\n' + createTable(metadata) + '\n' + statements.join('\n') +
   '\nCREATE INDEX `idx_items_status_event_date` ON `items` (`status`, `event_date`);\n' +
   'CREATE INDEX `idx_items_type_status` ON `items` (`type`, `status`);\n' +
-  'CREATE INDEX `idx_items_created_at` ON `items` (`created_at`);\n');
+  'CREATE INDEX `idx_items_created_at` ON `items` (`created_at`);\n' +
+  Object.keys(phase5Additions).map(phase5Alter).join('\n') + '\n');
 console.log(`Generated ${tables.length} migrations and ${fileURLToPath(new URL('database-schema.sql', root))}`);

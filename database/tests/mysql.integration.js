@@ -39,7 +39,7 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
     created = true;
     await initialize(connection, ownedName);
     await t.test('empty database migrates and seeds with verified password hashes', async () => {
-      assert.equal(await migrate(connection, ownedName), 12);
+      assert.equal(await migrate(connection, ownedName), 13);
       await seed(connection, ownedName, credentials);
       await verifyMigrations(connection, ownedName);
       assert.deepEqual(await verifySeed(connection, ownedName, credentials), { roles: 2, users: 2, categories: 4, locations: 4, items: 4 });
@@ -74,7 +74,8 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
         await insert(connection, 'reports', valid.reports);
         // Every primary key and every non-auto-increment NOT NULL column.
         for (const table of tables) {
-          await rejectCode(() => connection.query(`INSERT INTO ${quote(table.name)} SELECT * FROM ${quote(table.name)} LIMIT 1`), [1062]);
+          const writableColumns = Object.keys(table.columns).map(quote).join(', ');
+          await rejectCode(() => connection.query(`INSERT INTO ${quote(table.name)} (${writableColumns}) SELECT ${writableColumns} FROM ${quote(table.name)} LIMIT 1`), [1062]);
           for (const [column, definition] of Object.entries(table.columns)) {
             if (definition.includes('NOT NULL') && !definition.includes('AUTO_INCREMENT')) {
               await rejectCode(() => insert(connection, table.name, { ...valid[table.name], [column]: null }), [1048]);
@@ -90,6 +91,7 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
             const row = { ...valid[table.name], [relation.column]: '18446744073709551614' };
             if (table.name === 'users') row.email = 'badfk@example.test';
             if (table.name === 'reports') {
+              row.status = 'RESOLVED'; // Test the FK independently of active-report uniqueness.
               row.item_id = null; row.reported_user_id = null; row.claim_id = null;
               if (relation.column === 'item_id') { row.target_type = 'ITEM'; row.item_id = '18446744073709551614'; }
               else if (relation.column === 'reported_user_id') { row.target_type = 'USER'; row.reported_user_id = '18446744073709551614'; }
@@ -137,8 +139,9 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
       assert.equal(await migrate(connection, ownedName), 1);
       // Failure after only part of an additive DDL migration: safely create the missing index.
       await connection.query('DROP INDEX idx_items_created_at ON items');
-      await connection.execute("UPDATE _schema_migrations SET status='running', applied_at=NULL WHERE version=?", [last.version]);
-      assert.equal(await migrate(connection, ownedName), 1);
+      await connection.execute('DELETE FROM _schema_migrations WHERE version=?', [last.version]);
+      await connection.execute("UPDATE _schema_migrations SET status='running', applied_at=NULL WHERE version='012_item_search_indexes.sql'");
+      assert.equal(await migrate(connection, ownedName), 2);
       await connection.execute('UPDATE _schema_migrations SET checksum=REPEAT(\'0\',64) WHERE version=?', [last.version]);
       await assert.rejects(() => migrate(connection, ownedName), /history\/checksum/);
       await connection.execute('UPDATE _schema_migrations SET checksum=? WHERE version=?', [last.checksum, last.version]);

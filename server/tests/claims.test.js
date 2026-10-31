@@ -17,6 +17,7 @@ function fixture({ itemType = 'FOUND', status = 'OPEN' } = {}) {
     async withLockedItem(id, operation) {
       if (String(id) !== item.item_id) return operation(undefined);
       const source = {
+        async notifyClaim(type, claimId) { assert.ok(['NEW_CLAIM', 'CLAIM_APPROVED', 'CLAIM_REJECTED', 'CLAIM_COMPLETED'].includes(type)); assert.ok(claims.some((claim) => claim.claim_id === String(claimId))); },
         async findItem() { return item; },
         async findClaimForUpdate(claimId) { return claims.find((claim) => claim.claim_id === String(claimId)); },
         async findClaimByClaimant(userId) { return claims.find((claim) => claim.claimant_id === String(userId)); },

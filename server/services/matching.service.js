@@ -19,7 +19,9 @@ export function createMatchingService(repository) {
         const candidates = await repository.candidates(item, after);
         for (const candidate of candidates) {
           const result = calculateMatchScore(item, candidate);
-          await repository.save(item.type === 'LOST' ? item.id : candidate.id, item.type === 'FOUND' ? item.id : candidate.id, result);
+          const lostId = item.type === 'LOST' ? item.id : candidate.id, foundId = item.type === 'FOUND' ? item.id : candidate.id;
+          const saved = await repository.save(lostId, foundId, result);
+          if (saved.created) await repository.notifyNewMatch(saved.matchId, lostId, foundId);
         }
         if (candidates.length < 100) break;
         after = candidates.at(-1).id;

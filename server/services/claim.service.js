@@ -23,9 +23,13 @@ export function createClaimService(repository) {
         if (!['OPEN', 'CLAIM_PENDING'].includes(item.status)) throw conflict('Item không nhận Claim ở trạng thái hiện tại');
         if (await source.activeClaimExists()) throw conflict('Item đã có Claim được duyệt');
         if (await source.findClaimByClaimant(identity.id)) throw conflict('Bạn đã tạo Claim cho Item này');
-        try { return claimDto(await source.createClaim(identity.id, proofDescription)); }
+        try {
+          const claim = await source.createClaim(identity.id, proofDescription);
+          await source.notifyClaim('NEW_CLAIM', claim.claim_id);
+          return claimDto(claim);
+        }
         catch (error) {
-          if (error.code === 'ER_DUP_ENTRY') throw conflict('Bạn đã tạo Claim cho Item này');
+          if (error.code === 'ER_DUP_ENTRY' && /uq_claims_claimant_item/.test(error.sqlMessage ?? '')) throw conflict('Bạn đã tạo Claim cho Item này');
           throw error;
         }
       });
@@ -56,8 +60,12 @@ export function createClaimService(repository) {
         if (!await source.updateClaim(claimId, 'PENDING', 'APPROVED', 'reviewed_at')) throw conflict();
         if (!await source.claimItem()) throw conflict();
         await source.audit(identity.id, 'CLAIM_APPROVED', claimId, { itemId: String(itemId) });
+        await source.notifyClaim('CLAIM_APPROVED', claimId);
         const rejected = await source.rejectOtherPending(claimId);
-        for (const rejectedId of rejected) await source.audit(identity.id, 'CLAIM_REJECTED', rejectedId, { itemId: String(itemId), automatic: true });
+        for (const rejectedId of rejected) {
+          await source.audit(identity.id, 'CLAIM_REJECTED', rejectedId, { itemId: String(itemId), automatic: true });
+          await source.notifyClaim('CLAIM_REJECTED', rejectedId);
+        }
         return claimDto(await source.findClaimForUpdate(claimId));
       });
     },
@@ -74,6 +82,7 @@ export function createClaimService(repository) {
         if (!await source.updateClaim(claimId, 'PENDING', 'REJECTED', 'reviewed_at')) throw conflict();
         await source.audit(identity.id, 'CLAIM_REJECTED', claimId, { itemId: String(itemId) });
         await source.resetItemOpen();
+        await source.notifyClaim('CLAIM_REJECTED', claimId);
         return claimDto(await source.findClaimForUpdate(claimId));
       });
     },
@@ -90,6 +99,7 @@ export function createClaimService(repository) {
         if (!await source.updateClaim(claimId, 'APPROVED', 'COMPLETED', 'completed_at')) throw conflict();
         if (!await source.returnItem()) throw conflict();
         await source.audit(identity.id, 'CLAIM_COMPLETED', claimId, { itemId: String(itemId) });
+        await source.notifyClaim('CLAIM_COMPLETED', claimId);
         return claimDto(await source.findClaimForUpdate(claimId));
       });
     }

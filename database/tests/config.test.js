@@ -23,13 +23,14 @@ test('seed credentials are mandatory, distinct, and within bcrypt byte limit', (
 });
 test('committed migrations and SQL export match the physical schema source', async () => {
   const files = await migrationFiles();
-  assert.equal(files.length, 12);
+  assert.equal(files.length, 13);
   const sql = (await readFile(new URL('../database-schema.sql', import.meta.url), 'utf8')).replace(/\r\n/g, '\n');
   for (const table of [...tables, metadata]) assert.ok(sql.includes(createTable(table)), table.name);
   for (const name of ['idx_items_status_event_date', 'idx_items_type_status', 'idx_items_created_at']) {
-    assert.ok(files.at(-1).sql.includes(name), name);
+    assert.ok(files.find((file) => file.version === '012_item_search_indexes.sql').sql.includes(name), name);
     assert.ok(sql.includes(name), name);
   }
+  assert.ok(sql.includes(files.at(-1).sql.replace(/\r\n/g, '\n').trim()));
 });
 test('CHECK comparison accepts MySQL formatting and preserves AND/OR precedence', () => {
   assert.equal(normalizeCheck("target_type = 'ITEM' AND item_id IS NOT NULL"),
