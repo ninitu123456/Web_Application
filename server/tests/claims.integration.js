@@ -10,12 +10,31 @@ import { quote } from '../../database/schema.js';
 import { createDbPool, query } from '../config/db.js';
 import { createUserRepository } from '../repositories/user.repository.js';
 import { createClaimRepository } from '../repositories/claim.repository.js';
+import { createItemRepository } from '../repositories/item.repository.js';
+import { createItemService } from '../services/item.service.js';
+import { createMatchingRepository } from '../repositories/matching.repository.js';
+import { createMatchingService } from '../services/matching.service.js';
+import { setTimeout as delay } from 'node:timers/promises';
 import { createClaimService } from '../services/claim.service.js';
 import { createAuthService } from '../services/auth.service.js';
 import { createUserService } from '../services/user.service.js';
 import { createTokenService } from '../utils/jwt.js';
 import { createApp } from '../app.js';
 import { serveApp, request } from './auth/helpers.js';
+
+function assertNoEvidence(response, evidence) {
+  assert.equal(response.status, 200);
+  assert.equal(response.json.success, true);
+  assert.equal(JSON.stringify(response.json).includes(evidence), false, 'Private evidence leaked');
+  function inspect(value) {
+    if (!value || typeof value !== 'object') return;
+    for (const [key, child] of Object.entries(value)) {
+      assert.ok(!['proofDescription', 'proof_description', 'privateIdentifiers', 'private_identifiers'].includes(key), 'Private field leaked');
+      inspect(child);
+    }
+  }
+  inspect(response.json);
+}
 
 test('Claim integration: private evidence, state machine, MySQL transactions and concurrency', { timeout: 120000 }, async (t) => {
   assert.ok(process.env.FINDIT_ISOLATED_DATADIR, 'Use npm run test:integration:isolated; this suite refuses the installed database');
@@ -32,12 +51,16 @@ test('Claim integration: private evidence, state machine, MySQL transactions and
     pool = createDbPool({ ...base, database: name });
     const users = createUserRepository(pool), auth = createAuthService(users, createTokenService({ secret: randomBytes(32).toString('hex'), expiresIn: 3600 }));
     const service = createClaimService(createClaimRepository(pool));
-    http = await serveApp(createApp({ healthService: { async check() { return {}; } }, authService: auth, userService: createUserService(users), itemService: {}, claimService: service, logger: () => {} }));
+    const itemService = createItemService(createItemRepository(pool));
+    const matchingService = createMatchingService(createMatchingRepository(pool));
+    const appOptions = { healthService: { async check() { return {}; } }, authService: auth, userService: createUserService(users), itemService, matchingService, claimService: service, logger: () => {} };
+    http = await serveApp(createApp(appOptions));
     const userLogin = await request(http, '/api/auth/login', { method: 'POST', body: { email: 'user@claims.test', password } });
     const adminLogin = await request(http, '/api/auth/login', { method: 'POST', body: { email: 'admin@claims.test', password } });
     assert.equal(userLogin.status, 200); assert.equal(adminLogin.status, 200);
     const ownerToken = userLogin.json.data.token, adminToken = adminLogin.json.data.token;
     const ownerId = userLogin.json.data.user.id;
+    const owner = { id: String(ownerId), role: 'USER' };
     const otherLogin = await request(http, '/api/auth/register', { method: 'POST', body: { fullName: 'Claimant Two', email: 'second@claims.test', password } });
     assert.equal(otherLogin.status, 201);
     const secondLogin = await request(http, '/api/auth/login', { method: 'POST', body: { email: 'second@claims.test', password } });
@@ -49,9 +72,10 @@ test('Claim integration: private evidence, state machine, MySQL transactions and
     const thirdToken = thirdLogin.json.data.token;
     const [[category]] = await query(pool, 'SELECT category_id FROM categories ORDER BY category_id LIMIT 1');
     const [[location]] = await query(pool, 'SELECT location_id FROM locations ORDER BY location_id LIMIT 1');
-    async function makeItem(type = 'FOUND') {
-      const [result] = await query(pool, "INSERT INTO items (user_id, category_id, location_id, title, description, type, event_date, status, created_at, updated_at) VALUES (?, ?, ?, 'Claim test item', 'Public description', ?, '2026-10-20', 'OPEN', UTC_TIMESTAMP(), UTC_TIMESTAMP())", [ownerId, category.category_id, location.location_id, type]);
-      return Number(result.insertId);
+    async function makeItem(type = 'FOUND', identity = owner) {
+      const item = await itemService.create(identity, { title: 'Claim test item', description: 'Public description', type,
+        categoryId: Number(category.category_id), locationId: Number(location.location_id), eventDate: '2026-10-20', color: null });
+      return item.id;
     }
     const create = (id, token, proof = 'private ownership evidence') => request(http, `/api/items/${id}/claims`, { method: 'POST', token, body: { proofDescription: proof } });
     const statuses = async (id) => (await query(pool, 'SELECT status FROM claims WHERE item_id=? ORDER BY claim_id', [id]))[0].map((row) => row.status);
@@ -60,17 +84,58 @@ test('Claim integration: private evidence, state machine, MySQL transactions and
       const found = await makeItem(); const lost = await makeItem('LOST');
       assert.equal((await create(found, null)).status, 401);
       assert.equal((await create(found, secondToken, '  ')).status, 400);
-      assert.equal((await create(found, secondToken, 'ok',)).status, 201);
+      const evidence = `claim-evidence-${randomBytes(24).toString('hex')}`;
+      assert.equal((await create(found, secondToken, evidence)).status, 201);
       assert.equal((await create(found, secondToken)).status, 409);
       assert.equal((await create(lost, thirdToken)).status, 400);
       assert.equal((await create(found, ownerToken)).status, 403);
       assert.equal((await request(http, `/api/items/${found}/claims`, { token: thirdToken })).status, 403);
       const received = await request(http, `/api/items/${found}/claims`, { token: ownerToken });
-      assert.equal(received.status, 200); assert.equal(received.json.data[0].proofDescription, 'ok');
-      assert.equal((await request(http, `/api/claims/mine`, { token: secondToken })).json.data[0].item.title, 'Claim test item');
+      assert.equal(received.status, 200); assert.equal(received.json.data[0].proofDescription, evidence);
+      const mine = await request(http, '/api/claims/mine', { token: secondToken });
+      assert.equal(mine.status, 200); assert.equal(mine.json.data[0].item.title, 'Claim test item');
+      assert.equal(mine.json.data[0].proofDescription, evidence);
       const publicResponse = await request(http, `/api/items/${found}`);
-      assert.ok(!JSON.stringify(publicResponse.json).includes('ownership evidence'));
+      assertNoEvidence(publicResponse, evidence);
+      assert.deepEqual(Object.keys(publicResponse.json.data).sort(), ['id', 'userId', 'categoryId', 'locationId', 'title', 'description', 'type', 'color', 'eventDate', 'status', 'createdAt', 'updatedAt', 'category', 'location', 'images'].sort());
+      assert.equal(publicResponse.json.data.id, found); assert.equal(publicResponse.json.data.type, 'FOUND');
+      assert.equal(publicResponse.json.data.status, 'CLAIM_PENDING'); assert.ok(Array.isArray(publicResponse.json.data.images));
+      const search = await request(http, '/api/items?keyword=Claim&type=FOUND');
+      assertNoEvidence(search, evidence);
+      assert.ok(search.json.data.some((item) => item.id === found));
+      assert.ok(search.json.pagination.total >= 1);
+      const matches = await request(http, `/api/items/${lost}/matches`, { token: secondToken });
+      assertNoEvidence(matches, evidence);
+      assert.ok(matches.json.data.some((match) => match.itemId === found && match.score >= 50));
       assert.equal((await query(pool, 'SELECT status FROM items WHERE item_id=?', [found]))[0][0].status, 'CLAIM_PENDING');
+
+      // Negative control: an actual HTTP endpoint with a deliberately leaking DTO
+      // must be caught, even though its status and public fields are valid.
+      const leaking = await serveApp(createApp({ ...appOptions, itemService: {
+        ...itemService, async get(id) { return { ...await itemService.get(id), proofDescription: evidence }; }
+      } }));
+      try {
+        const leaked = await request(leaking, `/api/items/${found}`);
+        assert.equal(leaked.status, 200);
+        assert.throws(() => assertNoEvidence(leaked, evidence), /Private evidence leaked/);
+        const leakedField = { status: publicResponse.status, json: structuredClone(publicResponse.json) };
+        leakedField.json.data.proof_description = 'redacted';
+        assert.throws(() => assertNoEvidence(leakedField, evidence), /Private field leaked/);
+      } finally { await leaking.close(); }
+    });
+
+    await t.test('ADMIN can submit a Claim but cannot self-claim, duplicate, or claim invalid Items', async () => {
+      const found = await makeItem();
+      const made = await create(found, adminToken);
+      assert.equal(made.status, 201); assert.equal(made.json.data.claimantId, adminLogin.json.data.user.id);
+      assert.equal((await create(found, adminToken)).status, 409);
+      const own = await makeItem('FOUND', { id: String(adminLogin.json.data.user.id), role: 'ADMIN' });
+      assert.equal((await create(own, adminToken)).status, 403);
+      assert.deepEqual(await statuses(own), []);
+      assert.equal((await create(await makeItem('LOST'), adminToken)).status, 400);
+      const closed = await makeItem();
+      assert.equal((await request(http, `/api/items/${closed}/close`, { method: 'PATCH', token: ownerToken })).status, 200);
+      assert.equal((await create(closed, adminToken)).status, 409);
     });
 
     await t.test('competing creates and approvals serialize; at most one approved Claim remains', async () => {
@@ -88,23 +153,17 @@ test('Claim integration: private evidence, state machine, MySQL transactions and
       assert.equal(approvals.filter((response) => response.status === 409).length, 1);
       assert.equal((await statuses(found)).filter((status) => status === 'APPROVED').length, 1);
       assert.equal((await statuses(found)).filter((status) => status === 'REJECTED').length, 1);
-      assert.equal((await query(pool, 'SELECT status FROM items WHERE item_id=?', [found]))[0][0].status, 'CLAIM_PENDING');
+      assert.equal((await query(pool, 'SELECT status FROM items WHERE item_id=?', [found]))[0][0].status, 'CLAIMED');
       const unrelatedAdminApproval = await request(http, `/api/claims/${(first.status === 'APPROVED' ? second : first).id}/approve`, { method: 'PATCH', token: adminToken });
       assert.equal(unrelatedAdminApproval.status, 403);
     });
 
     await t.test('Claim creation racing with Item close has one consistent winner', async () => {
       const found = await makeItem();
-      const { transaction } = await import('../config/db.js');
-      const close = () => transaction(pool, async (connection) => {
-        await connection.query('SELECT item_id FROM items WHERE item_id=? FOR UPDATE', [found]);
-        const [result] = await connection.query("UPDATE items SET status='CLOSED', updated_at=UTC_TIMESTAMP() WHERE item_id=? AND status='OPEN'", [found]);
-        return result.affectedRows;
-      });
-      const [claimResult, closeResult] = await Promise.all([create(found, secondToken), close()]);
+      const [claimResult, closeResult] = await Promise.all([create(found, secondToken), request(http, `/api/items/${found}/close`, { method: 'PATCH', token: ownerToken })]);
       const [[item]] = await query(pool, 'SELECT status FROM items WHERE item_id=?', [found]);
-      if (claimResult.status === 201) { assert.equal(closeResult, 0); assert.equal(item.status, 'CLAIM_PENDING'); assert.deepEqual(await statuses(found), ['PENDING']); }
-      else { assert.equal(claimResult.status, 409); assert.equal(closeResult, 1); assert.equal(item.status, 'CLOSED'); assert.deepEqual(await statuses(found), []); }
+      if (claimResult.status === 201) { assert.equal(closeResult.status, 400); assert.equal(item.status, 'CLAIM_PENDING'); assert.deepEqual(await statuses(found), ['PENDING']); }
+      else { assert.equal(claimResult.status, 409); assert.equal(closeResult.status, 200); assert.equal(item.status, 'CLOSED'); assert.deepEqual(await statuses(found), []); }
     });
 
     await t.test('rejecting claims reopens item only after final pending Claim is rejected', async () => {
@@ -117,40 +176,146 @@ test('Claim integration: private evidence, state machine, MySQL transactions and
       assert.equal((await request(http, `/api/claims/${claims[1].id}/approve`, { method: 'PATCH', token: ownerToken })).status, 409);
     });
 
-    await t.test('completion atomically changes APPROVED to COMPLETED and CLAIM_PENDING to RETURNED', async () => {
+    await t.test('completion atomically changes APPROVED to COMPLETED and CLAIMED to RETURNED', async () => {
       const found = await makeItem(); const createdClaim = await create(found, secondToken);
       assert.equal((await request(http, `/api/claims/${createdClaim.json.data.id}/complete`, { method: 'PATCH', token: ownerToken })).status, 409);
       assert.equal((await request(http, `/api/claims/${createdClaim.json.data.id}/approve`, { method: 'PATCH', token: ownerToken })).status, 200);
+      assert.equal((await query(pool, 'SELECT status FROM items WHERE item_id=?', [found]))[0][0].status, 'CLAIMED');
+      assert.equal((await create(found, thirdToken)).status, 409);
       assert.equal((await request(http, `/api/claims/${createdClaim.json.data.id}/complete`, { method: 'PATCH', token: ownerToken })).status, 200);
       assert.deepEqual(await statuses(found), ['COMPLETED']);
       assert.equal((await query(pool, 'SELECT status FROM items WHERE item_id=?', [found]))[0][0].status, 'RETURNED');
       assert.equal((await request(http, `/api/claims/${createdClaim.json.data.id}/complete`, { method: 'PATCH', token: ownerToken })).status, 409);
+      assert.equal((await create(found, thirdToken)).status, 409);
     });
 
-    await t.test('approval and completion failures roll back Claim, Item, and audit together', async () => {
-      const found = await makeItem(), made = await create(found, secondToken), claimId = made.json.data.id;
+    await t.test('a held Item row lock blocks creation until the owning transaction releases it', async () => {
+      const found = await makeItem();
+      const connection = await pool.getConnection();
+      let pending, waiting = false;
+      try {
+        await connection.beginTransaction();
+        await connection.query('SELECT item_id FROM items WHERE item_id=? FOR UPDATE', [found]);
+        pending = create(found, secondToken);
+        // Observe the actual InnoDB wait, rather than inferring locking from timing.
+        const deadline = Date.now() + 2500;
+        while (Date.now() < deadline && !waiting) {
+          const [[row]] = await query(pool, `SELECT COUNT(*) AS waiting FROM performance_schema.data_lock_waits w
+            JOIN performance_schema.data_locks l ON l.ENGINE_LOCK_ID=w.REQUESTING_ENGINE_LOCK_ID AND l.ENGINE=w.ENGINE
+            WHERE l.OBJECT_SCHEMA=? AND l.OBJECT_NAME='items'`, [name]);
+          waiting = Number(row.waiting) > 0;
+          if (!waiting) await delay(20);
+        }
+        assert.deepEqual(await statuses(found), []);
+      } finally { await connection.rollback(); connection.release(); }
+      assert.equal((await pending).status, 201);
+      assert.equal(waiting, true, 'Expected a real InnoDB row lock wait');
+      assert.deepEqual(await statuses(found), ['PENDING']);
+    });
+
+    // Keep real MySQL statements and transactions. At the chosen boundary ask
+    // MySQL itself to raise an SQL error; never fake a rollback or its results.
+    function failingService(matches, { zeroRows = false } = {}) {
+      let injected = false;
       const faultyPool = { async getConnection() {
         const connection = await pool.getConnection();
         return new Proxy(connection, { get(target, key) {
           if (key === 'query') return async (statement, values) => {
             const sql = typeof statement === 'string' ? statement : statement.sql;
-            if (sql.startsWith('INSERT INTO activity_logs')) throw new Error('injected audit failure');
-            if (sql.startsWith("UPDATE items SET status = 'RETURNED'")) throw new Error('injected item update failure');
+            if (!injected && matches(sql, values ?? [])) {
+              injected = true;
+              if (zeroRows) return [{ affectedRows: 0 }];
+              return target.query("SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='injected claim SQL failure'");
+            }
             return target.query(statement, values);
           };
           const value = target[key]; return typeof value === 'function' ? value.bind(target) : value;
         } });
       } };
-      const faulty = createClaimService(createClaimRepository(faultyPool));
-      await assert.rejects(() => faulty.approve({ id: String(ownerId), role: 'USER' }, claimId), /injected audit failure/);
-      assert.deepEqual(await statuses(found), ['PENDING']);
-      assert.equal((await query(pool, 'SELECT status FROM items WHERE item_id=?', [found]))[0][0].status, 'CLAIM_PENDING');
-      await service.approve({ id: String(ownerId), role: 'USER' }, claimId);
-      await assert.rejects(() => faulty.complete({ id: String(ownerId), role: 'USER' }, claimId), /injected item update failure/);
-      assert.deepEqual(await statuses(found), ['APPROVED']);
-      assert.equal((await query(pool, 'SELECT status FROM items WHERE item_id=?', [found]))[0][0].status, 'CLAIM_PENDING');
-      const logs = await query(pool, "SELECT action FROM activity_logs WHERE entity_type='CLAIM' AND entity_id=? ORDER BY log_id", [claimId]);
-      assert.deepEqual(logs[0].map((row) => row.action), ['CLAIM_APPROVED']);
+      return { service: createClaimService(createClaimRepository(faultyPool)), injected: () => injected };
+    }
+    async function snapshot(itemId) {
+      const [items] = await query(pool, 'SELECT * FROM items WHERE item_id=?', [itemId]);
+      const [claims] = await query(pool, 'SELECT * FROM claims WHERE item_id=? ORDER BY claim_id', [itemId]);
+      const [logs] = await query(pool, "SELECT * FROM activity_logs WHERE entity_type='CLAIM' AND JSON_UNQUOTE(JSON_EXTRACT(details, '$.itemId'))=? ORDER BY log_id", [String(itemId)]);
+      return { items, claims, logs };
+    }
+    const claimWrite = (sql) => sql.startsWith('UPDATE claims SET status = ?');
+    const auditWrite = (sql) => sql.startsWith('INSERT INTO activity_logs');
+    const itemWrite = (status) => (sql) => sql.startsWith(`UPDATE items SET status = '${status}'`);
+    const readBack = (sql) => sql.startsWith('SELECT c.claim_id') && sql.includes('WHERE c.claim_id = ?') && !sql.endsWith('FOR UPDATE');
+    const operationCases = [
+      { action: 'create', failures: [['claim insert', (sql) => sql.startsWith('INSERT INTO claims')], ['item update', itemWrite('CLAIM_PENDING')], ['read after item update', readBack]] },
+      { action: 'approve', failures: [['claim update', claimWrite], ['item update', itemWrite('CLAIMED')], ['approval audit', auditWrite],
+        ['competitor update', (sql) => sql.startsWith("UPDATE claims SET status = 'REJECTED'")],
+        ['competitor audit after rejection', (sql, values) => auditWrite(sql) && values[1] === 'CLAIM_REJECTED']] },
+      { action: 'reject', failures: [['claim update', claimWrite], ['rejection audit', auditWrite], ['item reopen', itemWrite('OPEN')]] },
+      { action: 'complete', failures: [['claim update', claimWrite], ['item return', itemWrite('RETURNED')], ['completion audit', auditWrite]] }
+    ];
+    for (const { action, failures } of operationCases) {
+      for (const [boundary, matches] of failures) {
+        await t.test(`${action}: SQL failure at ${boundary} rolls back Claim, Item, competitors and audit`, async () => {
+          const found = await makeItem();
+          let claimId;
+          if (action !== 'create') {
+            const made = await create(found, secondToken); assert.equal(made.status, 201); claimId = made.json.data.id;
+            if (action === 'approve') assert.equal((await create(found, thirdToken)).status, 201);
+            if (action === 'complete') await service.approve(owner, claimId);
+          }
+          const before = await snapshot(found);
+          const faulty = failingService(matches);
+          await assert.rejects(() => action === 'create'
+            ? faulty.service.create({ id: String(secondLogin.json.data.user.id), role: 'USER' }, found, { proofDescription: 'rollback evidence' })
+            : faulty.service[action](owner, claimId), (error) => error.code === 'ER_SIGNAL_EXCEPTION' && /injected claim SQL failure/.test(error.message));
+          assert.equal(faulty.injected(), true);
+          assert.deepEqual(await snapshot(found), before);
+          // A subsequent real request also checks that the pooled session has no
+          // abandoned transaction/lock and that the failed operation can be retried.
+          if (action === 'create') assert.equal((await create(found, secondToken)).status, 201);
+          else await service[action](owner, claimId);
+        });
+      }
+    }
+    for (const action of ['approve', 'complete']) {
+      await t.test(`${action}: zero affected Item rows aborts and rolls back the Claim update`, async () => {
+        const found = await makeItem(), made = await create(found, secondToken), claimId = made.json.data.id;
+        if (action === 'complete') await service.approve(owner, claimId);
+        const before = await snapshot(found);
+        const faulty = failingService(itemWrite(action === 'approve' ? 'CLAIMED' : 'RETURNED'), { zeroRows: true });
+        await assert.rejects(() => faulty.service[action](owner, claimId), (error) => error.status === 409);
+        assert.equal(faulty.injected(), true); assert.deepEqual(await snapshot(found), before);
+      });
+    }
+    for (const action of ['approve', 'reject', 'complete']) {
+      await t.test(`${action}: zero affected Claim rows aborts without changing Item or audit`, async () => {
+        const found = await makeItem(), made = await create(found, secondToken), claimId = made.json.data.id;
+        if (action === 'complete') await service.approve(owner, claimId);
+        const before = await snapshot(found);
+        const faulty = failingService(claimWrite, { zeroRows: true });
+        await assert.rejects(() => faulty.service[action](owner, claimId), (error) => error.status === 409);
+        assert.equal(faulty.injected(), true); assert.deepEqual(await snapshot(found), before);
+      });
+    }
+    await t.test('all persisted Claim/Item states and audit histories remain consistent after failures and races', async () => {
+      const [items] = await query(pool, `SELECT i.item_id, i.status,
+        SUM(c.status='PENDING') AS pending, SUM(c.status='APPROVED') AS approved, SUM(c.status='COMPLETED') AS completed
+        FROM items i LEFT JOIN claims c ON c.item_id=i.item_id GROUP BY i.item_id, i.status`);
+      for (const item of items) {
+        const pending = Number(item.pending), approved = Number(item.approved), completed = Number(item.completed);
+        assert.ok(approved + completed <= 1, `Multiple winning Claims for Item ${item.item_id}`);
+        if (item.status === 'CLAIM_PENDING') { assert.ok(pending > 0); assert.equal(approved + completed, 0); }
+        else if (item.status === 'CLAIMED') { assert.equal(approved, 1); assert.equal(pending + completed, 0); }
+        else if (item.status === 'RETURNED') { assert.equal(completed, 1); assert.equal(pending + approved, 0); }
+        else assert.equal(pending + approved + completed, 0);
+      }
+      const [claims] = await query(pool, 'SELECT claim_id, status, proof_description FROM claims');
+      const [logs] = await query(pool, "SELECT entity_id, action, details FROM activity_logs WHERE entity_type='CLAIM' ORDER BY log_id");
+      const expected = { PENDING: [], APPROVED: ['CLAIM_APPROVED'], REJECTED: ['CLAIM_REJECTED'], COMPLETED: ['CLAIM_APPROVED', 'CLAIM_COMPLETED'] };
+      for (const claim of claims) {
+        assert.deepEqual(logs.filter((log) => String(log.entity_id) === String(claim.claim_id)).map((log) => log.action), expected[claim.status]);
+        assert.equal(JSON.stringify(logs).includes(claim.proof_description), false, 'Evidence appeared in audit logs');
+      }
+      assert.ok(logs.every((log) => claims.some((claim) => String(claim.claim_id) === String(log.entity_id))), 'Orphan Claim audit');
     });
   } finally {
     if (http) await http.close(); if (pool) await pool.end();

@@ -21,7 +21,7 @@ export function itemRoutes(authService, itemService, matchingService, claimServi
   if (claimService) {
     const claims = createClaimController(claimService);
     router.get('/:id/claims', authenticate(authService), authorizeRoles('USER', 'ADMIN'), claims.forItem);
-    router.post('/:id/claims', authenticate(authService), authorizeRoles('USER'), claims.create);
+    router.post('/:id/claims', authenticate(authService), authorizeRoles('USER', 'ADMIN'), claims.create);
   }
   router.get('/:id', controller.get);
   router.post('/', authenticate(authService), authorizeRoles('USER', 'ADMIN'), controller.create);

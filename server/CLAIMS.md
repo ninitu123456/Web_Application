@@ -1,14 +1,14 @@
 # Claim workflow
 
 All Claim routes require a valid JWT for an active `USER` or `ADMIN` account. The
-Claimant must use a `USER` account to submit a Claim. Authentication rejects
+Claimant may use a `USER` or `ADMIN` account to submit a Claim. Authentication rejects
 disabled accounts before route handling.
 
 ## Endpoints
 
 | Method and path | Access | Behavior |
 | --- | --- | --- |
-| `POST /api/items/:id/claims` | Authenticated USER, except the Item owner | Create one Claim for a FOUND Item |
+| `POST /api/items/:id/claims` | Authenticated USER or ADMIN, except the Item owner | Create one Claim for a FOUND Item |
 | `GET /api/claims/mine` | Authenticated USER or ADMIN | Return the current account's Claims and public Item details |
 | `GET /api/items/:id/claims` | FOUND Item owner; ADMIN may inspect | Return Claims and private evidence for that Item |
 | `PATCH /api/claims/:id/approve` | Related Item owner only | Approve one pending Claim and reject other pending Claims |
@@ -29,9 +29,9 @@ submitting again after rejection.
 
 ```text
 Item OPEN -> CLAIM_PENDING when its first Claim is created
-Claim PENDING -> APPROVED; competing PENDING Claims -> REJECTED
+Claim PENDING -> APPROVED and Item CLAIM_PENDING -> CLAIMED; competing PENDING Claims -> REJECTED
 Claim PENDING -> REJECTED; Item -> OPEN if no PENDING or APPROVED Claims remain
-Claim APPROVED -> COMPLETED and Item CLAIM_PENDING -> RETURNED
+Claim APPROVED -> COMPLETED and Item CLAIMED -> RETURNED
 ```
 
 An Item accepts Claims while it is `OPEN` or `CLAIM_PENDING`, provided it is a
@@ -51,3 +51,10 @@ Every write locks the Item row with `SELECT ... FOR UPDATE` inside a MySQL
 transaction. Claim, Item, competing-Claim, and audit updates commit or roll back
 together. The same Item lock serializes Claim creation with the existing Item
 close/update paths and serializes competing approvals.
+
+## Verification
+
+Run `npm.cmd test` and `npm.cmd run test:integration:isolated`. The latter requires
+a MySQL executable; see [database setup](../database/README.md) for `MYSQLD_PATH`.
+The integration suite uses real Item/Matching services, privacy negative controls,
+InnoDB lock-wait observation, and SQL failure injection for every Claim operation.

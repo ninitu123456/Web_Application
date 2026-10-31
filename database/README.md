@@ -87,7 +87,14 @@ Có thể chạy MySQL test riêng mà không cần credentials của dịch v�
 npm.cmd run db:test:isolated
 ```
 
-Lệnh dùng mysqld đã cài tại `C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqld.exe`; đặt biến `MYSQLD_PATH` thành đường dẫn tuyệt đối nếu khác. Nó khởi tạo data directory tạm, chạy trên loopback ở cổng tạm, đặt mật khẩu ngẫu nhiên trong bộ nhớ rồi chạy integration. Cuối cùng dừng đúng tiến trình đã tạo và xóa đúng thư mục tạm. Không sửa dịch vụ MySQL80 hoặc data directory hiện hữu. Nếu môi trường ngăn chạy executable, cần quyền thực thi phù hợp.
+Runner ưu tiên `MYSQLD_PATH` (đường dẫn tuyệt đối), sau đó tìm `mysqld` trên `PATH` và các thư mục `MySQL Server` trong `Program Files\MySQL` trên Windows. Nếu không tìm thấy, runner dừng và hướng dẫn cấu hình; không tự kết nối dịch vụ MySQL đang cài. Có thể giải nén bản ZIP portable từ [MySQL Community Archives](https://downloads.mysql.com/archives/community/) mà không cài Windows service:
+
+```powershell
+$env:MYSQLD_PATH = 'C:\tools\mysql-8.0.44-winx64\bin\mysqld.exe'
+npm.cmd run test:integration:isolated
+```
+
+Thay đường dẫn bằng nơi thực tế đã giải nén MySQL >= 8.0.16. Biến này phải được đặt trong môi trường terminal; isolated runner không đọc `.env`. Runner khởi tạo data directory tạm, chạy trên loopback ở cổng tạm, xác minh `@@datadir`/`@@port`, đặt mật khẩu ngẫu nhiên trong bộ nhớ rồi chạy integration. Cuối cùng dừng đúng tiến trình đã tạo và xóa đúng thư mục dữ liệu tạm. Binary portable có thể tái sử dụng cho lần chạy sau. Không sửa dịch vụ MySQL hoặc data directory hiện hữu. Nếu môi trường ngăn chạy executable, cần quyền thực thi phù hợp.
 
 ## Kiểm tra bằng MySQL Workbench
 
