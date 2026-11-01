@@ -28,6 +28,7 @@ export function createReportRepository(pool, execute = (sql, values = []) => que
       const [rows] = await execute(`SELECT ${columns} FROM reports${clause} ORDER BY created_at DESC, report_id DESC LIMIT ? OFFSET ?`, [...values, options.limit, (options.page - 1) * options.limit]);
       return { rows, total: count.total };
     },
+    async findById(id) { const [[row]] = await execute(`SELECT ${columns} FROM reports WHERE report_id=?`, [id]); return row; },
     async findForUpdate(id) { const [[row]] = await execute(`SELECT ${columns} FROM reports WHERE report_id=? FOR UPDATE`, [id]); return row; },
     async update(id, from, to, reviewerId) {
       const [result] = await execute('UPDATE reports SET status=?, reviewed_by=?, reviewed_at=UTC_TIMESTAMP() WHERE report_id=? AND status=?', [to, reviewerId, id, from]); return result.affectedRows;

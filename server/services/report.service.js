@@ -21,6 +21,7 @@ export function createReportService(repository) {
     },
     async mine(identity, options) { const { rows, total } = await repository.list(identity.id, options); return paged(rows, total, options, reportDto); },
     async list(identity, options) { adminOnly(identity); const { rows, total } = await repository.list(null, options); return paged(rows, total, options, reportDto); },
+    async get(identity, id) { adminOnly(identity); const row = await repository.findById(id); if (!row) throw new HttpError(404, 'Không tìm thấy báo cáo'); return reportDto(row); },
     async update(identity, id, { status }) {
       adminOnly(identity);
       return repository.withTransaction(async (source) => {
