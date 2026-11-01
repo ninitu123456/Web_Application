@@ -8,13 +8,13 @@ import { notificationRoutes } from './notification.routes.js';
 import { reportRoutes } from './report.routes.js';
 import { adminRoutes } from './admin.routes.js';
 
-export function apiRoutes(healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService) {
+export function apiRoutes(healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, uploadLimiter) {
   const router = Router();
   router.use(healthRoutes(healthService));
   if (authService && userService) {
     router.use('/auth', authRoutes(authService));
     router.use('/users', userRoutes(authService, userService));
-    if (itemService) router.use('/items', itemRoutes(authService, itemService, matchingService, claimService));
+    if (itemService) router.use('/items', itemRoutes(authService, itemService, matchingService, claimService, uploadLimiter));
     if (claimService) router.use('/claims', claimRoutes(authService, claimService));
     if (notificationService) router.use('/notifications', notificationRoutes(authService, notificationService));
     if (reportService) {

@@ -47,13 +47,16 @@ export function transaction(pool, operation) {
 }
 
 export async function inTransaction(connection, operation) {
-  await connection.beginTransaction();
+  let began = false, committing = false;
   try {
+    await connection.beginTransaction();
+    began = true;
     const result = await operation(connection);
+    committing = true;
     await connection.commit();
     return result;
   } catch (error) {
-    if (error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' || error.fatal) {
+    if (!began || committing || error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' || error.fatal) {
       error.fatal = true;
       throw error;
     }

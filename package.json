@@ -27,7 +27,12 @@
     "db:build": "node database/scripts/build.js",
     "db:test": "node --test database/tests/*.test.js",
     "db:test:integration": "node --test database/tests/mysql.integration.js",
-    "db:test:isolated": "node database/scripts/test-isolated.js"
+    "db:test:isolated": "node database/scripts/test-isolated.js",
+    "test:security": "node --test server/tests/security.test.js",
+    "test:security:isolated": "node database/scripts/test-isolated.js --security",
+    "test:regression": "npm test && npm run test:integration:isolated",
+    "test:coverage": "node server/scripts/test-coverage.js",
+    "audit:production": "npm audit --omit=dev"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -35,6 +40,8 @@
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.3.0",
+    "express-rate-limit": "^8.7.2",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.5.0",
     "mysql2": "^3.15.3",

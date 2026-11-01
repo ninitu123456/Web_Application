@@ -1,0 +1,49 @@
+name: FindIt tests and security
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run test:coverage
+      - run: npm run audit:production
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-coverage
+          path: coverage/unit.lcov
+          if-no-files-found: error
+          retention-days: 7
+  integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      # Install only on this disposable runner. Tests never use the system service.
+      - name: Prepare MySQL 8.0 executable
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mysql-server-8.0
+          sudo systemctl stop mysql
+          /usr/sbin/mysqld --version
+      - name: All integration suites, including five controlled security race rounds
+        env:
+          MYSQLD_PATH: /usr/sbin/mysqld
+        run: npm run test:integration:isolated
