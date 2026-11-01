@@ -82,6 +82,7 @@ try {
       fileURLToPath(new URL('../../server/tests/matching.integration.js', import.meta.url)),
       fileURLToPath(new URL('../../server/tests/claims.integration.js', import.meta.url)),
       fileURLToPath(new URL('../../server/tests/workflow.integration.js', import.meta.url)),
+      fileURLToPath(new URL('../../server/tests/admin.integration.js', import.meta.url)),
       fileURLToPath(new URL('../../server/tests/auth/auth.integration.js', import.meta.url)),
       fileURLToPath(new URL('../tests/mysql.integration.js', import.meta.url))]);
   } else await execute(['--test', fileURLToPath(new URL('../tests/mysql.integration.js', import.meta.url))]);
