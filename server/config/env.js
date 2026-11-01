@@ -2,6 +2,15 @@
 import { configFromEnv } from '../../database/scripts/config.js';
 
 export const defaultCorsOrigins = ['http://localhost:5173', 'http://localhost:3000'];
+export function readSecurityConfig(env = process.env) {
+  const result = { production: env.NODE_ENV === 'production' };
+  for (const [name, fallback] of Object.entries({ api: 300, login: 30, register: 10, upload: 10 })) {
+    const value = Number(env[`RATE_LIMIT_${name.toUpperCase()}_MAX`] ?? fallback);
+    if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`Invalid RATE_LIMIT_${name.toUpperCase()}_MAX`);
+    result[`${name}Max`] = value;
+  }
+  return result;
+}
 export function readAppConfig(env = process.env) {
   const port = Number(env.PORT ?? 3001);
   const host = env.HOST ?? '127.0.0.1';
@@ -18,7 +27,7 @@ export function readAppConfig(env = process.env) {
   return { host, port, corsOrigins: [...new Set(origins)] };
 }
 export function readConfig(env = process.env) {
-  try { return { ...readAppConfig(env), database: configFromEnv(env), auth: readAuthConfig(env) }; }
+  try { return { ...readAppConfig(env), database: configFromEnv(env), auth: readAuthConfig(env), security: readSecurityConfig(env) }; }
   catch (error) { error.code = 'INVALID_CONFIG'; throw error; }
 }
 

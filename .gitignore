@@ -3,5 +3,6 @@ node_modules/
 .env.*
 !.env.example
 coverage/
+.cache/
 database/test-results/
 *.log

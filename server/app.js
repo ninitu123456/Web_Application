@@ -4,11 +4,15 @@ import { defaultCorsOrigins } from './config/env.js';
 import { apiRoutes } from './routes/index.js';
 import { notFound } from './middleware/not-found.js';
 import { createErrorHandler } from './middleware/error-handler.js';
+import { createSecurity } from './middleware/security.js';
 
-export function createApp({ healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, corsOrigins = defaultCorsOrigins, logger } = {}) {
+export function createApp({ healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, corsOrigins = defaultCorsOrigins, logger, security } = {}) {
   if (typeof healthService?.check !== 'function') throw new Error('A health service is required');
   const app = express();
   app.disable('x-powered-by');
+  app.set('trust proxy', false);
+  const protection = createSecurity(security);
+  app.use(protection.headers);
   app.use(cors({
     origin: corsOrigins,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -16,8 +20,11 @@ export function createApp({ healthService, authService, userService, itemService
     optionsSuccessStatus: 204
   }));
   app.use(['/api/auth', '/api/users', '/api/claims', '/api/items', '/api/notifications', '/api/reports', '/api/admin'], (request, response, next) => { response.set('Cache-Control', 'no-store'); next(); });
+  app.use('/api', protection.api);
+  app.use('/api/auth/login', protection.login);
+  app.use('/api/auth/register', protection.register);
   app.use(express.json({ limit: '100kb' }));
-  app.use('/api', apiRoutes(healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService));
+  app.use('/api', apiRoutes(healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, protection.upload));
   app.use(notFound);
   app.use(createErrorHandler(logger));
   return app;

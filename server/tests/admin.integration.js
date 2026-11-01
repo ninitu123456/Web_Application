@@ -1,3 +1,5 @@
+import { assertIsolatedInstance } from '../../database/scripts/assert-isolated.js';
+await assertIsolatedInstance();
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
@@ -29,11 +31,12 @@ import { serveApp, request } from './auth/helpers.js';
 test('Phase 6 admin APIs: isolated MySQL authorization, moderation, lookups, dashboard and audit transactions', { timeout: 180000 }, async (t) => {
   assert.ok(process.env.FINDIT_ISOLATED_DATADIR, 'Run test:integration:isolated; production databases are forbidden');
   const base = configFromEnv(), connection = await connect(base, false), name = `findit_test_${randomBytes(12).toString('hex')}`;
-  let pool, http;
+  let pool, http, created = false;
   try {
     const [[instance]] = await connection.query('SELECT @@datadir AS directory, @@port AS port');
     assert.equal(resolve(instance.directory), resolve(process.env.FINDIT_ISOLATED_DATADIR)); assert.equal(Number(instance.port), base.port);
     await connection.query(`CREATE DATABASE \`${name}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci`);
+    created = true;
     await connection.end();
     const db = await connect({ ...base, database: name }); await migrate(db, name);
     const password = randomBytes(18).toString('hex');
@@ -108,6 +111,16 @@ test('Phase 6 admin APIs: isolated MySQL authorization, moderation, lookups, das
       await assert.rejects(() => failing.createLookup({ id: admin.user.id }, 'categories', { name: 'MustRollback' }), (error) => error.code === 'ER_SIGNAL_EXCEPTION'); assert.equal(fired, true);
       const [[count]] = await query(pool, "SELECT COUNT(*) AS total FROM categories WHERE name='MustRollback'"); assert.equal(Number(count.total), 0);
     });
-  } finally { if (http) await http.close(); if (pool) await pool.end(); await connection.end().catch(() => {}); }
+  } finally {
+    if (http) await http.close(); if (pool) await pool.end();
+    await connection.end().catch(() => {});
+    if (created) {
+      const cleanup = await connect(base, false);
+      try {
+        if (!/^findit_test_[a-f0-9]{24}$/.test(name)) throw new Error('Refusing unowned cleanup');
+        await cleanup.query(`DROP DATABASE \`${name}\``);
+      } finally { await cleanup.end(); }
+    }
+  }
 });
 

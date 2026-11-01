@@ -116,10 +116,10 @@ Route không tồn tại trả **404** với `success: false` và message `Khôn
 
 ```powershell
 npm.cmd run test:backend
-npm.cmd run test:backend:integration
+npm.cmd run test:integration:isolated
 npm.cmd run db:test
 npm.cmd run db:verify
-npm.cmd run db:test:integration
+npm.cmd run db:test:isolated
 ```
 
 - Backend tests: HTTP thật trên cổng tạm, dependency giả để kiểm tra 200/503/phục hồi, 404, lỗi 500, JSON 400/413, CORS và che dữ liệu nhạy cảm.
@@ -141,4 +141,8 @@ Các npm scripts mới: `start`, `dev`, `test:backend`, `test:backend:integratio
 | `EADDRINUSE` | Cổng HTTP đã được dùng; dừng đúng server của mình hoặc cấu hình PORT khác |
 | Trình duyệt bị CORS | Origin frontend phải khớp cả protocol, hostname và port |
 
-Auth và User Foundation hiện có 4 API; cấu trúc bổ sung và hướng dẫn nằm trong `AUTH.md`. Claim Workflow (Phase 4) có 6 API; quyền truy cập, state machine và transaction được mô tả trong [CLAIMS.md](CLAIMS.md). Các API quản trị riêng chưa được triển khai. Kết quả foundation nằm trong `TEST-RESULTS.md`, kết quả Auth/User nằm trong `AUTH-TEST-RESULTS.md`.
+Auth và User Foundation hiện có 4 API; cấu trúc bổ sung và hướng dẫn nằm trong `AUTH.md`. Claim Workflow (Phase 4) có 6 API; quyền truy cập, state machine và transaction được mô tả trong [CLAIMS.md](CLAIMS.md). Các API quản trị hiện có được mô tả trong [ADMIN.md](ADMIN.md); các endpoint còn thiếu được ghi nhận trong [SECURITY.md](SECURITY.md). Kết quả foundation nằm trong `TEST-RESULTS.md`, kết quả Auth/User nằm trong `AUTH-TEST-RESULTS.md`.
+
+## Phase 7 — Automated Testing & Security
+
+Đã bổ sung Helmet, rate limiting, giới hạn multipart và bảo vệ session khi BEGIN/COMMIT mất phản hồi. Mọi integration suite yêu cầu runner MySQL cô lập. Xem [SECURITY.md](SECURITY.md) để cấu hình, lệnh chạy, giới hạn triển khai và CI.

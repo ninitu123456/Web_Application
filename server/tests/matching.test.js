@@ -11,6 +11,19 @@ for (const fixture of matchCases) test(`matching dataset: ${fixture.name}`, () =
   assert.equal(result.reasons.length, fixture.reasons);
   assert.deepEqual(calculateMatchScore(found, baseItem), result);
 });
+
+test('matching invariant matrix preserves symmetry, bounded scores and ordered reasons', () => {
+  const reasons = ['Cùng danh mục', 'Cùng địa điểm', 'Thời gian xảy ra gần nhau', 'Nội dung có từ ngữ tương đồng'];
+  for (const days of [0, 1, 15, 29, 30, 31, 365]) for (const categoryId of [1, 2]) for (const locationId of [1, 2]) {
+    const date = new Date('2026-01-01T00:00:00Z'); date.setUTCDate(date.getUTCDate() + days);
+    const found = { ...baseItem, id: 2, type: 'FOUND', categoryId, locationId, eventDate: date.toISOString().slice(0, 10), title: days % 2 ? 'khác' : baseItem.title };
+    const result = calculateMatchScore(baseItem, found);
+    assert.deepEqual(calculateMatchScore(found, baseItem), result);
+    assert.ok(result.score >= 0 && result.score <= 100);
+    assert.deepEqual(result.reasons, reasons.filter((reason) => result.reasons.includes(reason)));
+    assert.equal(new Set(result.reasons).size, result.reasons.length);
+  }
+});
 test('matching normalizes Vietnamese NFC, case, punctuation and whitespace without removing accents', () => {
   const found = { ...baseItem, id: '2', type: 'FOUND', title: ' TAI, NGHE! ', description: ' MÀU\tTRẮNG '.normalize('NFD') };
   assert.equal(calculateMatchScore(baseItem, found).score, 100);

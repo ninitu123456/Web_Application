@@ -1,3 +1,5 @@
+import { assertIsolatedInstance } from '../../../database/scripts/assert-isolated.js';
+await assertIsolatedInstance();
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes, createHash } from 'node:crypto';
@@ -61,6 +63,9 @@ test('Auth/User integration: real HTTP and MySQL, all writes isolated from findi
     const repository = createUserRepository(pool);
     const authService = createAuthService(repository, tokens);
     http = await serveApp(createApp({
+      // This validation fixture intentionally sends more than ten registrations.
+      // Limiter behavior/defaults have their own focused security tests.
+      security: { registerMax: 100 },
       healthService: createHealthService(createHealthRepository(pool)),
       authService, userService: createUserService(repository), logger: () => {}
     }));

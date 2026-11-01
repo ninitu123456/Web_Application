@@ -8,8 +8,8 @@ export function createErrorHandler(logger = logError) {
     if (error instanceof HttpError) { status = error.status; message = error.message; }
     else if (error.type === 'entity.parse.failed') { status = 400; message = 'Dữ liệu JSON không hợp lệ'; }
     else if (error.type === 'entity.too.large') { status = 413; message = 'Dữ liệu yêu cầu quá lớn'; }
-    if (error.code === 'LIMIT_FILE_SIZE') { status = 413; message = 'Tệp tải lên quá lớn'; }
-    else if (error.code === 'LIMIT_FILE_COUNT' || error.code === 'LIMIT_UNEXPECTED_FILE') { status = 400; message = 'Số lượng tệp không hợp lệ'; }
+    if (['LIMIT_FILE_SIZE', 'LIMIT_FIELD_VALUE'].includes(error.code)) { status = 413; message = 'Tệp tải lên quá lớn'; }
+    else if (['LIMIT_FILE_COUNT', 'LIMIT_UNEXPECTED_FILE', 'LIMIT_PART_COUNT', 'LIMIT_FIELD_COUNT', 'LIMIT_FIELD_KEY'].includes(error.code)) { status = 400; message = 'Dữ liệu tải lên không hợp lệ'; }
     if (status >= 500) logger('http_request_failed', error);
     response.status(status).json({ success: false, message });
   };

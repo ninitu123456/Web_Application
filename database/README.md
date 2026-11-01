@@ -75,11 +75,11 @@ SQL export tạo `findit_db`, bảng kỹ thuật và 11 bảng nghiệp vụ, k
 
 ```powershell
 npm.cmd run db:test
-npm.cmd run db:test:integration
+npm.cmd run db:test:isolated
 ```
 
 - `db:test`: kiểm tra cấu hình, giới hạn bcrypt, đồng bộ SQL export và cách đối chiếu CHECK; không cần kết nối MySQL.
-- `db:test:integration`: dùng kết nối trong `.env`, tạo database `findit_test_<24 ký tự hex>` mới. Kiểm tra migrations, seed/hash, chạy lại không đổi dữ liệu, PK của 11 bảng, các cột NOT NULL, các UNIQUE/FK, ENUM/JSON/CHECK, defaults, chặn xóa dữ liệu được tham chiếu, xung đột seed và phục hồi DDL.
+- `db:test:isolated`: chạy trên MySQL instance tạm do runner tạo, tạo database `findit_test_<24 ký tự hex>` mới. Kiểm tra migrations, seed/hash, chạy lại không đổi dữ liệu, PK của 11 bảng, các cột NOT NULL, các UNIQUE/FK, ENUM/JSON/CHECK, defaults, chặn xóa dữ liệu được tham chiếu, xung đột seed và phục hồi DDL.
 - Mỗi lần chạy tự tạo database rỗng và xóa trong `finally` chỉ khi chính lần chạy đã tạo thành công. Tên database phải khớp tên sở hữu và mẫu test; `findit_db` luôn bị từ chối bởi cơ chế cleanup.
 - Không có lệnh reset `findit_db`. Muốn tái tạo test, chạy lại bộ integration. Nếu tiến trình bị tắt cưỡng bức, database test có thể còn lại; kiểm tra chính xác tên và quyền sở hữu trước khi tự xóa bằng Workbench.
 
@@ -131,3 +131,7 @@ Có thể dùng **Database → Reverse Engineer** để xem quan hệ FK. Kết 
 | Could not acquire setup lock | Chờ tiến trình setup/seed trước kết thúc, kiểm tra session giữ lock |
 | Seed account/item conflict | Kiểm tra fixture đã tồn tại; không ghi đè tài khoản hoặc mật khẩu |
 | PowerShell chặn npm.ps1 | Dùng `npm.cmd` như các ví dụ trên |
+
+## Phase 7 — Isolation bắt buộc
+
+Các suite integration trực tiếp không còn chấp nhận cấu hình MySQL cục bộ. Dùng `db:test:isolated` cho database hoặc `test:integration:isolated` cho toàn bộ backend/database. Shared guard xác minh marker/datadir/port trước khi test ghi dữ liệu; không tự đặt marker. Hướng dẫn và CI hiện hành: [SECURITY.md](../server/SECURITY.md). Không có migration mới ở Phase 7.

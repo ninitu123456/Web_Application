@@ -1,3 +1,5 @@
+import { assertIsolatedInstance } from '../../database/scripts/assert-isolated.js';
+await assertIsolatedInstance();
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes, createHash } from 'node:crypto';

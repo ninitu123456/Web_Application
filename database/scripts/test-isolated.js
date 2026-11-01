@@ -1,7 +1,7 @@
 // Uses an existing mysqld binary and a fresh temporary data directory. Never
 // connects to the installed MySQL service or reads the application's .env.
 import { spawn } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname, relative, isAbsolute, sep } from 'node:path';
 import { createServer } from 'node:net';
@@ -46,6 +46,7 @@ try {
   await start(['--no-defaults', '--initialize-insecure', `--basedir=${dirname(dirname(binary))}`, `--datadir=${data}`, `--log-error=${log}`]).done;
   const port = await freePort();
   server = start(['--no-defaults', `--basedir=${dirname(dirname(binary))}`, `--datadir=${data}`,
+    ...(process.platform === 'win32' ? [] : [`--socket=${join(directory, 'mysql.sock')}`, `--pid-file=${join(directory, 'mysql.pid')}`]),
     '--bind-address=127.0.0.1', `--port=${port}`, '--mysqlx=0', '--skip-log-bin', '--local-infile=0', '--secure-file-priv=NULL', `--log-error=${log}`]);
   const deadline = Date.now() + 45000;
   while (!admin && Date.now() < deadline) {
@@ -62,6 +63,7 @@ try {
   await admin.query("ALTER USER 'root'@'localhost' IDENTIFIED BY ?", [password]);
   console.log('Temporary MySQL is ready; executing integration tests.');
   const env = { ...process.env, DB_HOST: '127.0.0.1', DB_PORT: String(port), DB_USER: 'root', DB_PASSWORD: password, DB_NAME: 'findit_db',
+    NODE_ENV: 'test', RATE_LIMIT_API_MAX: '300', RATE_LIMIT_LOGIN_MAX: '30', RATE_LIMIT_REGISTER_MAX: '10', RATE_LIMIT_UPLOAD_MAX: '10',
     JWT_SECRET: randomBytes(32).toString('hex'), JWT_EXPIRES_IN: '3600',
     CLOUDINARY_CLOUD_NAME: '', CLOUDINARY_API_KEY: '', CLOUDINARY_API_SECRET: '', CLOUDINARY_URL: '',
     SEED_ADMIN_EMAIL: 'admin@isolated.example.test', SEED_USER_EMAIL: 'user@isolated.example.test',
@@ -73,18 +75,19 @@ try {
     const code = await new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', resolve); });
     if (code !== 0) throw new Error('Isolated MySQL integration tests failed');
   }
-  if (process.argv.includes('--all')) {
+  if (process.argv.includes('--all') || process.argv.includes('--security')) {
     await execute([fileURLToPath(new URL('./cli.js', import.meta.url)), 'setup']);
     // One runner reports all suites and cannot silently skip a failed command.
-    await execute(['--test',
-      fileURLToPath(new URL('../../server/tests/mysql.integration.js', import.meta.url)),
-      fileURLToPath(new URL('../../server/tests/items.integration.js', import.meta.url)),
-      fileURLToPath(new URL('../../server/tests/matching.integration.js', import.meta.url)),
-      fileURLToPath(new URL('../../server/tests/claims.integration.js', import.meta.url)),
-      fileURLToPath(new URL('../../server/tests/workflow.integration.js', import.meta.url)),
-      fileURLToPath(new URL('../../server/tests/admin.integration.js', import.meta.url)),
-      fileURLToPath(new URL('../../server/tests/auth/auth.integration.js', import.meta.url)),
-      fileURLToPath(new URL('../tests/mysql.integration.js', import.meta.url))]);
+    const files = [];
+    for (const directory of ['../../server/tests/', '../../server/tests/auth/', '../tests/']) {
+      const root = new URL(directory, import.meta.url);
+      for (const name of (await readdir(root)).sort()) {
+        if (name.endsWith('.integration.js')) files.push(fileURLToPath(new URL(name, root)));
+      }
+    }
+    const selected = process.argv.includes('--security') ? files.filter((name) => name.endsWith('security.integration.js')) : files;
+    if (!selected.length) throw new Error('No integration suites found');
+    await execute(['--test', ...selected]);
   } else await execute(['--test', fileURLToPath(new URL('../tests/mysql.integration.js', import.meta.url))]);
 } catch (error) {
   console.error(error.message);
