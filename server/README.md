@@ -89,7 +89,11 @@ Server xác minh kết nối và đúng database trước khi listen; lỗi DB h
 
 ## Health check và lỗi HTTP
 
-Mỗi request `GET /api/health` thực hiện `SELECT 1 AS ok, DATABASE() AS database_name`, không dùng kết quả cache. Chỉ khi probe thành công và database là `findit_db` mới trả HTTP **200**:
+`GET /api/health` là readiness phụ thuộc DB. Probe chạy `SELECT 1 AS ok, DATABASE() AS database_name` qua pool nghiệp vụ. Mỗi process chỉ cho một operation health tồn tại, kể cả acquisition đã hết deadline nhưng driver chưa settle. Request đồng thời dùng chung probe; cache nội bộ success 2 giây và failure 1 giây. HTTP vẫn `Cache-Control: no-store`.
+
+Limiter health riêng mặc định 60 request/phút/IP (`RATE_LIMIT_HEALTH_MAX`), tính cả GET/HEAD và biến thể route được Express chấp nhận; OPTIONS không probe. Quá quota trả 429 với JSON lỗi chuẩn, Retry-After và RateLimit headers trước khi dùng DB. Health không tiêu quota API nghiệp vụ; `trust proxy=false` giữ nguyên.
+
+`HEALTH_PROBE_TIMEOUT_MS=1000` là deadline tổng khởi đầu cho acquire/setup/SELECT; phải kiểm chứng lại theo deployment. Acquisition tới muộn được release mà không chạy SQL; command quá hạn làm destroy session. Không cập nhật cache thành công muộn hoặc mở acquisition mới khi operation cũ chưa settle. Startup yêu cầu kiểm tra mới. Transaction deadline F01/F02 giữ nguyên. Chỉ khi probe/cache thành công và database là `findit_db` mới trả HTTP **200**:
 
 ```json
 {
@@ -108,7 +112,7 @@ Lỗi database sau khi server đã khởi động trả HTTP **503**:
 }
 ```
 
-Request sau sẽ thử truy vấn lại; không giữ cố định trạng thái lỗi. Health dùng `Cache-Control: no-store`. Probe xác minh kết nối và database được chọn; việc kiểm tra toàn bộ schema/seed vẫn dùng `npm.cmd run db:verify`.
+Sau TTL lỗi 1 giây, request sau thử lại nếu operation cũ đã settle. Nếu driver cũ còn pending, tiếp tục 503 mà không thêm acquisition. Cache success có thể trì hoãn phát hiện lỗi tối đa 2 giây. Health dùng `Cache-Control: no-store`. Probe xác minh kết nối và database được chọn; việc kiểm tra toàn bộ schema/seed vẫn dùng `npm.cmd run db:verify`.
 
 Route không tồn tại trả **404** với `success: false` và message `Không tìm thấy API`. JSON sai trả **400**, body JSON quá 100 KB trả **413**, lỗi không dự kiến trả **500** với message `Lỗi máy chủ nội bộ`. HTTP response không có stack trace, SQL hoặc cấu hình kết nối. Logger chỉ ghi tên thao tác và mã lỗi, không serialize driver error.
 
@@ -146,3 +150,7 @@ Auth và User Foundation hiện có 4 API; cấu trúc bổ sung và hướng d�
 ## Phase 7 — Automated Testing & Security
 
 Đã bổ sung Helmet, rate limiting, giới hạn multipart và bảo vệ session khi BEGIN/COMMIT mất phản hồi. Mọi integration suite yêu cầu runner MySQL cô lập. Xem [SECURITY.md](SECURITY.md) để cấu hình, lệnh chạy, giới hạn triển khai và CI.
+
+## Backend Audit Đợt 3
+
+Claim mine, Claim theo Item và Match theo Item phân trang mặc định page=1/limit=10, max=100, offset tối đa 100000. `data` vẫn là array, có top-level `pagination`. Client không gửi params nhận trang đầu; client cần toàn bộ dữ liệu phải duyệt các trang. Xem CLAIMS.md, MATCHING.md và SECURITY.md. Không đổi batch mutation hoặc Matching algorithm.

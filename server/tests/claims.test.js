@@ -13,7 +13,7 @@ function fixture({ itemType = 'FOUND', status = 'OPEN' } = {}) {
   let nextId = 1;
   const repository = {
     async findClaimItemId(id) { return claims.find((claim) => claim.claim_id === String(id))?.item_id; },
-    async listMine(userId) { return claims.filter((claim) => claim.claimant_id === String(userId)).map((claim) => ({ ...claim, item_title: 'Found keys', item_type: 'FOUND', item_status: item.status, item_event_date: '2026-10-20', category_name: 'Keys', location_name: 'Library' })); },
+    async listMine(userId, options) { const rows = claims.filter((claim) => claim.claimant_id === String(userId)).map((claim) => ({ ...claim, item_title: 'Found keys', item_type: 'FOUND', item_status: item.status, item_event_date: '2026-10-20', category_name: 'Keys', location_name: 'Library' })); return { rows: rows.slice((options.page - 1) * options.limit, options.page * options.limit), total: rows.length }; },
     async withLockedItem(id, operation) {
       if (String(id) !== item.item_id) return operation(undefined);
       const source = {
@@ -26,7 +26,7 @@ function fixture({ itemType = 'FOUND', status = 'OPEN' } = {}) {
           const claim = { claim_id: String(nextId++), claimant_id: String(userId), item_id: item.item_id, proof_description: proof, status: 'PENDING', submitted_at: '2026-10-29T00:00:00.000Z', reviewed_at: null, completed_at: null };
           claims.push(claim); item.status = 'CLAIM_PENDING'; return claim;
         },
-        async listForItem() { return claims.map((claim) => ({ ...claim, claimant_name: `Person ${claim.claimant_id}` })); },
+        async listForItem(options) { return { rows: claims.slice((options.page - 1) * options.limit, options.page * options.limit).map((claim) => ({ ...claim, claimant_name: `Person ${claim.claimant_id}` })), total: claims.length }; },
         async updateClaim(id, from, to, field) {
           const claim = claims.find((entry) => entry.claim_id === String(id));
           if (!claim || claim.status !== from) return 0;
@@ -122,9 +122,9 @@ test('completion requires APPROVED Claim and CLAIMED Item before returning it', 
 test('Claim reads expose evidence only to claimant, owner, or inspection ADMIN; unrelated users are forbidden', async () => {
   const state = fixture();
   const claim = await state.service.create(claimant, 4, { proofDescription: 'private evidence' });
-  assert.equal((await state.service.mine(claimant))[0].proofDescription, 'private evidence');
-  assert.equal((await state.service.forItem(owner, 4))[0].claimant.fullName, 'Person 20');
-  assert.equal((await state.service.forItem({ id: '99', role: 'ADMIN' }, 4)).length, 1);
+  assert.equal((await state.service.mine(claimant)).data[0].proofDescription, 'private evidence');
+  assert.equal((await state.service.forItem(owner, 4)).data[0].claimant.fullName, 'Person 20');
+  assert.equal((await state.service.forItem({ id: '99', role: 'ADMIN' }, 4)).data.length, 1);
   await assert.rejects(() => state.service.forItem(unrelated, 4), (error) => error.status === 403);
   await assert.rejects(() => state.service.approve({ id: '99', role: 'ADMIN' }, claim.id), (error) => error.status === 403);
   await assert.rejects(() => state.service.reject(unrelated, claim.id), (error) => error.status === 403);

@@ -17,7 +17,7 @@ import { createAdminService } from '../services/admin.service.js';
 import { createImageOperations } from '../services/image-operations.js';
 import { createMatchingRepository } from '../repositories/matching.repository.js';
 import { createMatchingService } from '../services/matching.service.js';
-import { serve } from './helpers.js';
+import { serve, allMatches } from './helpers.js';
 import { request } from './auth/helpers.js';
 import { createAuthService } from '../services/auth.service.js';
 import { createUserRepository } from '../repositories/user.repository.js';
@@ -381,7 +381,7 @@ test('F04/F05: atomic moderation and dispute regression on isolated MySQL', { ti
       const { item } = await fresh(0); const held = deferred(), resume = deferred(), removed = [];
       const lost = await items.create(people[0], { title: 'Moderation test', description: 'Public description', type: 'LOST', categoryId: Number(category.id), locationId: Number(location.id), eventDate: '2026-10-20', color: null });
       const matching = createMatchingService(createMatchingRepository(pool));
-      assert.ok((await matching.list(lost.id)).some((row) => row.itemId === item.id));
+      assert.ok((await allMatches(matching, lost.id)).some((row) => row.itemId === item.id));
       const storage = { async upload(_bytes, _mime, id) { held.resolve(); await bounded(resume.promise); return { publicId: id, url: 'https://example.test/image.png' }; }, async destroy(id) { removed.push(id); } };
       const images = createItemService(createItemRepository(pool), storage, createImageOperations(pool, storage));
       const uploading = images.uploadImages(owner, item.id, [{ mimetype: 'image/png', buffer: Buffer.from([137,80,78,71,13,10,26,10]) }]); uploading.catch(() => {});
@@ -390,7 +390,7 @@ test('F04/F05: atomic moderation and dispute regression on isolated MySQL', { ti
       finally { resume.resolve(); }
       await assert.rejects(() => uploading, (e) => e.status === 400);
       assert.equal(removed.length, 1); assert.equal((await items.get(item.id)).images.length, 0);
-      assert.ok(!(await matching.list(lost.id)).some((row) => row.itemId === item.id));
+      assert.ok(!(await allMatches(matching, lost.id)).some((row) => row.itemId === item.id));
       const [[history]] = await query(pool, 'SELECT COUNT(*) AS total FROM matches WHERE lost_item_id=? AND found_item_id=?', [lost.id, item.id]); assert.equal(Number(history.total), 1);
     });
 

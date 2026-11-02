@@ -17,13 +17,13 @@ test('app config has agreed defaults and rejects invalid ports/origins', () => {
   assert.deepEqual(readAppConfig({ CORS_ORIGINS: 'https://example.test, https://example.test' }).corsOrigins, ['https://example.test']);
 });
 
-test('health probes every request, disables caching, returns 503 then recovers', async () => {
-  let calls = 0, fail = false;
+test('health refreshes expired readiness, disables HTTP caching, returns 503 then recovers', async () => {
+  let calls = 0, fail = false, now = 0;
   const service = createHealthService({ async checkConnection() {
     calls++;
     if (fail) throw Object.assign(new Error('SQL with password=secret'), { code: 'ECONNREFUSED' });
     return { ok: 1, database_name: 'findit_db' };
-  } });
+  } }, { now: () => now });
   const http = await serve({ healthService: service });
   try {
     let response = await fetch(`${http.url}/api/health`);
@@ -32,11 +32,13 @@ test('health probes every request, disables caching, returns 503 then recovers',
     assert.equal(response.headers.get('cache-control'), 'no-store');
     assert.equal(response.headers.get('x-powered-by'), null);
     fail = true;
+    now = 2000;
     response = await fetch(`${http.url}/api/health`);
     assert.equal(response.status, 503);
     assert.equal(response.headers.get('cache-control'), 'no-store');
     assert.deepEqual(await response.json(), { success: false, message: 'Cơ sở dữ liệu tạm thời không khả dụng' });
     fail = false;
+    now = 3000;
     response = await fetch(`${http.url}/api/health`);
     assert.equal(response.status, 200);
     assert.equal(calls, 3);

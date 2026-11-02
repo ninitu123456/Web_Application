@@ -30,7 +30,7 @@ export async function startServer(config = readConfig()) {
   const authConfig = readAuthConfig({ JWT_SECRET: config.auth?.secret, JWT_EXPIRES_IN: config.auth?.expiresIn });
   const imageStorage = createImageStorage();
   const pool = createDbPool(config.database);
-  const healthService = createHealthService(createHealthRepository(pool));
+  const healthService = createHealthService(createHealthRepository(pool, config.health));
   const users = createUserRepository(pool);
   const authService = createAuthService(users, createTokenService(authConfig));
   const userService = createUserService(users);
@@ -44,7 +44,7 @@ export async function startServer(config = readConfig()) {
   const adminService = createAdminService(createAdminRepository(pool), itemService);
   let server;
   try {
-    await healthService.check();
+    await healthService.check({ fresh: true });
     console.log('MySQL connection verified: findit_db');
     server = createServer(createApp({ healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, corsOrigins: config.corsOrigins, security: config.security }));
     await new Promise((resolve, reject) => {

@@ -17,3 +17,5 @@ npm.cmd run test:regression
 Integration chỉ chạy với MySQL instance tạm do runner tạo, không dùng dịch vụ MySQL đang cài. Đặt `MYSQLD_PATH` nếu cần chỉ định executable MySQL >= 8.0.16. Cloudinary được thay bằng storage giả trong test.
 
 Frontend chưa triển khai. Backend đã bổ sung bốn API Admin Claim/dispute/activity logs và moderation `/close`; `/status` legacy vẫn được hỗ trợ, chỉ đóng OPEN. Resolve chỉ áp dụng Claim PENDING. CLOSED kết thúc hoạt động, chưa ẩn nội dung công khai. Xem [Admin API](server/ADMIN.md) để biết contract, privacy và giới hạn.
+
+Backend Audit Đợt 3: readiness được giới hạn và cache nội bộ; ba danh sách Claim/Match phân trang mặc định 10, tối đa 100. Client không gửi params nhận trang đầu. Coverage node:test/c8 tách unit, isolated integration và combined với integrity gates; numeric floors chờ phê duyệt riêng. Xem server/README.md và server/SECURITY.md.

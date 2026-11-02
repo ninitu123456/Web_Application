@@ -54,7 +54,15 @@ test('Matching integration: real HTTP/JWT, MySQL consistency, concurrency and fa
     const input = { title: 'tai nghe', description: 'màu trắng', type: 'LOST', categoryId: Number(category.id), locationId: Number(location.id), eventDate: '2026-01-01', color: null };
     const make = (overrides = {}, currentService = service) => currentService.create(identity, { ...input, ...overrides });
     const pair = async (lost, found) => (await query(pool, 'SELECT * FROM matches WHERE lost_item_id=? AND found_item_id=?', [lost.id, found.id]))[0];
-    const get = (id, jwt = token) => request(http, `/api/items/${id}/matches`, { token: jwt });
+    const get = async (id, jwt = token) => {
+      const first = await request(http, `/api/items/${id}/matches?limit=100`, { token: jwt });
+      if (first.status !== 200) return first;
+      for (let page = 2; page <= first.json.pagination.totalPages; page++) {
+        const next = await request(http, `/api/items/${id}/matches?limit=100&page=${page}`, { token: jwt });
+        assert.equal(next.status, 200); first.json.data.push(...next.json.data);
+      }
+      return first;
+    };
     function wrappedPool(hook, commitHook, rollbackHook) {
       return { async getConnection() {
         const real = await pool.getConnection();
