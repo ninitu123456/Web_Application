@@ -3,6 +3,7 @@ await assertIsolatedInstance();
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
+import { allMatches } from './helpers.js';
 import { configFromEnv } from '../../database/scripts/config.js';
 import { connect } from '../../database/scripts/connection.js';
 import { migrate } from '../../database/scripts/migrate.js';
@@ -166,12 +167,12 @@ test('Phase 7 real HTTP/JWT/MySQL: authorization, injection, upload, rollback an
         assert.match(res.headers.get('content-type'), /^application\/json/); assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
       }
       assert.equal((await request(http, `/api/items/${found.id}`)).json.data.title, xss);
-      const matchesBefore = await matching.list(lost.id); assert.ok(matchesBefore.some((m) => m.itemId === found.id));
+      const matchesBefore = (await allMatches(matching, lost.id)); assert.ok(matchesBefore.some((m) => m.itemId === found.id));
       assert.equal((await send(`/api/claims/${claim.id}/approve`, other, { method: 'PATCH' })).status, 403);
       assert.equal((await send(`/api/claims/${claim.id}/approve`, admin, { method: 'PATCH' })).status, 403);
       assert.equal((await send(`/api/claims/${claim.id}/approve`, owner, { method: 'PATCH' })).status, 200);
       assert.equal((await send(`/api/claims/${claim.id}/complete`, owner, { method: 'PATCH' })).status, 200);
-      assert.ok(!(await matching.list(lost.id)).some((m) => m.itemId === found.id));
+      assert.ok(!(await allMatches(matching, lost.id)).some((m) => m.itemId === found.id));
       assert.equal(Number((await query(pool, 'SELECT COUNT(*) AS total FROM matches WHERE lost_item_id=? AND found_item_id=?', [lost.id, found.id]))[0][0].total), 1);
       const report = await send('/api/reports', claimant, { method: 'POST', body: { targetType: 'ITEM', targetId: found.id, reason: xss, description: "'; DROP TABLE claims; --" } });
       assert.equal(report.status, 201); assert.equal(report.json.data.reason, xss);

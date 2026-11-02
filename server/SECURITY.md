@@ -7,6 +7,7 @@ Helmet đặt security headers trên mọi response, kể cả 400/401/403/404/4
 | Phạm vi | Mặc định | Khóa đếm | Biến cấu hình |
 |---|---:|---|---|
 | `/api`, trừ `/health` và OPTIONS | 300/phút | IP | `RATE_LIMIT_API_MAX` |
+| `/api/health` (GET/HEAD) | 60/phút | IP | `RATE_LIMIT_HEALTH_MAX` |
 | `/api/auth/login` | thêm 30/15 phút | IP | `RATE_LIMIT_LOGIN_MAX` |
 | `/api/auth/register` | thêm 10/15 phút | IP | `RATE_LIMIT_REGISTER_MAX` |
 | Upload ảnh | thêm 10/phút | user ID đã xác thực | `RATE_LIMIT_UPLOAD_MAX` |
@@ -33,13 +34,19 @@ npm.cmd run test:coverage
 npm.cmd run audit:production
 ```
 
-`test:security` kiểm tra HTTP/unit; regression bao gồm transaction và database unit tests. Coverage dùng Node 24, xuất `coverage/unit.lcov` cho backend/auth unit/HTTP; không bao gồm MySQL integration hoặc database scripts, không phải số đo toàn hệ thống. Không đặt ngưỡng tùy ý thay cho assertion nghiệp vụ.
+`test:security` kiểm tra HTTP/unit; regression bao gồm transaction và database unit tests. Coverage giữ node:test với c8/V8 trên Node 24. Chạy `npm run test:coverage`, `npm run test:coverage:integration`, rồi `npm run test:coverage:combined`. Reports nằm ở `coverage/audit3/{unit,integration,combined}/{server,database}/`: LCOV, JSON summary và manifest. Không ghi đè artifact cũ; đo lại bằng `node server/scripts/test-coverage.js unit coverage/<run-name>`, sau đó integration/combined cùng run-name.
+
+Scope chính: toàn bộ `server/**/*.js`, trừ tests và measurement harness `server/scripts/test-coverage.js`; giữ repositories, security, transaction, bootstrap và scripts vận hành. Database JavaScript có báo cáo bổ sung, trừ database/tests. SQL migrations/schema được xác minh bằng tests, không giả làm JavaScript coverage. c8 `all` đưa file chưa load vào báo cáo với coverage 0; manifest đối chiếu chính xác tập nguồn. Không loại module quan trọng hoặc ignore nhánh chỉ để tăng tỷ lệ.
+
+Unit gồm toàn bộ backend/auth/database `.test.js`; isolated integration gồm toàn bộ `.integration.js`. Hai tập thu raw V8 riêng. Combined hợp nhất execution bằng cùng c8, không cộng/average LCOV hoặc percentages. Integrity gates kiểm tra Git SHA, hash từng nguồn/test/helper/fixture/harness/lockfile, Node/provider version, checkout path, raw checksums, TAP totals không fail/skip/cancel, từng test process và standalone bootstrap process. Nguồn thay đổi trong lúc đo, artifact thiếu hoặc sai phải fail. Chưa hỗ trợ merge raw từ checkout paths khác.
+
+CI upload unit/integration artifacts và chạy job coverage-integrity tạo combined. Không đặt numeric thresholds trong đợt này; baseline mới và floors cần phê duyệt riêng. Coverage không thay regression/security/concurrency assertions. Raw V8 có thông tin mã nguồn; artifacts giữ 7 ngày, không chứa dump DB hoặc credentials.
 
 Mọi integration suite yêu cầu `FINDIT_ISOLATED_DATADIR` và xác minh datadir/port thực trước khi chạy test. Runner tạo credentials/port/datadir riêng, vô hiệu Cloudinary credentials và đặt cấu hình test cố định. Không tự đặt marker để chạy vào database khác. Các lệnh `test:*:integration` trực tiếp cũ sẽ từ chối khi không có runner identity; dùng các lệnh `*:isolated` ở trên.
 
 Runner tự phát hiện các file `.integration.js` trong backend, auth và database; suite security luôn nằm trong regression. Chỉ cleanup database có tên sở hữu và thư mục tạm đã kiểm tra; shutdown/dọn datadir vẫn chạy khi suite thất bại. Không chạy `db:setup`, `db:migrate`, `images:cleanup` với cấu hình đang sử dụng để kiểm thử.
 
-CI có job unit/coverage/audit và job MySQL 8.0 riêng trên Ubuntu 24.04 với Node 24. MySQL hệ thống của runner được dừng, tests chỉ dùng executable để tạo instance tạm. Không cần credentials/secrets sản xuất. Chỉ xuất LCOV, không xuất dump DB/password/JWT.
+CI có job unit/coverage/audit và job MySQL 8.0 riêng trên Ubuntu 24.04 với Node 24. MySQL hệ thống của runner được dừng, tests chỉ dùng executable để tạo instance tạm. Không cần credentials/secrets sản xuất. Upload reports, manifest, TAP và raw V8 phục vụ integrity; không xuất dump DB/password/JWT.
 
 ## Giới hạn và tồn đọng
 
@@ -50,3 +57,5 @@ CI có job unit/coverage/audit và job MySQL 8.0 riêng trên Ubuntu 24.04 với
 - Đợt audit 2 đã bổ sung bốn API Admin Claim/dispute/activity-log và `/close`; `/status` legacy giữ nguyên. Resolve chỉ PENDING; CLOSED chưa ẩn nội dung. Xem [Admin API](ADMIN.md).
 
 Tham khảo cấu hình thư viện: [Helmet](https://github.com/helmetjs/helmet#readme), [express-rate-limit](https://github.com/express-rate-limit/express-rate-limit#readme).
+
+Health readiness dùng limiter riêng, probe chung tối đa một operation/process, TTL success 2s/failure 1s, deadline khởi đầu 1s (`HEALTH_PROBE_TIMEOUT_MS`). Xem README.md; xác nhận monitor, NAT/proxy và timeout trước rollout. Không miễn quota dựa trên forwarded headers hoặc user-agent. Không thêm liveness endpoint.

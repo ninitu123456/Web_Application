@@ -21,6 +21,7 @@ export function createApp({ healthService, authService, userService, itemService
   }));
   app.use(['/api/auth', '/api/users', '/api/claims', '/api/items', '/api/notifications', '/api/reports', '/api/admin'], (request, response, next) => { response.set('Cache-Control', 'no-store'); next(); });
   app.use('/api', protection.api);
+  app.use('/api/health', protection.health);
   app.use('/api/auth/login', protection.login);
   app.use('/api/auth/register', protection.register);
   app.use(express.json({ limit: '100kb' }));

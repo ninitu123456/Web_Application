@@ -63,7 +63,7 @@ try {
   await admin.query("ALTER USER 'root'@'localhost' IDENTIFIED BY ?", [password]);
   console.log('Temporary MySQL is ready; executing integration tests.');
   const env = { ...process.env, DB_HOST: '127.0.0.1', DB_PORT: String(port), DB_USER: 'root', DB_PASSWORD: password, DB_NAME: 'findit_db',
-    NODE_ENV: 'test', RATE_LIMIT_API_MAX: '300', RATE_LIMIT_LOGIN_MAX: '30', RATE_LIMIT_REGISTER_MAX: '10', RATE_LIMIT_UPLOAD_MAX: '10',
+    NODE_ENV: 'test', RATE_LIMIT_API_MAX: '300', RATE_LIMIT_LOGIN_MAX: '30', RATE_LIMIT_REGISTER_MAX: '10', RATE_LIMIT_UPLOAD_MAX: '10', RATE_LIMIT_HEALTH_MAX: '60', HEALTH_PROBE_TIMEOUT_MS: '1000',
     JWT_SECRET: randomBytes(32).toString('hex'), JWT_EXPIRES_IN: '3600',
     CLOUDINARY_CLOUD_NAME: '', CLOUDINARY_API_KEY: '', CLOUDINARY_API_SECRET: '', CLOUDINARY_URL: '',
     SEED_ADMIN_EMAIL: 'admin@isolated.example.test', SEED_USER_EMAIL: 'user@isolated.example.test',
@@ -85,9 +85,11 @@ try {
         if (name.endsWith('.integration.js')) files.push(fileURLToPath(new URL(name, root)));
       }
     }
-    const selected = process.argv.includes('--security') ? files.filter((name) => name.endsWith('security.integration.js')) : files;
+    const suite = process.argv.find((arg) => arg.startsWith('--suite='))?.slice(8);
+    if (suite && !/^[a-z-]+\.integration\.js$/.test(suite)) throw new Error('Invalid integration suite');
+    const selected = suite ? files.filter((name) => name.endsWith('/' + suite) || name.endsWith('\\' + suite)) : process.argv.includes('--security') ? files.filter((name) => name.endsWith('security.integration.js')) : files;
     if (!selected.length) throw new Error('No integration suites found');
-    await execute(['--test', ...selected]);
+    await execute(['--test', ...(process.env.FINDIT_COVERAGE_TAP === '1' ? ['--test-reporter=tap'] : []), ...selected]);
   } else await execute(['--test', fileURLToPath(new URL('../tests/mysql.integration.js', import.meta.url))]);
 } catch (error) {
   console.error(error.message);

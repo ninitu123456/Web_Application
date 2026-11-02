@@ -2,15 +2,21 @@ import { transaction, query, databaseTimeout } from '../config/db.js';
 import { createNotificationRepository } from './notification.repository.js';
 import { createNotificationService } from '../services/notification.service.js';
 
+import { readSnapshot } from '../config/read-snapshot.js';
+
 const claimColumns = 'c.claim_id, c.claimant_id, c.item_id, c.proof_description, c.status, c.submitted_at, c.reviewed_at, c.completed_at';
 export function createClaimRepository(pool) {
   return {
-    async listMine(claimantId) {
-      const [rows] = await query(pool, `SELECT ${claimColumns}, i.title AS item_title, i.type AS item_type, i.status AS item_status, i.event_date AS item_event_date, cat.name AS category_name, loc.name AS location_name FROM claims c JOIN items i ON i.item_id=c.item_id JOIN categories cat ON cat.category_id=i.category_id JOIN locations loc ON loc.location_id=i.location_id WHERE c.claimant_id = ? ORDER BY c.submitted_at DESC, c.claim_id DESC`, [claimantId]);
-      return rows;
+    listMine(claimantId, options) {
+      return readSnapshot(pool, async (connection) => {
+        const run = (sql, values = []) => connection.query({ sql, timeout: databaseTimeout }, values);
+        const [[count]] = await run('SELECT COUNT(*) AS total FROM claims c WHERE c.claimant_id=?', [claimantId]);
+        const [rows] = await run(`SELECT ${claimColumns}, i.title AS item_title, i.type AS item_type, i.status AS item_status, i.event_date AS item_event_date, cat.name AS category_name, loc.name AS location_name FROM claims c JOIN items i ON i.item_id=c.item_id JOIN categories cat ON cat.category_id=i.category_id JOIN locations loc ON loc.location_id=i.location_id WHERE c.claimant_id = ? ORDER BY c.submitted_at DESC, c.claim_id DESC LIMIT ? OFFSET ?`, [claimantId, options.limit, (options.page - 1) * options.limit]);
+        return { rows, total: count.total };
+      });
     },
-    withLockedItem(itemId, operation) {
-      return transaction(pool, async (connection) => {
+    withLockedItem(itemId, operation, { snapshot = false } = {}) {
+      return (snapshot ? readSnapshot : transaction)(pool, async (connection) => {
         const run = (sql, values = []) => connection.query({ sql, timeout: databaseTimeout }, values);
         const [[lockedItem]] = await run('SELECT item_id FROM items WHERE item_id = ? FOR UPDATE', [itemId]);
         const source = {
@@ -40,13 +46,10 @@ export function createClaimRepository(pool) {
             const [[claim]] = await run(`SELECT ${claimColumns} FROM claims c WHERE c.claim_id = ?`, [result.insertId]);
             return claim;
           },
-          async listMine(claimantId) {
-            const [rows] = await run(`SELECT ${claimColumns}, i.title AS item_title, i.type AS item_type, i.status AS item_status, i.event_date AS item_event_date, cat.name AS category_name, loc.name AS location_name FROM claims c JOIN items i ON i.item_id=c.item_id JOIN categories cat ON cat.category_id=i.category_id JOIN locations loc ON loc.location_id=i.location_id WHERE c.claimant_id = ? ORDER BY c.submitted_at DESC, c.claim_id DESC`, [claimantId]);
-            return rows;
-          },
-          async listForItem() {
-            const [rows] = await run(`SELECT ${claimColumns}, u.full_name AS claimant_name FROM claims c JOIN users u ON u.user_id=c.claimant_id WHERE c.item_id = ? ORDER BY c.submitted_at DESC, c.claim_id DESC`, [itemId]);
-            return rows;
+          async listForItem(options) {
+            const [[count]] = await run('SELECT COUNT(*) AS total FROM claims WHERE item_id=?', [itemId]);
+            const [rows] = await run(`SELECT ${claimColumns}, u.full_name AS claimant_name FROM claims c JOIN users u ON u.user_id=c.claimant_id WHERE c.item_id = ? ORDER BY c.submitted_at DESC, c.claim_id DESC LIMIT ? OFFSET ?`, [itemId, options.limit, (options.page - 1) * options.limit]);
+            return { rows, total: count.total };
           },
           async updateClaim(claimId, from, to, field) {
             const assignment = field === 'completed_at'

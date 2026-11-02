@@ -11,7 +11,7 @@ export function createSecurity(overrides = {}) {
       // Forwarded headers are deliberately ignored: this app has no trusted proxy.
       validate: { xForwardedForHeader: false, forwardedHeader: false },
       ...(keyGenerator ? { keyGenerator } : {}),
-      skip: (req) => req.method === 'OPTIONS' || (name === 'api' && req.path === '/health'),
+      skip: (req) => req.method === 'OPTIONS' || (name === 'api' && /^\/health\/?$/i.test(req.path)),
       handler(_req, res) {
         res.set('Cache-Control', 'no-store').status(429).json({ success: false, message: 'Quá nhiều yêu cầu, vui lòng thử lại sau' });
       },
@@ -23,7 +23,7 @@ export function createSecurity(overrides = {}) {
       strictTransportSecurity: config.production ? undefined : false,
       contentSecurityPolicy: { directives: { upgradeInsecureRequests: config.production ? [] : null } }
     }),
-    api: limiter('api', 60000), login: limiter('login', 900000), register: limiter('register', 900000),
+    api: limiter('api', 60000), health: limiter('health', 60000), login: limiter('login', 900000), register: limiter('register', 900000),
     upload: limiter('upload', 60000, (req) => String(req.user.id))
   };
 }

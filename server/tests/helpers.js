@@ -1,6 +1,15 @@
 import { createServer } from 'node:http';
 import { createApp } from '../app.js';
 
+export async function allMatches(service, id) {
+  const rows = [];
+  for (let page = 1; ; page++) {
+    const result = await service.list(id, { page, limit: 100 });
+    rows.push(...result.data);
+    if (page >= result.pagination.totalPages) return rows;
+  }
+}
+
 export async function serve(options) {
   const server = createServer(createApp({ logger: () => {}, ...options }));
   await new Promise((resolve, reject) => {

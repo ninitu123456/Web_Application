@@ -1095,6 +1095,101 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Approved audit round 3 - bounded Claim and Match lists",
+      "item": [
+        {
+          "name": "My Claims",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/claims/mine?page=1&limit=10",
+            "description": "Default page=1/limit=10, max limit=100, max offset=100000. Follow pagination.totalPages for a complete list; data remains an array. Received Claims requires owner or ADMIN."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Bounded array and pagination', () => { const b = pm.response.json(); pm.expect(b.data).to.be.an('array'); pm.expect(b.data.length).to.be.at.most(10); pm.expect(b.pagination.page).to.eql(1); pm.expect(b.pagination.limit).to.eql(10); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Received Claims",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/items/{{itemId}}/claims?page=1&limit=10",
+            "description": "Default page=1/limit=10, max limit=100, max offset=100000. Follow pagination.totalPages for a complete list; data remains an array. Received Claims requires owner or ADMIN."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Bounded array and pagination', () => { const b = pm.response.json(); pm.expect(b.data).to.be.an('array'); pm.expect(b.data.length).to.be.at.most(10); pm.expect(b.pagination.page).to.eql(1); pm.expect(b.pagination.limit).to.eql(10); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Item Matches",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/items/{{itemId}}/matches?page=1&limit=10",
+            "description": "Default page=1/limit=10, max limit=100, max offset=100000. Follow pagination.totalPages for a complete list; data remains an array. Received Claims requires owner or ADMIN."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Bounded array and pagination', () => { const b = pm.response.json(); pm.expect(b.data).to.be.an('array'); pm.expect(b.data.length).to.be.at.most(10); pm.expect(b.pagination.page).to.eql(1); pm.expect(b.pagination.limit).to.eql(10); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

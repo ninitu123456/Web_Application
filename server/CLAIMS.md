@@ -60,3 +60,9 @@ Run `npm.cmd test` and `npm.cmd run test:integration:isolated`. The latter requi
 a MySQL executable; see [database setup](../database/README.md) for `MYSQLD_PATH`.
 The integration suite uses real Item/Matching services, privacy negative controls,
 InnoDB lock-wait observation, and SQL failure injection for every Claim operation.
+
+## Approved audit round 3: list pagination
+
+`GET /api/claims/mine` and `GET /api/items/:id/claims` accept only `page` and `limit`: defaults 1/10, maximum limit 100, maximum offset `(page-1)*limit` 100000. Malformed, repeated, unknown or unsafe query fields return 400. No-parameter clients now receive the first page, not an unbounded list. Response keeps `data: []` and adds top-level `pagination: { page, limit, total, totalPages }`. Empty/out-of-range pages return 200 and an empty array; missing Item remains 404.
+
+COUNT and page run on one connection in a short REPEATABLE READ transaction using SET TRANSACTION, which does not change the pooled session default. Claim-by-Item keeps its existing Item lock and ownership checks. Sort order and ID tie-breakers are unchanged. Privacy/DTO/RBAC and all mutation batches remain unchanged. A snapshot covers one response only: concurrent insert/status/score changes between requests can shift offset pages. Clients needing a full list must follow totalPages, deduplicate IDs, and refresh page 1 after mutations. There is no cross-request snapshot/cursor guarantee.

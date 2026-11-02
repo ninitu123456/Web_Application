@@ -1,5 +1,6 @@
 import { HttpError } from '../utils/http-error.js';
 import { claimDto } from '../utils/claim-dto.js';
+import { paged } from '../utils/workflow-dto.js';
 
 const missing = () => new HttpError(404, 'Không tìm thấy Claim hoặc Item');
 const conflict = (message = 'Trạng thái hiện tại không cho phép thao tác Claim') => new HttpError(409, message);
@@ -34,17 +35,19 @@ export function createClaimService(repository) {
         }
       });
     },
-    async mine(identity) {
-      return (await repository.listMine(identity.id)).map(claimDto);
+    async mine(identity, options = { page: 1, limit: 10 }) {
+      const { rows, total } = await repository.listMine(identity.id, options);
+      return paged(rows, total, options, claimDto);
     },
-    async forItem(identity, itemId) {
+    async forItem(identity, itemId, options = { page: 1, limit: 10 }) {
       return repository.withLockedItem(itemId, async (source) => {
         if (!source) throw missing();
         const item = await source.findItem();
         if (item.type !== 'FOUND') throw new HttpError(400, 'Chỉ FOUND Item có Claims');
         if (String(item.user_id) !== String(identity.id) && identity.role !== 'ADMIN') throw new HttpError(403, 'Không có quyền truy cập');
-        return (await source.listForItem()).map(claimDto);
-      });
+        const { rows, total } = await source.listForItem(options);
+        return paged(rows, total, options, claimDto);
+      }, { snapshot: true });
     },
     async approve(identity, claimId) {
       const itemId = await itemForClaim(claimId);

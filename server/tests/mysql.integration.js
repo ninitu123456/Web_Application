@@ -19,7 +19,8 @@ const testConfig = () => readConfig({ ...process.env, JWT_SECRET: testSecret, JW
 
 test('real MySQL pool: health 200, session settings, sample reads, closed pool 503', { timeout: 20000 }, async () => {
   const pool = createDbPool(testConfig().database);
-  const http = await serve({ healthService: createHealthService(createHealthRepository(pool)) });
+  let now = 0;
+  const http = await serve({ healthService: createHealthService(createHealthRepository(pool), { now: () => now }) });
   let poolClosed = false;
   try {
     const response = await fetch(`${http.url}/api/health`);
@@ -34,6 +35,7 @@ test('real MySQL pool: health 200, session settings, sample reads, closed pool 5
     assert.ok(Number(sample.total) >= 4);
     await pool.end();
     poolClosed = true;
+    now = 2000;
     const unavailable = await fetch(`${http.url}/api/health`);
     assert.equal(unavailable.status, 503);
     assert.deepEqual(await unavailable.json(), { success: false, message: 'Cơ sở dữ liệu tạm thời không khả dụng' });
