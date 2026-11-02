@@ -182,9 +182,10 @@ test('Item integration: HTTP/JWT, transactions, concurrent uploads and durable c
     });
     await t.test('late image DB failure rolls back the whole batch, with no SELECT-after-INSERT', async () => {
       const item = await create(); const before = assets.size; let inserts = 0;
-      const faulty = createItemService(createItemRepository(faultPool(async (sql) => {
+      const faults = faultPool(async (sql) => {
         if (sql.startsWith('INSERT INTO item_images') && ++inserts === 2) throw new Error('Second insert failed');
-      })), storage, operations);
+      });
+      const faulty = createItemService(createItemRepository(faults), storage, createImageOperations(faults, storage, () => {}));
       await assert.rejects(() => faulty.uploadImages(owner, item.id, [file(), file()]), /Second insert failed/);
       assert.equal((await images(item.id)).length, 0); assert.equal(assets.size, before);
     });
@@ -210,7 +211,8 @@ test('Item integration: HTTP/JWT, transactions, concurrent uploads and durable c
     });
     await t.test('failed DB delete preserves both image reference and cloud asset', async () => {
       const item = await create(); await service.uploadImages(owner, item.id, [file()]); const [image] = await images(item.id); const before = assets.size;
-      const faulty = createItemService(createItemRepository(faultPool(async (sql) => { if (sql.startsWith('DELETE FROM item_images')) throw new Error('Delete unavailable'); })), storage, operations);
+      const faults = faultPool(async (sql) => { if (sql.startsWith('DELETE FROM item_images')) throw new Error('Delete unavailable'); });
+      const faulty = createItemService(createItemRepository(faults), storage, createImageOperations(faults, storage, () => {}));
       await assert.rejects(() => faulty.deleteImage(owner, item.id, image.image_id), /Delete unavailable/);
       assert.equal((await images(item.id)).length, 1); assert.equal(assets.size, before);
     });
@@ -221,9 +223,10 @@ test('Item integration: HTTP/JWT, transactions, concurrent uploads and durable c
     });
     await t.test('lost COMMIT response never triggers deletion of committed images', async () => {
       const item = await create(); const before = assets.size;
-      const faulty = createItemService(createItemRepository(faultPool(async () => {}, async (real) => {
+      const faults = faultPool(async () => {}, async (real) => {
         await real.commit(); throw new Error('Lost COMMIT response');
-      })), storage, operations);
+      });
+      const faulty = createItemService(createItemRepository(faults), storage, createImageOperations(faults, storage, () => {}));
       await assert.rejects(() => faulty.uploadImages(owner, item.id, [file()]), /Lost COMMIT response/);
       assert.equal((await images(item.id)).length, 1); assert.equal(assets.size, before + 1);
       assert.deepEqual(await operations.recoverPending(), { completed: 0, busy: 0, failed: 0 });
