@@ -39,7 +39,7 @@ export function createItemService(repository, imageStorage, imageOperations) {
     if (count + amount > 5) throw new HttpError(400, 'Mỗi Item được phép có tối đa 5 ảnh');
   }
   return {
-    async create(identity, item) { await assertReferences(item); return itemDto(await repository.create(identity.id, item)); },
+    async create(identity, item) { await assertReferences(item); return itemDto(await repository.create(identity.id, item, (source) => assertReferences(item, source))); },
     async get(id) { const item = await repository.findById(id); if (!item) throw notFound(); return itemDto(item); },
     async list(filters) {
       const result = await repository.list(filters);
@@ -71,7 +71,7 @@ export function createItemService(repository, imageStorage, imageOperations) {
       if (!imageStorage) throw new HttpError(503, 'Dịch vụ lưu trữ ảnh chưa được cấu hình');
       for (const file of files) if (!supportedImage(file)) throw new HttpError(400, 'Nội dung ảnh không hợp lệ');
       const publicIds = files.map(() => `findit/items/${randomUUID()}`);
-      return imageOperations.run({ userId: identity.id, itemId: id, kind: 'UPLOAD', publicIds }, async (operationId) => {
+      return imageOperations.run({ userId: identity.id, itemId: id, kind: 'UPLOAD', publicIds }, async (operationId, connection) => {
         const uploaded = [];
         for (const [index, file] of files.entries()) {
           const asset = await imageStorage.upload(file.buffer, file.mimetype, publicIds[index]);
@@ -88,7 +88,7 @@ export function createItemService(repository, imageStorage, imageOperations) {
           }
           await source.completeImageOperation(operationId);
           return saved;
-        });
+        }, { connection });
       });
     },
     async deleteImage(identity, id, imageId) {
@@ -97,14 +97,14 @@ export function createItemService(repository, imageStorage, imageOperations) {
       const image = await repository.findImage(imageId);
       if (!image || String(image.item_id) !== String(item.item_id)) throw notFound();
       if (image.cloudinary_public_id && !imageStorage) throw new HttpError(503, 'Dịch vụ lưu trữ ảnh chưa được cấu hình');
-      return imageOperations.run({ userId: identity.id, itemId: id, kind: 'DELETE', publicIds: image.cloudinary_public_id ? [image.cloudinary_public_id] : [] }, (operationId) =>
+      return imageOperations.run({ userId: identity.id, itemId: id, kind: 'DELETE', publicIds: image.cloudinary_public_id ? [image.cloudinary_public_id] : [] }, (operationId, connection) =>
         repository.withLockedItem(id, async (source) => {
           open(await owned(identity, id, source));
           const current = await source.findImage(imageId);
           if (!current || String(current.item_id) !== String(id)) throw notFound();
           await source.deleteImage(imageId);
           await source.completeImageOperation(operationId);
-        }));
+        }, { connection }));
     }
   };
 }

@@ -32,9 +32,17 @@ export function createAdminRepository(pool, execute = (sql, values = []) => quer
     async findUser(id) { const [[row]] = await execute(`SELECT ${userColumns} FROM users u JOIN roles r ON r.role_id=u.role_id WHERE u.user_id=?`, [id]); return row; },
     async setUserStatus(actorId, id, status) {
       return repo.withTransaction(async (source) => {
-        const [[row]] = await source.run(`SELECT ${userColumns} FROM users u JOIN roles r ON r.role_id=u.role_id WHERE u.user_id=? FOR UPDATE`, [id]);
+        // Serialize all status writers BEFORE locking users. A current locking
+        // read after waiting sees the preceding writer's committed decision.
+        const [[adminRole]] = await source.run("SELECT role_id FROM roles WHERE name='ADMIN' FOR UPDATE");
+        const [accounts] = await source.run(`SELECT ${userColumns} FROM users u JOIN roles r ON r.role_id=u.role_id WHERE u.role_id=? OR u.user_id IN (?, ?) ORDER BY u.user_id FOR UPDATE`, [adminRole.role_id, actorId, id]);
+        const row = accounts.find((account) => String(account.user_id) === String(id));
+        const actor = accounts.find((account) => String(account.user_id) === String(actorId));
         if (!row) return undefined;
         if (String(actorId) === String(id) && row.account_status !== status) return { selfChange: true };
+        if (row.role === 'ADMIN' && row.account_status === 'ACTIVE' && status !== 'ACTIVE' &&
+            accounts.filter((account) => account.role === 'ADMIN' && account.account_status === 'ACTIVE').length <= 1) return { lastAdmin: true };
+        if (!actor || actor.role !== 'ADMIN' || actor.account_status !== 'ACTIVE') return { actorForbidden: true };
         if (row.account_status !== status) {
           await source.run('UPDATE users SET account_status=?, updated_at=UTC_TIMESTAMP() WHERE user_id=?', [status, id]);
           await source.run("INSERT INTO activity_logs (user_id, action, entity_type, entity_id, details, created_at) VALUES (?, 'USER_STATUS_CHANGED', 'USER', ?, ?, UTC_TIMESTAMP())", [actorId, id, JSON.stringify({ previousStatus: row.account_status, status })]);

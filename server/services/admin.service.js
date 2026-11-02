@@ -17,7 +17,7 @@ export function createAdminService(repository, itemService) {
     },
     async listUsers(options) { const { rows, total } = await repository.listUsers(options); return paged(rows, total, options, adminUserDto); },
     async getUser(id) { const row = await repository.findUser(id); if (!row) throw missing('Người dùng'); return adminUserDto(row); },
-    async setUserStatus(identity, id, status) { const row = await repository.setUserStatus(identity.id, id, status); if (!row) throw missing('Người dùng'); if (row.selfChange) throw new HttpError(409, 'Không thể tự thay đổi trạng thái tài khoản'); return adminUserDto(row); },
+    async setUserStatus(identity, id, status) { const row = await repository.setUserStatus(identity.id, id, status); if (!row) throw missing('Người dùng'); if (row.lastAdmin) throw new HttpError(409, 'Hệ thống phải duy trì ít nhất một ADMIN đang hoạt động'); if (row.actorForbidden) throw new HttpError(403, 'Quyền quản trị không còn hiệu lực'); if (row.selfChange) throw new HttpError(409, 'Không thể tự thay đổi trạng thái tài khoản'); return adminUserDto(row); },
     async listItems(options) { return itemService.list(options); },
     async getItem(id) { return itemService.get(id); },
     async closeItem(identity, id) { return itemService.close(identity, id); },
