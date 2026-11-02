@@ -54,6 +54,8 @@ close/update paths and serializes competing approvals.
 
 ## Verification
 
+ADMIN dispute resolution is available through `/api/admin/claims/:id/resolve` for PENDING only; it does not alter owner endpoint permissions or reverse approved/completed handovers. Canonical moderation close atomically rejects pending Claims and closes the Item. Reasons remain in ADMIN audit, never in evidence or public DTOs. See [Admin contract and locking](ADMIN.md).
+
 Run `npm.cmd test` and `npm.cmd run test:integration:isolated`. The latter requires
 a MySQL executable; see [database setup](../database/README.md) for `MYSQLD_PATH`.
 The integration suite uses real Item/Matching services, privacy negative controls,

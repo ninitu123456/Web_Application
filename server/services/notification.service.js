@@ -2,6 +2,8 @@ import { HttpError } from '../utils/http-error.js';
 import { notificationDto, paged } from '../utils/workflow-dto.js';
 
 const messages = {
+  ITEM_MODERATED_CLOSED: 'Bài đăng đã được quản trị viên đóng',
+  CLAIM_ADMIN_RESOLVED: 'Quản trị viên đã xử lý yêu cầu nhận đồ',
   NEW_MATCH: 'Có gợi ý ghép nối mới', NEW_CLAIM: 'Có yêu cầu nhận đồ mới',
   CLAIM_APPROVED: 'Yêu cầu nhận đồ đã được chấp thuận', CLAIM_REJECTED: 'Yêu cầu nhận đồ đã bị từ chối',
   CLAIM_COMPLETED: 'Quá trình nhận lại đồ vật đã hoàn tất'

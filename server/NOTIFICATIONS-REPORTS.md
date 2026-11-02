@@ -28,6 +28,8 @@ unread. No API allows clients to create notifications or choose their recipients
 | CLAIM_APPROVED | Approved claimant |
 | CLAIM_REJECTED | Rejected claimant, including automatic competitor rejections |
 | CLAIM_COMPLETED | Claimant whose handover completed |
+| ITEM_MODERATED_CLOSED | Item owner after canonical ADMIN close |
+| CLAIM_ADMIN_RESOLVED | Item owner after ADMIN resolves a PENDING Claim |
 
 Matching uses Phase 3's existing rounded-score persistence threshold (`>= 50`).
 Notifications are emitted only for a newly inserted Match. Recompute, a score

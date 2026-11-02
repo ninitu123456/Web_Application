@@ -141,7 +141,7 @@ Các npm scripts mới: `start`, `dev`, `test:backend`, `test:backend:integratio
 | `EADDRINUSE` | Cổng HTTP đã được dùng; dừng đúng server của mình hoặc cấu hình PORT khác |
 | Trình duyệt bị CORS | Origin frontend phải khớp cả protocol, hostname và port |
 
-Auth và User Foundation hiện có 4 API; cấu trúc bổ sung và hướng dẫn nằm trong `AUTH.md`. Claim Workflow (Phase 4) có 6 API; quyền truy cập, state machine và transaction được mô tả trong [CLAIMS.md](CLAIMS.md). Các API quản trị hiện có được mô tả trong [ADMIN.md](ADMIN.md); các endpoint còn thiếu được ghi nhận trong [SECURITY.md](SECURITY.md). Kết quả foundation nằm trong `TEST-RESULTS.md`, kết quả Auth/User nằm trong `AUTH-TEST-RESULTS.md`.
+Auth và User Foundation hiện có 4 API; cấu trúc bổ sung và hướng dẫn nằm trong `AUTH.md`. Claim Workflow (Phase 4) có 6 API; quyền truy cập, state machine và transaction được mô tả trong [CLAIMS.md](CLAIMS.md). Các API quản trị, bốn API moderation/dispute/activity logs mới và giới hạn tương thích được mô tả trong [ADMIN.md](ADMIN.md). Kết quả foundation nằm trong `TEST-RESULTS.md`, kết quả Auth/User nằm trong `AUTH-TEST-RESULTS.md`.
 
 ## Phase 7 — Automated Testing & Security
 
