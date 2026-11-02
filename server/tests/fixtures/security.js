@@ -1,5 +1,8 @@
-// Existing production routes only. Missing Phase 6 APIs are intentionally absent.
+// All production routes, including canonical admin moderation.
 export const protectedRoutes = [
+  ['GET', '/admin/claims'], ['GET', '/admin/activity-logs'],
+  ['PATCH', '/admin/claims/1/resolve', { decision: 'APPROVE', reason: 'Review' }],
+  ['PATCH', '/admin/items/1/close', { reason: 'Review' }],
   ['GET', '/users/me'], ['PATCH', '/users/me', { fullName: 'Changed' }],
   ['GET', '/items/1/matches'], ['GET', '/items/1/claims'],
   ['POST', '/items/1/claims', { proofDescription: 'private' }],

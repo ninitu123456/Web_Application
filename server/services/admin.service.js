@@ -1,10 +1,12 @@
 import { HttpError } from '../utils/http-error.js';
 import { adminUserDto, dashboardNumber, lookupDto } from '../utils/admin-dto.js';
 import { paged } from '../utils/workflow-dto.js';
+import { createAdminModerationService } from './admin-moderation.service.js';
 const missing = (thing) => new HttpError(404, `${thing} không tìm thấy`);
 function translateDuplicate(error) { if (error.code === 'ER_DUP_ENTRY') throw new HttpError(409, 'Tên đã tồn tại'); throw error; }
 export function createAdminService(repository, itemService) {
   return {
+    ...createAdminModerationService(repository.moderation),
     async dashboard() {
       const value = await repository.dashboard();
       const countMap = (rows, statuses) => Object.fromEntries(statuses.map((status) => [status, dashboardNumber(rows.find((row) => row.status === status)?.total)]));

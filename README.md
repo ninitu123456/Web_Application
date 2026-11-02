@@ -16,4 +16,4 @@ npm.cmd run test:regression
 
 Integration chỉ chạy với MySQL instance tạm do runner tạo, không dùng dịch vụ MySQL đang cài. Đặt `MYSQLD_PATH` nếu cần chỉ định executable MySQL >= 8.0.16. Cloudinary được thay bằng storage giả trong test.
 
-Frontend chưa triển khai. Các API Admin Claim/dispute/activity logs trong contract còn thiếu; endpoint đóng Item quản trị hiện dùng `/status`, khác `/close` trong contract. Phase 7 ghi nhận các điểm này, không tự bổ sung hoặc đổi API.
+Frontend chưa triển khai. Backend đã bổ sung bốn API Admin Claim/dispute/activity logs và moderation `/close`; `/status` legacy vẫn được hỗ trợ, chỉ đóng OPEN. Resolve chỉ áp dụng Claim PENDING. CLOSED kết thúc hoạt động, chưa ẩn nội dung công khai. Xem [Admin API](server/ADMIN.md) để biết contract, privacy và giới hạn.

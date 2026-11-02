@@ -47,6 +47,6 @@ CI có job unit/coverage/audit và job MySQL 8.0 riêng trên Ubuntu 24.04 với
 - Không kiểm thử Cloudinary network thật, antivirus, tải lớn hoặc chống DDoS hạ tầng.
 - Matching vẫn tuần tự hóa ghi bằng advisory lock; invariant Claim vẫn cần service/row lock. Ghi SQL trực tiếp có thể bỏ qua quy trình.
 - Không có idempotency key cho client retry sau COMMIT mất phản hồi; 500 có thể xuất hiện dù giao dịch đã commit.
-- Admin Claim/dispute/activity-log API và khác biệt `/close`–`/status` thuộc tồn đọng Phase 6; không bổ sung ở đây.
+- Đợt audit 2 đã bổ sung bốn API Admin Claim/dispute/activity-log và `/close`; `/status` legacy giữ nguyên. Resolve chỉ PENDING; CLOSED chưa ẩn nội dung. Xem [Admin API](ADMIN.md).
 
 Tham khảo cấu hình thư viện: [Helmet](https://github.com/helmetjs/helmet#readme), [express-rate-limit](https://github.com/express-rate-limit/express-rate-limit#readme).

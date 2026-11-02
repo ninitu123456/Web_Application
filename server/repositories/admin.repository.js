@@ -1,9 +1,11 @@
 ﻿import { query, transaction, databaseTimeout } from '../config/db.js';
 
+import { createAdminModerationRepository } from './admin-moderation.repository.js';
 const userColumns = 'u.user_id, u.full_name, u.email, u.account_status, u.created_at, u.updated_at, r.name AS role';
 const tableConfig = { categories: { table: 'categories', id: 'category_id', entity: 'CATEGORY' }, locations: { table: 'locations', id: 'location_id', entity: 'LOCATION' } };
 export function createAdminRepository(pool, execute = (sql, values = []) => query(pool, sql, values)) {
   const repo = {
+    moderation: createAdminModerationRepository(pool),
     withTransaction(operation) {
       return transaction(pool, (connection) => operation(createAdminRepository(pool, (sql, values = []) => connection.query({ sql, timeout: databaseTimeout }, values))));
     },
