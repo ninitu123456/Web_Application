@@ -1,6 +1,6 @@
 # FindIT — Authentication và User Foundation
 
-Thực hiện theo Auth/User API trong `docs/api-contract.docx` và quy tắc nghiệp vụ tương ứng. Không có refresh token, logout, đổi mật khẩu hoặc endpoint quản trị trong giai đoạn này.
+Thực hiện theo [hợp đồng Auth/User API](../docs/api-contract.md) và [quy tắc nghiệp vụ](../docs/business-rules.md). Module này không cung cấp endpoint refresh token, logout hoặc đổi mật khẩu. Các endpoint quản trị được mô tả riêng trong [ADMIN.md](ADMIN.md).
 
 ## Chạy và cấu hình
 
@@ -103,7 +103,7 @@ Các ID và token trên là minh họa, không phải credentials thật.
 
 ## Kiểm tra bằng Postman và PowerShell
 
-Để kiểm thử **không ghi dữ liệu thật**, dùng `npm.cmd run test:auth:integration`. Nó tự tạo database test và HTTP server cổng tạm rồi dọn sau khi chạy. Không đăng ký tài khoản test vào `findit_db` trong các bài kiểm thử tự động.
+Để kiểm thử **không ghi vào database đang sử dụng**, dùng `npm.cmd run test:integration:isolated`. Runner chạy toàn bộ integration, gồm Auth/User, trên MySQL instance tạm; tự tạo database test và HTTP server cổng tạm rồi dọn sau khi chạy. Không đăng ký tài khoản test vào `findit_db` trong các bài kiểm thử tự động.
 
 Các ví dụ thủ công sau gọi vào database của server tại URL được chỉ định: POST đăng ký và PATCH sẽ ghi dữ liệu. Chỉ thực hiện khi bạn muốn tạo/cập nhật tài khoản tại server đó.
 
@@ -159,9 +159,9 @@ Dependency mới: `jsonwebtoken`; dùng lại bcryptjs và mysql2/promise. Scrip
 
 ```powershell
 npm.cmd run test:auth
-npm.cmd run test:auth:integration
+npm.cmd run test:integration:isolated
 ```
 
-Các tests sinh JWT secrets ngẫu nhiên trong bộ nhớ. Auth integration chạy migrations nguyên bản trong database tên `findit_test_<24 hex>`, không sửa schema. Mọi register/update/đổi role/khóa user nằm trong database đó; cleanup chỉ xóa database đúng tên do lần chạy sở hữu. Test còn so sánh digest toàn bộ dữ liệu nghiệp vụ `findit_db` trước/sau, không in dữ liệu hoặc digest nhạy cảm ra log.
+Các tests sinh JWT secrets ngẫu nhiên trong bộ nhớ. Auth integration chạy migrations nguyên bản trong database tên `findit_test_<24 hex>`, không sửa schema. Mọi register/update/đổi role/khóa user nằm trong database đó; cleanup chỉ xóa database đúng tên do lần chạy sở hữu. Test còn so sánh digest dữ liệu nghiệp vụ `findit_db` của instance tạm trước/sau, không in dữ liệu hoặc digest nhạy cảm ra log.
 
-Chạy hồi quy bằng `test:backend`, `test:backend:integration`, `db:test`, `db:test:integration` và `db:verify`. Kết quả thực tế nằm trong [AUTH-TEST-RESULTS.md](AUTH-TEST-RESULTS.md).
+Chạy `npm.cmd test` cho unit/HTTP tests và `npm.cmd run test:integration:isolated` cho integration; hoặc `npm.cmd run test:regression` cho cả hai. Không chạy integration trực tiếp ngoài runner. `db:verify` kiểm tra database đã cấu hình, không thay thế bộ tests cô lập. Xem [SECURITY.md](SECURITY.md) về môi trường và coverage.

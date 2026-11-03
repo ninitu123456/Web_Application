@@ -1,4 +1,4 @@
-# FindIT — Express backend foundation
+# FindIt — Backend
 
 Frontend hiện có trong [client/](../client/README.md). API lookup công khai và bài của tài khoản hiện tại: [FRONTEND-API.md](FRONTEND-API.md).
 
@@ -6,13 +6,13 @@ Backend JavaScript ES Modules, Express 5 và MySQL2 promise pool. Dùng chung `p
 
 Item/Search và các sửa lỗi ownership, transaction ảnh, audit và cleanup được mô tả trong [ITEMS.md](ITEMS.md). Chạy toàn bộ integration trên MySQL tạm bằng `npm.cmd run test:integration:isolated`.
 
-Matching Engine (Phase 3): [MATCHING.md](MATCHING.md). Verification: [MATCHING-TEST-RESULTS.md](MATCHING-TEST-RESULTS.md).
+Thuật toán và API Matching: [MATCHING.md](MATCHING.md).
 
-Notification & Report (Phase 5): [API, transaction và cách chạy Postman](NOTIFICATIONS-REPORTS.md).
+Notification & Report: xem [hợp đồng API](../docs/api-contract.md) và [quy tắc nghiệp vụ](../docs/business-rules.md).
 
 ## Chạy trong VS Code
 
-Yêu cầu Node.js >= 20 và MySQL `findit_db` đang hoạt động. Trong terminal tại gốc repository:
+Backend yêu cầu Node.js >= 20 (khuyến nghị Node.js 24 cho toàn bộ dự án) và MySQL `findit_db` đã được khởi tạo. Nếu cài từ đầu, cấu hình `.env` theo [README gốc](../README.md#chạy-cục-bộ), chạy `npm.cmd ci` rồi `npm.cmd run db:setup` trước khi bật server. Trong terminal tại gốc repository:
 
 ```powershell
 npm.cmd ci
@@ -39,7 +39,7 @@ Dừng server bằng Ctrl+C trong terminal chạy server. Nếu cổng đã có 
 
 Giữ nguyên `.env` hiện có. Backend tái sử dụng `configFromEnv()` của bộ database để đọc `.env` tại gốc và validate `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`. Không cần biến `SEED_*` để chạy HTTP server. `DB_NAME` phải là `findit_db`.
 
-Các biến HTTP mới đều có mặc định, không cần ghi lại `.env` để khởi động:
+Các biến HTTP sau đều có mặc định, không cần ghi lại `.env` để khởi động:
 
 | Biến | Mặc định |
 | --- | --- |
@@ -55,35 +55,18 @@ CORS cho phép các origin cấu hình và preflight với Content-Type/Authoriz
 
 ## Cấu trúc và trách nhiệm
 
-```text
-server/
-├── app.js                         # Cấu hình Express, không tự listen
-├── server.js                      # Kiểm tra DB, listen, shutdown
-├── config/
-│   ├── env.js                     # Tái sử dụng config DB, validate HTTP
-│   └── db.js                      # Pool, timeout, UTC/strict mode, release
-├── routes/
-│   ├── index.js                   # Router chung /api
-│   └── health.routes.js
-├── controllers/health.controller.js
-├── services/health.service.js
-├── repositories/health.repository.js
-├── middleware/
-│   ├── not-found.js
-│   └── error-handler.js
-├── utils/
-│   ├── http-error.js
-│   └── logger.js
-├── scripts/check-db.js            # Chỉ đọc vai trò và danh mục mẫu
-├── tests/
-│   ├── helpers.js
-│   ├── http.test.js
-│   └── mysql.integration.js
-├── README.md
-└── TEST-RESULTS.md
-```
+| Thành phần | Trách nhiệm |
+| --- | --- |
+| `app.js`, `server.js` | Lắp ráp ứng dụng, kiểm tra DB, listen và shutdown |
+| `config/` | Cấu hình môi trường, pool MySQL, Cloudinary và snapshot đọc |
+| `routes/`, `controllers/` | Khai báo endpoint, nhận request và trả response |
+| `services/` | Quy tắc nghiệp vụ, transaction và phối hợp các thao tác |
+| `repositories/` | Truy vấn và khóa dữ liệu MySQL |
+| `middleware/`, `validation/`, `utils/` | Xác thực, phân quyền, bảo mật, validation, DTO và xử lý lỗi |
+| `scripts/` | Kiểm tra DB, cleanup ảnh và đo coverage |
+| `tests/` | Unit, HTTP, integration, fixtures và helpers |
 
-Luồng hiện tại: `/api/health` → controller → service → repository → MySQL pool. Khi bổ sung module sau này, SQL đặt trong repository, quy tắc nghiệp vụ trong service và HTTP trong controller. Không có base class hoặc các module nghiệp vụ giả.
+Luồng xử lý: route → controller → service → repository → MySQL. Các module hiện có gồm Auth/User, Item, Matching, Claim, Notification, Report, Admin và Health.
 
 Pool tối đa 10 connections, hàng đợi tối đa 20. Acquisition, kết nối và mỗi truy vấn có timeout 5 giây riêng; tổng thời gian request có thể gồm nhiều giai đoạn này. Connection đến muộn sau acquisition timeout được release. Mỗi lần lấy connection đều thiết lập UTC và strict SQL mode trước khi dùng, sau đó release trong `finally`. Connection có lỗi fatal/query timeout bị destroy để tránh tái sử dụng khi lệnh vẫn còn đang chạy. BIGINT được giữ dưới dạng chuỗi như bộ database hiện có.
 
@@ -95,7 +78,7 @@ Server xác minh kết nối và đúng database trước khi listen; lỗi DB h
 
 Limiter health riêng mặc định 60 request/phút/IP (`RATE_LIMIT_HEALTH_MAX`), tính cả GET/HEAD và biến thể route được Express chấp nhận; OPTIONS không probe. Quá quota trả 429 với JSON lỗi chuẩn, Retry-After và RateLimit headers trước khi dùng DB. Health không tiêu quota API nghiệp vụ; `trust proxy=false` giữ nguyên.
 
-`HEALTH_PROBE_TIMEOUT_MS=1000` là deadline tổng khởi đầu cho acquire/setup/SELECT; phải kiểm chứng lại theo deployment. Acquisition tới muộn được release mà không chạy SQL; command quá hạn làm destroy session. Không cập nhật cache thành công muộn hoặc mở acquisition mới khi operation cũ chưa settle. Startup yêu cầu kiểm tra mới. Transaction deadline F01/F02 giữ nguyên. Chỉ khi probe/cache thành công và database là `findit_db` mới trả HTTP **200**:
+`HEALTH_PROBE_TIMEOUT_MS=1000` là deadline tổng khởi đầu cho acquire/setup/SELECT; phải kiểm chứng lại theo deployment. Acquisition tới muộn được release mà không chạy SQL; command quá hạn làm destroy session. Không cập nhật cache thành công muộn hoặc mở acquisition mới khi operation cũ chưa settle. Startup yêu cầu kiểm tra mới. Deadline của transaction được mô tả trong [SECURITY.md](SECURITY.md). Chỉ khi probe/cache thành công và database là `findit_db` mới trả HTTP **200**:
 
 ```json
 {
@@ -121,19 +104,17 @@ Route không tồn tại trả **404** với `success: false` và message `Khôn
 ## Kiểm thử
 
 ```powershell
-npm.cmd run test:backend
+npm.cmd test
 npm.cmd run test:integration:isolated
-npm.cmd run db:test
-npm.cmd run db:verify
-npm.cmd run db:test:isolated
+# Hoặc toàn bộ regression backend/database:
+npm.cmd run test:regression
 ```
 
-- Backend tests: HTTP thật trên cổng tạm, dependency giả để kiểm tra 200/503/phục hồi, 404, lỗi 500, JSON 400/413, CORS và che dữ liệu nhạy cảm.
-- Backend integration: pool MySQL thật, session UTC/strict, SELECT dữ liệu mẫu, HTTP health; đóng pool riêng của test để kiểm tra 503; kiểm tra startup/shutdown, cổng HTTP bị chiếm và DB không kết nối được.
-- Backend tests không dừng MySQL hoặc thay đổi `.env`, schema hay dữ liệu. Cổng DB lỗi chỉ được override trong môi trường tiến trình con.
-- Database integration hiện có tạo/xóa database test riêng do nó sở hữu; không reset hoặc xóa dữ liệu `findit_db`.
-
-Các npm scripts mới: `start`, `dev`, `test:backend`, `test:backend:integration`, `backend:check-db`. Dependencies mới: `express`, `cors`; không cài lại thư viện DB hoặc thêm ORM.
+- `npm.cmd test`: unit/HTTP tests backend, Auth và database; kiểm tra validation, phân quyền, quyền riêng tư, transaction và xử lý lỗi.
+- `test:integration:isolated`: toàn bộ integration backend/Auth/database trên MySQL instance tạm, gồm các luồng nghiệp vụ và concurrency.
+- Runner xác minh datadir/port, tạo dữ liệu riêng và cleanup tài nguyên do nó sở hữu. Cloudinary được giả lập; không dùng database hoặc cloud của môi trường đang chạy.
+- `npm.cmd run db:verify` là lệnh kiểm tra schema/seed của database đã cấu hình, không phải một bộ test cô lập.
+- Cấu hình MySQL executable và cách chạy riêng database tests: [database/README.md](../database/README.md). Frontend và browser tests: [client/README.md](../client/README.md).
 
 ## Xử lý lỗi thường gặp
 
@@ -147,12 +128,12 @@ Các npm scripts mới: `start`, `dev`, `test:backend`, `test:backend:integratio
 | `EADDRINUSE` | Cổng HTTP đã được dùng; dừng đúng server của mình hoặc cấu hình PORT khác |
 | Trình duyệt bị CORS | Origin frontend phải khớp cả protocol, hostname và port |
 
-Auth và User Foundation hiện có 4 API; cấu trúc bổ sung và hướng dẫn nằm trong `AUTH.md`. Claim Workflow (Phase 4) có 6 API; quyền truy cập, state machine và transaction được mô tả trong [CLAIMS.md](CLAIMS.md). Các API quản trị, bốn API moderation/dispute/activity logs mới và giới hạn tương thích được mô tả trong [ADMIN.md](ADMIN.md). Kết quả foundation nằm trong `TEST-RESULTS.md`, kết quả Auth/User nằm trong `AUTH-TEST-RESULTS.md`.
+Hướng dẫn theo module: [Auth/User](AUTH.md), [Item và ảnh](ITEMS.md), [Matching](MATCHING.md), [Claim](CLAIMS.md), [Admin](ADMIN.md) và [API hỗ trợ frontend](FRONTEND-API.md). Notification/Report được mô tả trong [hợp đồng API](../docs/api-contract.md).
 
-## Phase 7 — Automated Testing & Security
+## Bảo mật và kiểm thử tự động
 
 Đã bổ sung Helmet, rate limiting, giới hạn multipart và bảo vệ session khi BEGIN/COMMIT mất phản hồi. Mọi integration suite yêu cầu runner MySQL cô lập. Xem [SECURITY.md](SECURITY.md) để cấu hình, lệnh chạy, giới hạn triển khai và CI.
 
-## Backend Audit Đợt 3
+## Phân trang Claim và Matching
 
 Claim mine, Claim theo Item và Match theo Item phân trang mặc định page=1/limit=10, max=100, offset tối đa 100000. `data` vẫn là array, có top-level `pagination`. Client không gửi params nhận trang đầu; client cần toàn bộ dữ liệu phải duyệt các trang. Xem CLAIMS.md, MATCHING.md và SECURITY.md. Không đổi batch mutation hoặc Matching algorithm.

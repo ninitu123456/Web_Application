@@ -1,20 +1,19 @@
-# FindIT — MySQL database
+# FindIt — MySQL database
 
-Phase 5 adds append-only migration `013_notification_report_support.sql`: notification event uniqueness, active Report uniqueness and query indexes. Original migrations 001–012 remain unchanged. The runner checks for duplicate open Reports before applying the two table ALTERs; it never deletes or merges existing Reports. See [Phase 5 API and transaction documentation](../server/NOTIFICATIONS-REPORTS.md).
+Database gồm **11 bảng nghiệp vụ** và bảng kỹ thuật `_schema_migrations`, triển khai theo [ERD](../docs/erd.md), [yêu cầu](../docs/requirements.md), [quy tắc nghiệp vụ](../docs/business-rules.md) và [hợp đồng API](../docs/api-contract.md).
 
-Phase 2 adds the append-only migration `012_item_search_indexes.sql`. The migration runner applies and verifies its three item search indexes while preserving the original 001–011 migration files and checksums. The SQL export and `db:build` include those indexes for fresh installs.
-
-Triển khai theo `docs/erd.docx`, `docs/requirements.docx`, `docs/business-rules.docx` và `docs/api-contract.docx`. Database gồm **11 bảng nghiệp vụ** và bảng kỹ thuật `_schema_migrations`.
+Có 13 migrations: `001–011` tạo các bảng nghiệp vụ, `012` thêm indexes tìm kiếm Item, `013` bổ sung ràng buộc/indexes cho Notification và Report. Runner kiểm tra danh sách migration, định nghĩa và checksum trước khi áp dụng.
 
 ## Chuẩn bị và cấu hình
 
-- Node.js >= 20, npm; MySQL >= 8.0.16 để CHECK được thực thi. Đã kiểm thử với Node.js 24.21.0 và MySQL 8.0.46 trên Windows.
+- Node.js >= 20, npm; khuyến nghị Node.js 24 cho toàn bộ dự án. MySQL >= 8.0.16 để CHECK được thực thi.
 - MySQL phải đang chạy. Trên PowerShell: `Get-Service MySQL80`. Không cần thêm `mysql.exe` vào PATH vì scripts dùng driver Node.js.
-- Tài khoản setup cần quyền tạo database; trong `findit_db` cần CREATE, SELECT, INSERT, UPDATE và REFERENCES. Bộ integration cần CREATE/DROP database test; các câu ALTER/DROP chỉ chạy trong database test do chính bộ kiểm thử tạo.
-- Không cần cài Express hoặc ORM. Chạy lệnh từ gốc repository:
+- Tài khoản setup cần quyền tạo database và các quyền CREATE, ALTER, INDEX, SELECT, INSERT, UPDATE, REFERENCES trong `findit_db` để áp dụng đủ migrations và seed. Integration dùng tài khoản riêng do runner tạo trên MySQL instance tạm.
+- Cài dependencies dùng chung bằng lockfile tại gốc repository:
 
 ```powershell
 npm.cmd ci
+# Chỉ sao chép khi chưa có .env:
 Copy-Item .env.example .env
 ```
 
@@ -57,17 +56,17 @@ Seed tìm vai trò/danh mục/địa điểm theo tên; tài khoản theo email 
 ## Schema, migration và trách nhiệm backend
 
 - `schema.js` mô tả cấu trúc; `migrations/001_*.sql` đến `011_*.sql` là SQL đã sinh, sắp theo phụ thuộc FK. `database-schema.sql` là bản xuất đầy đủ, dùng cùng nguồn.
-- MySQL dùng InnoDB, `utf8mb4_0900_ai_ci`; PK là BIGINT UNSIGNED AUTO_INCREMENT. Driver trả BIGINT dưới dạng chuỗi để tránh mất độ chính xác. Backend sau này phải xử lý giới hạn số an toàn khi chuyển sang JSON ID dạng số theo API contract.
+- MySQL dùng InnoDB, `utf8mb4_0900_ai_ci`; PK là BIGINT UNSIGNED AUTO_INCREMENT. Driver trả BIGINT dưới dạng chuỗi để tránh mất độ chính xác. Khi chuyển sang JSON ID dạng số, backend phải kiểm tra giới hạn số an toàn theo API contract.
 - `users.avatar_url` dùng VARCHAR(1000), `contact_info` dùng TEXT, cả hai nullable, theo quyết định bổ sung cho hai kiểu chưa quy định trong ERD.
 - Datetime lưu UTC; kết nối đặt `time_zone='+00:00'` và scripts truyền thời gian tường minh. Không tự cập nhật `updated_at` bằng trigger; backend phải truyền giá trị khi sửa dữ liệu.
-- FK đều RESTRICT khi xóa/cập nhật. Chỉ có indexes phục vụ PK, UNIQUE và FK. Không có DELETE CASCADE hoặc trigger nghiệp vụ.
+- FK đều RESTRICT khi xóa/cập nhật. Ngoài indexes cho PK, UNIQUE và FK, migrations `012–013` bổ sung indexes phục vụ tìm kiếm và truy vấn Notification/Report. Không có DELETE CASCADE hoặc trigger nghiệp vụ.
 - CHECK bảo vệ điểm match 0–100, hai item khác nhau, và report tham chiếu đúng một đối tượng theo target_type. UNIQUE bảo vệ email, student_code, tên lookup, cặp match và cặp claimant/item.
 - Kiểm tra loại LOST/FOUND của hai phía match, trạng thái hợp lệ, quyền truy cập, Claim chỉ trên FOUND, chống tự Claim và các luồng trạng thái thuộc backend. Xét duyệt Claim phải khóa hàng Item bằng `SELECT ... FOR UPDATE` trong transaction, kiểm tra Claim đã APPROVED/COMPLETED, từ chối Claim cạnh tranh, cập nhật Item/thông báo và audit nguyên tử. Schema không tự bảo đảm chỉ một Claim được duyệt nếu ghi SQL trực tiếp bỏ qua quy trình này.
 - Backend phải bảo vệ `private_identifiers`, `proof_description`, password hash và thông tin riêng tư; database scripts không tạo API.
 
 `_schema_migrations` lưu tên phiên bản, SHA-256, trạng thái running/applied và thời gian UTC. Scripts dùng advisory lock theo database để tránh chạy setup/seed đồng thời. DDL MySQL có implicit commit: không tuyên bố rollback được toàn bộ migration. Trạng thái running được lưu trước DDL; lần chạy sau chỉ tiếp tục nếu bảng đã tạo khớp schema đầy đủ, hoặc chưa tồn tại. Checksum sai, bảng lạ, metadata thiếu, bảng đã áp dụng bị mất, constraint/column/index sai đều khiến script dừng để xem xét thủ công.
 
-Không sửa migration đã áp dụng rồi chạy `db:build` trên database đang dùng. Thay đổi schema về sau cần migration phiên bản mới và cập nhật runner tương ứng; bộ hiện tại được thiết kế cho 11 migration khởi tạo đã thống nhất.
+Không sửa migration đã áp dụng rồi chạy `db:build` trên database đang dùng. Thay đổi schema về sau cần migration phiên bản mới và cập nhật runner tương ứng; bộ hiện tại quản lý 13 migrations, gồm 11 migration tạo bảng và 2 migration bổ sung.
 
 SQL export tạo `findit_db`, bảng kỹ thuật và 11 bảng nghiệp vụ, không chứa credentials, dữ liệu hoặc bản ghi lịch sử migration. Chỉ import vào database rỗng để tham khảo/khôi phục cấu trúc độc lập. Import tay không được runner tự nhận là migration đã áp dụng; dùng `db:setup` cho cài đặt có quản lý migration.
 
@@ -116,7 +115,7 @@ SHOW CREATE TABLE matches;
 SHOW CREATE TABLE reports;
 ```
 
-Có thể dùng **Database → Reverse Engineer** để xem quan hệ FK. Kết quả chạy thực tế của phiên triển khai được ghi trong `TEST-RESULTS.md`.
+Có thể dùng **Database → Reverse Engineer** để xem quan hệ FK. Đối chiếu thiết kế trong [ERD](../docs/erd.md); chạy các lệnh kiểm thử ở trên để lấy kết quả trên môi trường hiện tại.
 
 ## Lỗi thường gặp
 
@@ -132,6 +131,6 @@ Có thể dùng **Database → Reverse Engineer** để xem quan hệ FK. Kết 
 | Seed account/item conflict | Kiểm tra fixture đã tồn tại; không ghi đè tài khoản hoặc mật khẩu |
 | PowerShell chặn npm.ps1 | Dùng `npm.cmd` như các ví dụ trên |
 
-## Phase 7 — Isolation bắt buộc
+## Isolation bắt buộc
 
-Các suite integration trực tiếp không còn chấp nhận cấu hình MySQL cục bộ. Dùng `db:test:isolated` cho database hoặc `test:integration:isolated` cho toàn bộ backend/database. Shared guard xác minh marker/datadir/port trước khi test ghi dữ liệu; không tự đặt marker. Hướng dẫn và CI hiện hành: [SECURITY.md](../server/SECURITY.md). Không có migration mới ở Phase 7.
+Các suite integration trực tiếp không còn chấp nhận cấu hình MySQL cục bộ. Dùng `db:test:isolated` cho database hoặc `test:integration:isolated` cho toàn bộ backend/database. Shared guard xác minh marker/datadir/port trước khi test ghi dữ liệu; không tự đặt marker. Hướng dẫn và CI hiện hành: [SECURITY.md](../server/SECURITY.md).
