@@ -1,4 +1,4 @@
-Bạn đang tiếp tục phát triển dự án FindIt từ một phiên làm việc trước.
+Bạn đang phát triển dự án FindIt từ một phiên làm việc trước.
 
 Trước khi thực hiện bất kỳ thay đổi nào:
 
