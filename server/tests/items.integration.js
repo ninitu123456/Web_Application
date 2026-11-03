@@ -18,6 +18,18 @@ import { createAuthService } from '../services/auth.service.js';
 import { createUserService } from '../services/user.service.js';
 import { createTokenService } from '../utils/jwt.js';
 import { createApp } from '../app.js';
+import { createLookupRepository } from '../repositories/lookup.repository.js';
+import { createLookupService } from '../services/lookup.service.js';
+import { createClaimRepository } from '../repositories/claim.repository.js';
+import { createClaimService } from '../services/claim.service.js';
+import { createMatchingRepository } from '../repositories/matching.repository.js';
+import { createMatchingService } from '../services/matching.service.js';
+import { createNotificationRepository } from '../repositories/notification.repository.js';
+import { createNotificationService } from '../services/notification.service.js';
+import { createReportRepository } from '../repositories/report.repository.js';
+import { createReportService } from '../services/report.service.js';
+import { createAdminRepository } from '../repositories/admin.repository.js';
+import { createAdminService } from '../services/admin.service.js';
 import { serveApp, request } from './auth/helpers.js';
 
 const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
@@ -70,7 +82,7 @@ test('Item integration: HTTP/JWT, transactions, concurrent uploads and durable c
     const users = createUserRepository(pool);
     const tokens = createTokenService({ secret: randomBytes(32).toString('hex'), expiresIn: 3600 });
     const auth = createAuthService(users, tokens);
-    http = await serveApp(createApp({ healthService: { async check() { return {}; } }, authService: auth, userService: createUserService(users), itemService: service, logger: () => {} }));
+    http = await serveApp(createApp({ healthService: { async check() { return {}; } }, authService: auth, userService: createUserService(users), itemService: service, lookupService: createLookupService(createLookupRepository(pool)), claimService: createClaimService(createClaimRepository(pool)), matchingService: createMatchingService(createMatchingRepository(pool)), security: process.env.FINDIT_FRONTEND_BROWSER === '1' ? { apiMax: 3000 } : undefined, notificationService: createNotificationService(createNotificationRepository(pool)), reportService: createReportService(createReportRepository(pool)), adminService: createAdminService(createAdminRepository(pool), service), logger: () => {} }));
     let token, adminToken, itemId;
     const create = async (overrides = {}) => service.create(owner, { ...input, ...overrides });
     const images = async (id) => (await query(pool, 'SELECT image_id, cloudinary_public_id FROM item_images WHERE item_id=? ORDER BY image_id', [id]))[0];
@@ -97,6 +109,39 @@ test('Item integration: HTTP/JWT, transactions, concurrent uploads and durable c
       assert.equal(adminLogin.status, 200); adminToken = adminLogin.json.data.token;
       assert.equal((await request(http, '/api/users/me', { token })).status, 200);
       assert.equal((await request(http, '/api/items')).status, 200);
+    });
+
+    if (process.env.FINDIT_FRONTEND_BROWSER === '1') await t.test('frontend browser workflow against isolated MySQL and real HTTP API', { timeout: 180000 }, async () => {
+      const { browserCheck } = await import('../../client/scripts/browser-check.mjs');
+      await browserCheck({ backendUrl: http.url, ownerEmail: 'user@items.example.test', otherEmail: 'admin@items.example.test', password, categoryId: input.categoryId, locationId: input.locationId, pool, query });
+    });
+
+    await t.test('frontend lookup/mine APIs use active rows, exact DTOs and JWT ownership with real pagination', async () => {
+      await query(pool, "INSERT INTO categories(name,is_active) VALUES ('Inactive test category',FALSE)");
+      await query(pool, "INSERT INTO locations(name,is_active) VALUES ('Inactive test location',FALSE)");
+      for (const kind of ['categories', 'locations']) {
+        const response = await request(http, `/api/${kind}`);
+        assert.equal(response.status, 200);
+        assert.ok(response.json.data.length > 0);
+        assert.ok(response.json.data.every((row) => Object.keys(row).sort().join(',') === 'id,name' && !row.name.startsWith('Inactive test')));
+      }
+      const other = await service.create(admin, { ...input, title: 'Other account item' });
+      const own = await create({ title: 'Mine ownership test' });
+      const mine = await request(http, '/api/items/mine?limit=1', { token });
+      assert.equal(mine.status, 200); assert.equal(mine.json.data.length, 1);
+      assert.equal(mine.json.data[0].id, own.id);
+      assert.notEqual(mine.json.data[0].id, other.id);
+      assert.ok(mine.json.pagination.total > 1);
+      const second = await request(http, '/api/items/mine?page=2&limit=1', { token });
+      assert.equal(second.status, 200); assert.notEqual(second.json.data[0].id, own.id);
+      assert.equal(second.json.data[0].userId, Number(owner.id));
+      assert.equal((await request(http, '/api/items/mine?userId=1', { token })).status, 400);
+      assert.equal((await request(http, '/api/items/mine')).status, 401);
+      await query(pool, 'UPDATE categories SET is_active=FALSE WHERE category_id=?', [input.categoryId]);
+      const retained = await request(http, `/api/items/${own.id}`, { method: 'PATCH', token, body: { title: 'Keep inactive reference' } });
+      assert.equal(retained.status, 200); assert.equal(retained.json.data.categoryId, input.categoryId);
+      assert.equal((await request(http, `/api/items/${own.id}`, { method: 'PATCH', token, body: { categoryId: input.categoryId } })).status, 400);
+      await query(pool, 'UPDATE categories SET is_active=TRUE WHERE category_id=?', [input.categoryId]);
     });
     await t.test('LOST/FOUND creation, forged fields, auth and missing Item follow the contract', async () => {
       for (const type of ['LOST', 'FOUND']) {

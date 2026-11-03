@@ -50,7 +50,7 @@ CI có job unit/coverage/audit và job MySQL 8.0 riêng trên Ubuntu 24.04 với
 
 ## Giới hạn và tồn đọng
 
-- Frontend chưa có: chưa nghiệm thu DOM/stored XSS ở giao diện. Payload HTML được giữ như dữ liệu chuỗi JSON; không tự strip/sanitize nội dung nghiệp vụ.
+- Frontend hiện có trong `client/`, render nội dung người dùng bằng React text và dùng JWT trong sessionStorage; xem `client/README.md`. Payload HTML vẫn là chuỗi JSON, không tự strip/sanitize nội dung nghiệp vụ. Kiểm thử trình duyệt cô lập không thay thế đánh giá bảo mật triển khai production.
 - Không kiểm thử Cloudinary network thật, antivirus, tải lớn hoặc chống DDoS hạ tầng.
 - Matching vẫn tuần tự hóa ghi bằng advisory lock; invariant Claim vẫn cần service/row lock. Ghi SQL trực tiếp có thể bỏ qua quy trình.
 - Không có idempotency key cho client retry sau COMMIT mất phản hồi; 500 có thể xuất hiện dù giao dịch đã commit.

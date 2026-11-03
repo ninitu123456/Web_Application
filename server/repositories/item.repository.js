@@ -60,8 +60,9 @@ export function createItemRepository(pool, execute = (sql, values = []) => query
       const [images] = await execute('SELECT image_id, image_url FROM item_images WHERE item_id = ? ORDER BY image_id', [id]);
       return { ...item, images };
     },
-    async list(filters) {
+    async list(filters, ownerId) {
       const where = [], values = [];
+      if (ownerId !== undefined) { where.push('i.user_id = ?'); values.push(ownerId); }
       if (filters.keyword) { where.push('(i.title LIKE ? OR i.description LIKE ? OR i.color LIKE ?)'); const term = `%${filters.keyword}%`; values.push(term, term, term); }
       if (filters.type) { where.push('i.type = ?'); values.push(filters.type); }
       if (filters.category) { where.push('i.category_id = ?'); values.push(filters.category); }

@@ -10,6 +10,18 @@ import { createHash } from 'node:crypto';
 
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const reportPaths = ['server/coverage-summary.json', 'server/lcov.info', 'database/coverage-summary.json', 'database/lcov.info'];
+
+test('coverage CI pins the same exact Node runtime for producers and merge', async () => {
+  const workflow = (await readFile(resolve(root, '.github/workflows/tests.yml'), 'utf8')).replace(/\r\n/g, '\n');
+  assert.match(workflow, /^  COVERAGE_NODE_VERSION: '\d+\.\d+\.\d+'$/m);
+  for (const job of ['unit', 'integration', 'coverage-integrity']) {
+    const section = workflow.split(`\n  ${job}:\n`)[1]?.split(/\n  [\w-]+:\n/)[0];
+    assert.ok(section, `Missing ${job} job`);
+    assert.match(section, /uses: actions\/setup-node@v4/);
+    assert.match(section, /node-version: '\$\{\{ env\.COVERAGE_NODE_VERSION \}\}'/);
+    assert.equal([...section.matchAll(/node-version:/g)].length, 1);
+  }
+});
 async function checksums(directory) {
   return Promise.all(reportPaths.map(async (path) => ({ path, sha256: digest(await readFile(join(directory, path))) })));
 }
@@ -65,6 +77,7 @@ test('P2: real merge enforces the complete report contract, including forged rep
       ['report checksum mismatch', (base) => mutateManifest(base, 'unit', (data) => { data.reports[0].sha256 = '0'.repeat(64); })],
       ['different source fingerprint', (base) => mutateManifest(base, 'unit', (data) => { data.sourceHash = '0'.repeat(64); })],
       ['different commit', (base) => mutateManifest(base, 'integration', (data) => { data.sha = '0'.repeat(40); })],
+      ['different Node runtime', (base) => mutateManifest(base, 'integration', (data) => { data.node = 'v0.0.0'; })],
       ['different coverage configuration', (base) => mutateManifest(base, 'integration', (data) => { data.contract = { ...data.contract, all: false }; })],
       ['missing report checksum declaration', (base) => mutateManifest(base, 'unit', (data) => { data.reports.pop(); })],
       ['forged JSON plus matching manifest checksum', async (base) => {

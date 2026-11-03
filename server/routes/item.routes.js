@@ -17,6 +17,7 @@ const upload = multer({
 export function itemRoutes(authService, itemService, matchingService, claimService, uploadLimiter = (_req, _res, next) => next()) {
   const router = Router(), controller = createItemController(itemService);
   router.get('/', controller.list);
+  router.get('/mine', authenticate(authService), authorizeRoles('USER', 'ADMIN'), controller.mine);
   if (matchingService) router.get('/:id/matches', authenticate(authService), authorizeRoles('USER', 'ADMIN'), createMatchingController(matchingService));
   if (claimService) {
     const claims = createClaimController(claimService);

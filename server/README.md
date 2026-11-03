@@ -1,5 +1,7 @@
 # FindIT — Express backend foundation
 
+Frontend hiện có trong [client/](../client/README.md). API lookup công khai và bài của tài khoản hiện tại: [FRONTEND-API.md](FRONTEND-API.md).
+
 Backend JavaScript ES Modules, Express 5 và MySQL2 promise pool. Dùng chung `package.json`, dependencies và `.env` tại gốc với bộ database đã có. Đã bổ sung Authentication JWT và hồ sơ người dùng; xem [AUTH.md](AUTH.md).
 
 Item/Search và các sửa lỗi ownership, transaction ảnh, audit và cleanup được mô tả trong [ITEMS.md](ITEMS.md). Chạy toàn bộ integration trên MySQL tạm bằng `npm.cmd run test:integration:isolated`.
