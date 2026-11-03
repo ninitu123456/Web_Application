@@ -1,4 +1,6 @@
 import { createMatchingRepository } from './repositories/matching.repository.js';
+import { createLookupRepository } from './repositories/lookup.repository.js';
+import { createLookupService } from './services/lookup.service.js';
 import { createMatchingService } from './services/matching.service.js';
 import { pathToFileURL } from 'node:url';
 import { createServer } from 'node:http';
@@ -36,6 +38,7 @@ export async function startServer(config = readConfig()) {
   const userService = createUserService(users);
   const matchingService = createMatchingService(createMatchingRepository(pool));
   const itemRepository = createItemRepository(pool);
+  const lookupService = createLookupService(createLookupRepository(pool));
   const imageOperations = createImageOperations(pool, imageStorage);
   const itemService = createItemService(itemRepository, imageStorage, imageOperations);
   const claimService = createClaimService(createClaimRepository(pool));
@@ -46,7 +49,7 @@ export async function startServer(config = readConfig()) {
   try {
     await healthService.check({ fresh: true });
     console.log('MySQL connection verified: findit_db');
-    server = createServer(createApp({ healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, corsOrigins: config.corsOrigins, security: config.security }));
+    server = createServer(createApp({ healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, lookupService, corsOrigins: config.corsOrigins, security: config.security }));
     await new Promise((resolve, reject) => {
       server.once('error', reject);
       server.listen(config.port, config.host, () => { server.removeListener('error', reject); resolve(); });

@@ -41,8 +41,8 @@ export function createItemService(repository, imageStorage, imageOperations) {
   return {
     async create(identity, item) { await assertReferences(item); return itemDto(await repository.create(identity.id, item, (source) => assertReferences(item, source))); },
     async get(id) { const item = await repository.findById(id); if (!item) throw notFound(); return itemDto(item); },
-    async list(filters) {
-      const result = await repository.list(filters);
+    async list(filters, ownerId) {
+      const result = await repository.list(filters, ownerId);
       if (!Number.isSafeInteger(result.total) || result.total < 0) throw new Error('Item count cannot be represented safely in the API');
       const totalPages = Math.ceil(result.total / filters.limit);
       return { data: result.items.map(itemDto), pagination: { page: filters.page, limit: filters.limit, total: result.total, totalPages } };
