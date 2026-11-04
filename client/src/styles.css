@@ -1905,6 +1905,159 @@ dialog .modal-inner > .section-heading .icon-button {
 .log-details dd {
   margin: 3px 0 0;
 }
+
+/* Keep secondary text readable without changing the existing visual hierarchy. */
+.eyebrow,
+.pill,
+.navigation,
+.login-link,
+.account summary,
+.account-menu,
+.footer,
+.result-count,
+.search-bar label,
+.tabs button,
+.filter-toggle,
+.filters select,
+.filters input,
+.reset-filters,
+.card-meta,
+.card-content > p,
+.card-bottom,
+.badge,
+.image-fallback > small,
+.pagination,
+.steps > div > span,
+.steps p,
+.field label,
+input[type="file"],
+fieldset > small,
+.fine-print,
+.auth-story > p,
+.story-note p,
+.auth-panel > p,
+.auth-panel small,
+.image-editor > p,
+.image-previews small,
+.my-item-actions,
+.detail-subtitle,
+.item-facts dt,
+.tab-content .section-heading p,
+.match-reasons strong span,
+.match-reasons ul,
+.claim-card .section-heading p,
+.claim-card small,
+.proof .eyebrow,
+.proof summary,
+.claim-item-state,
+.modal-inner > p,
+.toast,
+.notification-count,
+.notification-row small,
+.report-button,
+.admin-sidebar .eyebrow,
+.admin-sidebar nav a,
+.admin-filters .field label,
+.table-scroll table,
+.table-scroll th,
+.table-scroll td small,
+.table-actions .button,
+.stat-card span,
+.activity-bars > div,
+.log-details,
+.log-details dt {
+  font-size: 12px;
+}
+
+.button,
+.text-link,
+.header-actions .button,
+.header-actions .button.primary,
+.search-bar input,
+.filters select,
+.filters input,
+input,
+select,
+textarea {
+  font-size: 14px;
+}
+
+.hero-note {
+  font-size: 12px;
+}
+
+.hero > p,
+.description,
+.auth-story > p {
+  font-size: 14px;
+}
+
+.hero .pill,
+.hero-actions .text-link,
+.footer p {
+  font-size: 12px;
+}
+
+.hero-actions .button,
+.search-bar .button,
+.actions .button {
+  font-size: 13px;
+}
+
+.pagination .button {
+  font-size: 12px;
+}
+
+.hero h1 span,
+.auth-story h1 > span {
+  color: #6b6b6b;
+}
+
+.table-scroll {
+  overscroll-behavior-x: contain;
+  scrollbar-color: #9aa195 #f4f4f1;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 520px) {
+  .header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 40px;
+    align-items: center;
+  }
+
+  .brand {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .mobile-toggle {
+    grid-column: 2;
+    grid-row: 1;
+    order: initial;
+    width: 40px;
+  }
+
+  .header-actions {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-end;
+    margin-left: 0;
+    min-width: 0;
+  }
+
+  .navigation {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    order: initial;
+  }
+
+  .login-link {
+    max-width: none;
+    white-space: nowrap;
+  }
+}
 @media (max-width: 1000px) {
   .admin-layout {
     grid-template-columns: 155px minmax(0, 1fr);
