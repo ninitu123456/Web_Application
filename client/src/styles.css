@@ -2142,3 +2142,60 @@ textarea {
     gap: 9px;
   }
 }
+
+/* Minimal blue-accent theme */
+:root {
+  --accent-blue: #2563eb;
+  --accent-blue-hover: #1d4ed8;
+  --accent-blue-soft: #dbeafe;
+}
+
+.primary {
+  background: var(--accent-blue);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--accent-blue-hover);
+}
+
+.navigation a.active,
+.text-link,
+.table-scroll td a,
+.brand-dot {
+  color: var(--accent-blue);
+}
+
+.tabs button.active {
+  background: var(--accent-blue-soft);
+  color: var(--accent-blue-hover);
+}
+
+.admin-sidebar nav a.active {
+  background: var(--accent-blue-soft);
+  color: var(--accent-blue-hover);
+}
+
+.brand-mark span {
+  color: var(--accent-blue-soft);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline-color: var(--accent-blue);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 16%);
+}
+
+.note-mark {
+  background: var(--accent-blue-soft);
+  color: var(--accent-blue-hover);
+}
