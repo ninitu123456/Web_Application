@@ -132,8 +132,8 @@ export function ItemCard({ item }: { item: Item }) {
         </p>
         <div className="card-bottom">
           <span>{dateLabel(item.eventDate)}</span>
-          <Link aria-label={`Xem ${item.title}`} to={`/do-vat/${item.id}`}>
-            ↗
+          <Link aria-label={`Xem chi tiết ${item.title}`} to={`/do-vat/${item.id}`}>
+            Xem chi tiết <span aria-hidden="true">↗</span>
           </Link>
         </div>
       </div>
