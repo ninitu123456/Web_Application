@@ -34,7 +34,7 @@ export function createPasswordResetService(pool, mailer, onInvalidate = () => {}
             text: `Mở liên kết để đặt lại mật khẩu (hiệu lực 15 phút, dùng một lần):\n${url}\nNếu bạn không yêu cầu, hãy bỏ qua email này.` });
         } catch {
           await query(pool, 'UPDATE password_reset_tokens SET expires_at=UTC_TIMESTAMP() WHERE token_hash=?', [tokenHash]);
-          // Same response for every account on transient SMTP failures; never claim delivery.
+          // Same response for every account on provider failures; never claim delivery.
         }
       }
       return resetMessage;

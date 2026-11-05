@@ -1,26 +1,52 @@
-import nodemailer from 'nodemailer';
+import { createHash } from 'node:crypto';
 
-export function createMailer(env = process.env, transportFactory = nodemailer.createTransport) {
-  const configured = Boolean(env.SMTP_HOST && env.SMTP_FROM && env.FRONTEND_URL && env.SMTP_USER && env.SMTP_PASSWORD);
-  let transport;
+const mailError = (code, extra = {}) => Object.assign(new Error('Email delivery unavailable'), { code, ...extra });
+export function createMailer(env = process.env, fetchRequest = globalThis.fetch, { timeoutMs = 8000 } = {}) {
+  const apiKey = env.RESEND_API_KEY?.trim(), from = env.EMAIL_FROM?.trim();
+  const configured = Boolean(apiKey && from && env.FRONTEND_URL);
   if (configured) {
     const url = new URL(env.FRONTEND_URL);
-    const port = Number(env.SMTP_PORT || 465);
-    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || !Number.isInteger(port) || port < 1 || port > 65535 || !['true', 'false', undefined].includes(env.SMTP_SECURE)) throw new Error('Invalid email configuration');
-    transport = transportFactory({ host: env.SMTP_HOST, port, secure: env.SMTP_SECURE !== 'false',
-      auth: { user: env.SMTP_USER, pass: env.SMTP_PASSWORD },
-      connectionTimeout: 5000, greetingTimeout: 5000, socketTimeout: 10000, dnsTimeout: 5000,
-      logger: false, debug: false });
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || /[\r\n]/.test(from + apiKey)) throw new Error('Invalid email configuration');
   }
+  const pending = new Set();
+  let closed = false;
   return {
     configured, frontendUrl: env.FRONTEND_URL?.replace(/\/$/, ''),
     async send({ to, subject, text, html, messageId }) {
-      if (!transport) throw Object.assign(new Error('Email unavailable'), { code: 'SMTP_UNAVAILABLE' });
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to) || /[\r\n]/.test(to)) throw Object.assign(new Error('Invalid recipient'), { code: 'INVALID_RECIPIENT' });
-      const result = await transport.sendMail({ from: env.SMTP_FROM, to, subject, text, html, messageId, disableFileAccess: true, disableUrlAccess: true });
-      if (!result.accepted?.length) throw Object.assign(new Error('Email not accepted'), { code: 'SMTP_REJECTED' });
+      if (!configured || closed) throw mailError('EMAIL_UNAVAILABLE');
+      if (typeof to !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to) || /[\r\n]/.test(to)) throw mailError('INVALID_RECIPIENT');
+      const controller = new AbortController();
+      pending.add(controller);
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const headers = { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
+        // Only non-secret match event IDs are used as idempotency keys. Never a reset URL/token.
+        if (messageId) headers['Idempotency-Key'] = `findit-match/${createHash('sha256').update(messageId).digest('hex')}`;
+        const response = await fetchRequest('https://api.resend.com/emails', {
+          method: 'POST', headers, redirect: 'error', signal: controller.signal,
+          body: JSON.stringify({ from, to: [to], subject, text, ...(html === undefined ? {} : { html }) })
+        });
+        if (!response.ok) {
+          await response.body?.cancel().catch(() => {});
+          if (response.status === 429) {
+            const retryAfter = Number(response.headers.get('retry-after'));
+            throw mailError('RESEND_RATE_LIMIT', Number.isFinite(retryAfter) && retryAfter > 0 ? { retryAfter: Math.min(86400, Math.ceil(retryAfter)) } : {});
+          }
+          if ([401, 403].includes(response.status)) throw mailError('RESEND_AUTH', { permanent: true });
+          if ([400, 422].includes(response.status)) throw mailError('RESEND_REJECTED', { permanent: true });
+          throw mailError('RESEND_FAILED');
+        }
+        const result = await response.json();
+        if (typeof result?.id !== 'string' || !result.id.trim()) throw mailError('RESEND_FAILED');
+        return { id: result.id };
+      } catch (error) {
+        // Never propagate provider bodies, request headers, tokens or fetch error causes.
+        if (controller.signal.aborted) throw mailError('EMAIL_TIMEOUT');
+        if (['RESEND_RATE_LIMIT', 'RESEND_AUTH', 'RESEND_REJECTED', 'RESEND_FAILED'].includes(error.code)) throw error;
+        throw mailError('RESEND_FAILED');
+      } finally { clearTimeout(timer); pending.delete(controller); }
     },
-    close() { transport?.close(); }
+    close() { closed = true; for (const controller of pending) controller.abort(); }
   };
 }
 export const escapeHtml = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

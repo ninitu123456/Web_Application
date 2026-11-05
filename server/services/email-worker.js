@@ -24,8 +24,9 @@ export function createEmailWorker(pool, mailer) {
         await mailer.send({ to: user.email, ...matchEmail(payload, mailer.frontendUrl), messageId: `<findit-match-${job.job_id}@${new URL(mailer.frontendUrl).hostname}>` });
         await query(pool, "UPDATE email_outbox SET status='SENT',sent_at=UTC_TIMESTAMP(),lease_token=NULL,lease_until=NULL,last_error=NULL WHERE job_id=? AND lease_token=?", [job.job_id, lease]);
       } catch (error) {
-        const code = ['INVALID_RECIPIENT', 'SMTP_REJECTED', 'SMTP_UNAVAILABLE', 'EAUTH', 'ETIMEDOUT', 'ESOCKET'].includes(error.code) ? error.code : 'SEND_FAILED';
-        await query(pool, "UPDATE email_outbox SET status=?,next_attempt_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? SECOND),last_error=?,lease_token=NULL,lease_until=NULL WHERE job_id=? AND lease_token=?", [job.attempts >= 5 || code === 'INVALID_RECIPIENT' ? 'FAILED' : 'PENDING', retryDelay(job.attempts), code, job.job_id, lease]);
+        const code = ['INVALID_RECIPIENT', 'EMAIL_UNAVAILABLE', 'EMAIL_TIMEOUT', 'RESEND_RATE_LIMIT', 'RESEND_AUTH', 'RESEND_REJECTED', 'RESEND_FAILED'].includes(error.code) ? error.code : 'SEND_FAILED';
+        const delay = Math.max(retryDelay(job.attempts), Number.isFinite(error.retryAfter) ? Math.min(86400, Math.max(0, error.retryAfter)) : 0);
+        await query(pool, "UPDATE email_outbox SET status=?,next_attempt_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? SECOND),last_error=?,lease_token=NULL,lease_until=NULL WHERE job_id=? AND lease_token=?", [job.attempts >= 5 || code === 'INVALID_RECIPIENT' || error.permanent ? 'FAILED' : 'PENDING', delay, code, job.job_id, lease]);
       }
       return true;
     }

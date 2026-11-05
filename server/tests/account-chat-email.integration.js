@@ -21,6 +21,7 @@ import { createTokenService } from '../utils/jwt.js';
 import { createPasswordResetService, hashResetToken } from '../services/password-reset.service.js';
 import { createMatchingRepository } from '../repositories/matching.repository.js';
 import { createEmailWorker } from '../services/email-worker.js';
+import { createMailer } from '../services/mail.service.js';
 import { createChatRepository } from '../repositories/chat.repository.js';
 import { createChatService } from '../services/chat.service.js';
 import { attachChatSocket } from '../chat-socket.js';
@@ -45,7 +46,11 @@ test('account recovery, match outbox and private realtime chat on real MySQL', {
     let jwtA = (await auth.login({ email: accounts[0].email, password })).token;
     const jwtB = (await auth.login({ email: accounts[1].email, password })).token, jwtC = (await auth.login({ email: accounts[2].email, password })).token;
     const sent = [];
-    const mailer = { configured: true, frontendUrl: 'https://findit.example', send: async message => { sent.push(message); } };
+    const mailer = createMailer({ RESEND_API_KEY: 'integration-test-only', EMAIL_FROM: 'FindIt <sender@findit.example>', FRONTEND_URL: 'https://findit.example' }, async (url, options) => {
+      assert.equal(url, 'https://api.resend.com/emails');
+      sent.push(JSON.parse(options.body));
+      return Response.json({ id: randomUUID() });
+    });
     const reset = createPasswordResetService(pool, mailer, id => { for (const s of io.sockets.sockets.values()) if (s.data.identity.id === id) s.disconnect(true); });
     chat = createChatService(createChatRepository(pool));
     const app = express();
@@ -125,13 +130,13 @@ test('account recovery, match outbox and private realtime chat on real MySQL', {
       await assert.rejects(() => reset.reset({ token: expired, password: 'Another-password123' }), e => e.status === 400);
       const disabled = createPasswordResetService(pool, { configured: false });
       for (const email of [accounts[0].email, 'absent@test.example']) await assert.rejects(() => disabled.forgot({ email }), e => e.status === 503);
-      const failing = createPasswordResetService(pool, { ...mailer, send: async () => { throw new Error('SMTP failed'); } });
+      const failing = createPasswordResetService(pool, { ...mailer, send: async () => { throw new Error('Resend failed'); } });
       const failure = await failing.forgot({ email: accounts[2].email });
       assert.equal(failure, absent.json.message);
       const [[failedToken]] = await query(pool, 'SELECT expires_at<=UTC_TIMESTAMP() AS expired FROM password_reset_tokens WHERE user_id=?', [accounts[2].id]);
       assert.equal(Number(failedToken.expired), 1);
     });
-    await t.test('threshold edges, unique recipients, no backfill, SMTP retries, competing workers and expired leases', async () => {
+    await t.test('threshold edges, unique recipients, no backfill, Resend retries, competing workers and expired leases', async () => {
       await query(pool, "INSERT INTO categories (name) VALUES ('Test')"); await query(pool, "INSERT INTO locations (name) VALUES ('Test')");
       for (const [i, type] of ['LOST', 'FOUND'].entries()) await query(pool, "INSERT INTO items (user_id,category_id,location_id,title,description,type,event_date,created_at,updated_at) VALUES (?,1,1,?,'text',?,'2026-11-05',UTC_TIMESTAMP(),UTC_TIMESTAMP())", [accounts[i].id, `Item ${i}`, type]);
       const [[count]] = await query(pool, 'SELECT COUNT(*) AS n FROM email_outbox'); assert.equal(Number(count.n), 0);
@@ -146,11 +151,11 @@ test('account recovery, match outbox and private realtime chat on real MySQL', {
       const [jobs] = await query(pool, 'SELECT * FROM email_outbox ORDER BY user_id');
       assert.equal(jobs.length, 2); assert.deepEqual(jobs.map(row => Number(row.user_id)), accounts.slice(0, 2).map(user => user.id));
       assert.equal((await query(pool, "SELECT * FROM notifications WHERE type='NEW_MATCH'"))[0].length, 2);
-      const failing = createEmailWorker(pool, { ...mailer, send: async () => { throw Object.assign(new Error('private SMTP detail'), { code: 'ESOCKET' }); } });
+      const failing = createEmailWorker(pool, { ...mailer, send: async () => { throw Object.assign(new Error('private provider detail'), { code: 'RESEND_RATE_LIMIT', retryAfter: 90 }); } });
       await failing.tick();
       const [[failed]] = await query(pool, 'SELECT * FROM email_outbox WHERE job_id=?', [jobs[0].job_id]);
-      assert.equal(failed.status, 'PENDING'); assert.equal(failed.attempts, 1); assert.equal(failed.last_error, 'ESOCKET');
-      assert.ok(failed.next_attempt_at > failed.created_at);
+      assert.equal(failed.status, 'PENDING'); assert.equal(failed.attempts, 1); assert.equal(failed.last_error, 'RESEND_RATE_LIMIT');
+      assert.ok(failed.next_attempt_at - failed.created_at >= 90000);
       await query(pool, "UPDATE email_outbox SET next_attempt_at=UTC_TIMESTAMP(),status='PROCESSING',lease_until=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 SECOND),lease_token=? WHERE job_id=?", [randomUUID(), jobs[0].job_id]);
       const delivered = [], good = createEmailWorker(pool, { ...mailer, send: async mail => { delivered.push(mail); } });
       await Promise.all([good.tick(), good.tick()]);
@@ -159,6 +164,10 @@ test('account recovery, match outbox and private realtime chat on real MySQL', {
       await query(pool, "UPDATE email_outbox SET status='PROCESSING',attempts=5,lease_until=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 SECOND) WHERE job_id=?", [jobs[0].job_id]);
       await good.tick();
       assert.equal((await query(pool, 'SELECT status FROM email_outbox WHERE job_id=?', [jobs[0].job_id]))[0][0].status, 'FAILED');
+      await query(pool, "UPDATE email_outbox SET status='PENDING',attempts=0,next_attempt_at=UTC_TIMESTAMP() WHERE job_id=?", [jobs[1].job_id]);
+      await createEmailWorker(pool, { ...mailer, send: async () => { throw Object.assign(new Error('private auth response'), { code: 'RESEND_AUTH', permanent: true }); } }).tick();
+      const [[rejected]] = await query(pool, 'SELECT status,attempts,last_error FROM email_outbox WHERE job_id=?', [jobs[1].job_id]);
+      assert.equal(rejected.status, 'FAILED'); assert.equal(rejected.attempts, 1); assert.equal(rejected.last_error, 'RESEND_AUTH');
     });
     if (process.env.FINDIT_FEATURE_BROWSER === '1') await t.test('desktop and mobile account/chat UI in Chrome', async () => {
       const { featureBrowserCheck } = await import('../../client/scripts/feature-browser-check.mjs');
