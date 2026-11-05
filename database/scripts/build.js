@@ -6,10 +6,18 @@ import { phase5Additions, phase5Alter } from '../phase5-schema.js';
 const root = new URL('../', import.meta.url);
 await mkdir(new URL('migrations/', root), { recursive: true });
 const statements = [];
+const legacyTables = tables.slice(0, 11);
+const visualTables = tables.slice(11);
 await writeFile(new URL('migrations/013_notification_report_support.sql', root), Object.keys(phase5Additions).map(phase5Alter).join('\n') + '\n');
-for (const [index, table] of tables.entries()) {
+for (const [index, table] of legacyTables.entries()) {
   const sql = createTable(table);
   const name = `${String(index + 1).padStart(3, '0')}_${table.name}.sql`;
+  await writeFile(new URL(`migrations/${name}`, root), sql);
+  statements.push(sql);
+}
+for (const [index, table] of visualTables.entries()) {
+  const sql = createTable(table);
+  const name = `${String(index + 14).padStart(3, '0')}_${table.name}.sql`;
   await writeFile(new URL(`migrations/${name}`, root), sql);
   statements.push(sql);
 }
@@ -22,4 +30,4 @@ await writeFile(new URL('database-schema.sql', root),
   'CREATE INDEX `idx_items_type_status` ON `items` (`type`, `status`);\n' +
   'CREATE INDEX `idx_items_created_at` ON `items` (`created_at`);\n' +
   Object.keys(phase5Additions).map(phase5Alter).join('\n') + '\n');
-console.log(`Generated ${tables.length} migrations and ${fileURLToPath(new URL('database-schema.sql', root))}`);
+console.log(`Generated ${tables.length + 2} migrations and ${fileURLToPath(new URL('database-schema.sql', root))}`);

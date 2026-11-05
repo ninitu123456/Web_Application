@@ -174,6 +174,55 @@ CREATE TABLE `activity_logs` (
   CONSTRAINT `fk_logs_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `item_image_embeddings` (
+  `embedding_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `image_id` BIGINT UNSIGNED NOT NULL,
+  `model_id` VARCHAR(120) NOT NULL,
+  `model_revision` VARCHAR(80) NOT NULL,
+  `dimensions` SMALLINT UNSIGNED NOT NULL,
+  `embedding_data` BLOB NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`embedding_id`),
+  UNIQUE KEY `uq_image_embedding_model` (`image_id`, `model_id`, `model_revision`),
+  CONSTRAINT `fk_embedding_image` FOREIGN KEY (`image_id`) REFERENCES `item_images` (`image_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `ck_embedding_dimensions` CHECK (dimensions = 512)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `ai_visual_jobs` (
+  `job_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `image_id` BIGINT UNSIGNED NOT NULL,
+  `model_id` VARCHAR(120) NOT NULL,
+  `model_revision` VARCHAR(80) NOT NULL,
+  `status` ENUM('QUEUED','PROCESSING','COMPLETED','FAILED','CANCELLED') NOT NULL DEFAULT 'QUEUED',
+  `attempts` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  `available_at` DATETIME NOT NULL,
+  `locked_until` DATETIME NULL,
+  `lease_token` CHAR(36) NULL,
+  `last_error_code` VARCHAR(80) NULL,
+  `created_at` DATETIME NOT NULL,
+  `updated_at` DATETIME NOT NULL,
+  PRIMARY KEY (`job_id`),
+  UNIQUE KEY `uq_ai_visual_job_image_model` (`image_id`, `model_id`, `model_revision`),
+  KEY `idx_ai_visual_jobs_ready` (`status`, `available_at`, `job_id`),
+  CONSTRAINT `fk_ai_visual_job_image` FOREIGN KEY (`image_id`) REFERENCES `item_images` (`image_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `ai_visual_candidates` (
+  `candidate_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `lost_item_id` BIGINT UNSIGNED NOT NULL,
+  `found_item_id` BIGINT UNSIGNED NOT NULL,
+  `model_id` VARCHAR(120) NOT NULL,
+  `model_revision` VARCHAR(80) NOT NULL,
+  `cosine_score` DOUBLE NOT NULL,
+  `updated_at` DATETIME NOT NULL,
+  PRIMARY KEY (`candidate_id`),
+  UNIQUE KEY `uq_ai_visual_candidate_pair_model` (`lost_item_id`, `found_item_id`, `model_id`, `model_revision`),
+  KEY `idx_ai_visual_candidates_found_item_id` (`found_item_id`),
+  CONSTRAINT `fk_ai_visual_candidate_lost` FOREIGN KEY (`lost_item_id`) REFERENCES `items` (`item_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_ai_visual_candidate_found` FOREIGN KEY (`found_item_id`) REFERENCES `items` (`item_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `ck_ai_visual_distinct` CHECK (lost_item_id <> found_item_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE INDEX `idx_items_status_event_date` ON `items` (`status`, `event_date`);
 CREATE INDEX `idx_items_type_status` ON `items` (`type`, `status`);
 CREATE INDEX `idx_items_created_at` ON `items` (`created_at`);

@@ -1,5 +1,6 @@
 // This existing module loads the root .env once and validates DB settings.
 import { configFromEnv } from '../../database/scripts/config.js';
+import { readAiVisualConfig } from '../ai-visual/config.js';
 
 export const defaultCorsOrigins = ['http://localhost:5173', 'http://localhost:3000'];
 export function readSecurityConfig(env = process.env) {
@@ -32,7 +33,7 @@ export function readAppConfig(env = process.env) {
   return { host, port, corsOrigins: [...new Set(origins)] };
 }
 export function readConfig(env = process.env) {
-  try { return { ...readAppConfig(env), database: configFromEnv(env), auth: readAuthConfig(env), security: readSecurityConfig(env), health: readHealthConfig(env) }; }
+  try { return { ...readAppConfig(env), database: configFromEnv(env), auth: readAuthConfig(env), security: readSecurityConfig(env), health: readHealthConfig(env), aiVisual: readAiVisualConfig(env) }; }
   catch (error) { error.code = 'INVALID_CONFIG'; throw error; }
 }
 

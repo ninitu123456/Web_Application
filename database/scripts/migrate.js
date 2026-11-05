@@ -8,9 +8,12 @@ import { phase5Additions, phase5Alter } from '../phase5-schema.js';
 export async function migrationFiles() {
   const directory = new URL('../migrations/', import.meta.url);
   const files = (await readdir(directory)).filter((name) => name.endsWith('.sql')).sort();
-  const tableMigrations = tables.map((table, index) => `${String(index + 1).padStart(3, '0')}_${table.name}.sql`);
+  const legacyTables = tables.slice(0, 11);
+  const visualTables = tables.slice(11);
+  const tableMigrations = legacyTables.map((table, index) => `${String(index + 1).padStart(3, '0')}_${table.name}.sql`);
   const additiveMigrations = ['012_item_search_indexes.sql', '013_notification_report_support.sql'];
-  const expected = [...tableMigrations, ...additiveMigrations];
+  const visualMigrations = visualTables.map((table, index) => `${String(index + 14).padStart(3, '0')}_${table.name}.sql`);
+  const expected = [...tableMigrations, ...additiveMigrations, ...visualMigrations];
   if (JSON.stringify(files) !== JSON.stringify(expected)) throw new Error('Unexpected migration file list');
   const initial = await Promise.all(tableMigrations.map(async (version, index) => {
     const sql = await readFile(new URL(version, directory), 'utf8');
@@ -26,9 +29,15 @@ export async function migrationFiles() {
   if (indexSql.replace(/\r\n/g, '\n').trim() !== indexes.map((index) => `${index.sql};`).join('\n')) throw new Error(`Migration differs from index definition: ${indexVersion}`);
   const phase5Version = additiveMigrations[1], phase5Sql = await readFile(new URL(phase5Version, directory), 'utf8');
   if (phase5Sql.replace(/\r\n/g, '\n').trim() !== Object.keys(phase5Additions).map(phase5Alter).join('\n')) throw new Error(`Migration differs from Phase 5 definition: ${phase5Version}`);
+  const visual = await Promise.all(visualTables.map(async (table, index) => {
+    const version = visualMigrations[index];
+    const sql = await readFile(new URL(version, directory), 'utf8');
+    if (sql.replace(/\r\n/g, '\n') !== createTable(table)) throw new Error(`Migration differs from schema definition: ${version}`);
+    return { version, sql, table, kind: 'table', checksum: createHash('sha256').update(sql).digest('hex') };
+  }));
   return [...initial, { version: indexVersion, sql: indexSql, table: tables.find((table) => table.name === 'items'), kind: 'index', indexes,
     checksum: createHash('sha256').update(indexSql).digest('hex') },
-  { version: phase5Version, sql: phase5Sql, kind: 'phase5', checksum: createHash('sha256').update(phase5Sql).digest('hex') }];
+  { version: phase5Version, sql: phase5Sql, kind: 'phase5', checksum: createHash('sha256').update(phase5Sql).digest('hex') }, ...visual];
 }
 async function history(connection, files) {
   const [rows] = await connection.query('SELECT version, checksum, status FROM _schema_migrations ORDER BY version');

@@ -7,7 +7,7 @@ import { serve } from './helpers.js';
 
 // Unit doubles only. Real transaction, journal and locking are exercised in
 // items.integration.js against a newly created database on the isolated server.
-function createItemService(repository, storage) {
+function createItemService(repository, storage, aiVisual = { enabled: false }) {
   repository.withLockedItem = async (id, operation) => operation(repository);
   repository.recordClose ??= async () => {};
   repository.completeImageOperation ??= async () => {};
@@ -17,7 +17,7 @@ function createItemService(repository, storage) {
       if (details.kind === 'DELETE') for (const publicId of details.publicIds) await storage.destroy(publicId);
       return result;
     }
-  });
+  }, aiVisual);
 }
 
 const good = { title: 'Lost AirPods', type: 'LOST', categoryId: 1, locationId: 2, eventDate: '2026-10-25', description: 'Near the library', color: 'White' };
@@ -108,6 +108,64 @@ test('image upload succeeds with mocked storage and enforces five images per Ite
   await assert.rejects(() => service.uploadImages({ id: '10', role: 'USER' }, 4, [{ mimetype: 'image/png', buffer: png }]), (error) => error.status === 400);
   assert.equal(uploads.length, 2);
 });
+test('image upload queues deduplicated CLIP work only when the development feature flag is enabled', async () => {
+  let imageId = 30;
+  const queued = [], repository = {
+    async findById() { return record(); }, async countImages() { return 0; },
+    async addImage(itemId, url, publicId) { return { image_id: String(++imageId), item_id: String(itemId), image_url: url, cloudinary_public_id: publicId }; },
+    async enqueueAiVisualJob(id, modelId, modelRevision) { queued.push({ id: String(id), modelId, modelRevision }); }
+  };
+  const storage = { async upload(_buffer, _mimetype, publicId) { return { url: `https://image.test/${publicId}.png`, publicId }; } };
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  await createItemService(repository, storage).uploadImages({ id: '10', role: 'USER' }, 4, [{ mimetype: 'image/png', buffer: png }]);
+  assert.deepEqual(queued, []);
+  const result = await createItemService(repository, storage, { enabled: true }).uploadImages({ id: '10', role: 'USER' }, 4,
+    [0, 1].map(() => ({ mimetype: 'image/png', buffer: png })));
+  assert.equal(result.length, 2);
+  assert.deepEqual(queued.map((job) => job.id), ['32', '33']);
+  assert.ok(queued.every((job) => job.modelId === 'Xenova/clip-vit-base-patch32' && job.modelRevision === '4c1807b705b1d015fb032789cc4d221b23025a6f'));
+});
+test('image upload remains successful when AI job scheduling is unavailable', async () => {
+  const repository = {
+    async findById() { return record(); }, async countImages() { return 0; },
+    async addImage(itemId, url, publicId) { return { image_id: '41', item_id: String(itemId), image_url: url, cloudinary_public_id: publicId }; },
+    async enqueueAiVisualJob() { throw new Error('table unavailable'); }
+  };
+  const storage = { async upload(_buffer, _mimetype, publicId) { return { url: `https://image.test/${publicId}.png`, publicId }; } };
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const errors = [], original = console.error;
+  console.error = (message) => errors.push(message);
+  try {
+    const result = await createItemService(repository, storage, { enabled: true }).uploadImages({ id: '10', role: 'USER' }, 4, [{ mimetype: 'image/png', buffer: png }]);
+    assert.equal(result.length, 1);
+  } finally { console.error = original; }
+  assert.match(errors[0], /ai_visual_job_enqueue_failed/);
+});
+test('image upload propagates transaction-invalidating AI enqueue errors', async () => {
+  const deadlock = Object.assign(new Error('deadlock victim'), { code: 'ER_LOCK_DEADLOCK' });
+  const repository = {
+    async findById() { return record(); }, async countImages() { return 0; },
+    async addImage(itemId, url, publicId) { return { image_id: '42', item_id: String(itemId), image_url: url, cloudinary_public_id: publicId }; },
+    async enqueueAiVisualJob() { throw deadlock; }
+  };
+  const storage = { async upload(_buffer, _mimetype, publicId) { return { url: `https://image.test/${publicId}.png`, publicId }; } };
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  await assert.rejects(() => createItemService(repository, storage, { enabled: true }).uploadImages(
+    { id: '10', role: 'USER' }, 4, [{ mimetype: 'image/png', buffer: png }]), (error) => error === deadlock);
+});
+test('deleting an image clears stale shadow data and requeues remaining photos only when enabled', async () => {
+  const calls = [];
+  const repository = {
+    async withLockedItem(_id, operation) { return operation(repository); },
+    async completeImageOperation() {},
+    async findById() { return record(); }, async findImage() { return { image_id: '7', item_id: '4', cloudinary_public_id: 'findit/items/7' }; },
+    async deleteImage() { calls.push('delete-image'); }, async deleteAiVisualData(id) { calls.push(['clear-shadow', String(id)]); },
+    async remainingImageIds() { return ['8']; }, async enqueueAiVisualJob(id) { calls.push(['enqueue', String(id)]); }
+  };
+  const service = buildItemService(repository, { async destroy() {} }, { async run(_details, operation) { return operation('delete-op'); } }, { enabled: true });
+  await service.deleteImage({ id: '10', role: 'USER' }, 4, 7);
+  assert.deepEqual(calls, [['clear-shadow', '4'], 'delete-image', ['enqueue', '8']]);
+});
 test('rejects existing plus new images above five before Cloudinary is called', async () => {
   let uploadCalls = 0;
   const service = createItemService({
@@ -117,6 +175,19 @@ test('rejects existing plus new images above five before Cloudinary is called', 
   await assert.rejects(() => service.uploadImages({ id: '10', role: 'USER' }, 4,
     [0, 1].map(() => ({ mimetype: 'image/png', buffer: png }))), (error) => error.status === 400);
   assert.equal(uploadCalls, 0);
+});
+
+test('image deletion propagates fatal AI requeue errors before commit or cloud deletion', async () => {
+  const deadlock = Object.assign(new Error('deadlock victim'), { code: 'ER_LOCK_DEADLOCK' });
+  const repository = {
+    async findById() { return record(); },
+    async findImage() { return { image_id: '7', item_id: '4', cloudinary_public_id: 'findit/items/7' }; },
+    async deleteAiVisualData() {}, async deleteImage() {}, async remainingImageIds() { return ['8']; },
+    async enqueueAiVisualJob() { throw deadlock; },
+    async completeImageOperation() { assert.fail('failed transaction must not receive a commit marker'); }
+  };
+  const service = createItemService(repository, { async destroy() { assert.fail('rolled-back deletion must preserve cloud asset'); } }, { enabled: true });
+  await assert.rejects(() => service.deleteImage({ id: '10', role: 'USER' }, 4, 7), (error) => error === deadlock);
 });
 test('cannot delete images from a CLOSED Item', async () => {
   const service = createItemService({

@@ -27,8 +27,10 @@ import { createAdminRepository } from './repositories/admin.repository.js';
 import { createAdminService } from './services/admin.service.js';
 import { createImageStorage } from './config/cloudinary.js';
 import { createImageOperations, startImageCleanup } from './services/image-operations.js';
+import { assertIsolatedInstance } from '../database/scripts/assert-isolated.js';
 
 export async function startServer(config = readConfig()) {
+  if (config.aiVisual?.enabled) await assertIsolatedInstance();
   const authConfig = readAuthConfig({ JWT_SECRET: config.auth?.secret, JWT_EXPIRES_IN: config.auth?.expiresIn });
   const imageStorage = createImageStorage();
   const pool = createDbPool(config.database);
@@ -40,7 +42,7 @@ export async function startServer(config = readConfig()) {
   const itemRepository = createItemRepository(pool);
   const lookupService = createLookupService(createLookupRepository(pool));
   const imageOperations = createImageOperations(pool, imageStorage);
-  const itemService = createItemService(itemRepository, imageStorage, imageOperations);
+  const itemService = createItemService(itemRepository, imageStorage, imageOperations, config.aiVisual);
   const claimService = createClaimService(createClaimRepository(pool));
   const notificationService = createNotificationService(createNotificationRepository(pool));
   const reportService = createReportService(createReportRepository(pool));

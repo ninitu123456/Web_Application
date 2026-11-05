@@ -1,6 +1,8 @@
 import { HttpError } from '../utils/http-error.js';
 import { itemDto } from '../utils/item-dto.js';
 import { randomUUID } from 'node:crypto';
+import { CLIP_MODEL_ID, CLIP_MODEL_REVISION } from '../ai-visual/config.js';
+import { logError } from '../utils/logger.js';
 
 const notFound = () => new HttpError(404, 'Không tìm thấy Item');
 const forbidden = () => new HttpError(403, 'Không có quyền truy cập');
@@ -19,7 +21,22 @@ function safeImageId(value) {
   if (!Number.isSafeInteger(result) || result <= 0) throw new Error('Image ID cannot be represented safely in the API');
   return result;
 }
-export function createItemService(repository, imageStorage, imageOperations) {
+function invalidatesTransaction(error) {
+  const fatalCodes = new Set([
+    'ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT', 'ER_ROLLBACK', 'DB_TRANSACTION_TIMEOUT',
+    'DB_TRANSACTION_BOUNDARY_TIMEOUT', 'DB_TRANSACTION_CLOSED', 'DB_ACQUIRE_TIMEOUT',
+    'PROTOCOL_CONNECTION_LOST', 'PROTOCOL_SEQUENCE_TIMEOUT', 'ER_SERVER_SHUTDOWN',
+    'ER_SERVER_GONE_ERROR', 'ER_CONNECTION_KILLED', 'ECONNRESET', 'ECONNREFUSED',
+    'EPIPE', 'ETIMEDOUT'
+  ]);
+  for (let current = error; current; current = current.cause) {
+    if (current.fatal || current.errno === 1205 || current.errno === 1213 || current.sqlState === '40001' ||
+        fatalCodes.has(current.code) || /^ER_XA_RB/.test(current.code ?? '') || /^PROTOCOL_/.test(current.code ?? '') ||
+        /^ECONN|^ETIMEDOUT/.test(current.code ?? '')) return true;
+  }
+  return false;
+}
+export function createItemService(repository, imageStorage, imageOperations, aiVisual = { enabled: false }) {
   async function assertReferences(item, source = repository) {
     if (item.categoryId !== undefined && !await source.categoryActive(item.categoryId)) throw new HttpError(400, 'Danh mục không tồn tại hoặc không hoạt động');
     if (item.locationId !== undefined && !await source.locationActive(item.locationId)) throw new HttpError(400, 'Địa điểm không tồn tại hoặc không hoạt động');
@@ -85,6 +102,13 @@ export function createItemService(repository, imageStorage, imageOperations) {
           for (const asset of uploaded) {
             const image = await source.addImage(id, asset.url, asset.publicId);
             saved.push({ id: safeImageId(image.image_id), url: image.image_url });
+            if (aiVisual.enabled) {
+              try { await source.enqueueAiVisualJob(image.image_id, CLIP_MODEL_ID, CLIP_MODEL_REVISION); }
+              catch (error) {
+                if (invalidatesTransaction(error)) throw error;
+                logError('ai_visual_job_enqueue_failed', error);
+              }
+            }
           }
           await source.completeImageOperation(operationId);
           return saved;
@@ -102,7 +126,18 @@ export function createItemService(repository, imageStorage, imageOperations) {
           open(await owned(identity, id, source));
           const current = await source.findImage(imageId);
           if (!current || String(current.item_id) !== String(id)) throw notFound();
+          if (aiVisual.enabled) await source.deleteAiVisualData(id);
+          else if (source.deleteAiVisualDataIfPresent) await source.deleteAiVisualDataIfPresent(id, current.image_id);
           await source.deleteImage(imageId);
+          if (aiVisual.enabled) {
+            for (const remainingImageId of await source.remainingImageIds(id)) {
+              try { await source.enqueueAiVisualJob(remainingImageId, CLIP_MODEL_ID, CLIP_MODEL_REVISION); }
+              catch (error) {
+                if (invalidatesTransaction(error)) throw error;
+                logError('ai_visual_job_enqueue_failed', error);
+              }
+            }
+          }
           await source.completeImageOperation(operationId);
         }, { connection }));
     }

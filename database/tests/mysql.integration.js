@@ -41,7 +41,7 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
     created = true;
     await initialize(connection, ownedName);
     await t.test('empty database migrates and seeds with verified password hashes', async () => {
-      assert.equal(await migrate(connection, ownedName), 13);
+      assert.equal(await migrate(connection, ownedName), 16);
       await seed(connection, ownedName, credentials);
       await verifyMigrations(connection, ownedName);
       assert.deepEqual(await verifySeed(connection, ownedName, credentials), { roles: 2, users: 2, categories: 4, locations: 4, items: 4 });
@@ -72,6 +72,13 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
         };
         for (const [name, row] of Object.entries(valid)) await insert(connection, name, row);
         const [[claim]] = await connection.query('SELECT claim_id FROM claims LIMIT 1');
+        const [[image]] = await connection.query('SELECT image_id FROM item_images LIMIT 1');
+        valid.item_image_embeddings = { image_id: image.image_id, model_id: 'test-model', model_revision: 'test-revision', dimensions: 512, embedding_data: Buffer.alloc(2048), created_at: now };
+        await insert(connection, 'item_image_embeddings', valid.item_image_embeddings);
+        valid.ai_visual_jobs = { image_id: image.image_id, model_id: 'test-model', model_revision: 'test-revision', status: 'QUEUED', attempts: 0, available_at: now, created_at: now, updated_at: now };
+        await insert(connection, 'ai_visual_jobs', valid.ai_visual_jobs);
+        valid.ai_visual_candidates = { lost_item_id: lost.item_id, found_item_id: found.item_id, model_id: 'test-model', model_revision: 'test-revision', cosine_score: 0.5, updated_at: now };
+        await insert(connection, 'ai_visual_candidates', valid.ai_visual_candidates);
         valid.reports = { reporter_id: user.user_id, target_type: 'ITEM', item_id: found.item_id, reason: 'Test', created_at: now };
         await insert(connection, 'reports', valid.reports);
         // Every primary key and every non-auto-increment NOT NULL column.
@@ -141,9 +148,10 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
       assert.equal(await migrate(connection, ownedName), 1);
       // Failure after only part of an additive DDL migration: safely create the missing index.
       await connection.query('DROP INDEX idx_items_created_at ON items');
-      await connection.execute('DELETE FROM _schema_migrations WHERE version=?', [last.version]);
+      await connection.query('DROP TABLE ai_visual_candidates, ai_visual_jobs, item_image_embeddings');
+      await connection.execute("DELETE FROM _schema_migrations WHERE version IN ('013_notification_report_support.sql','014_item_image_embeddings.sql','015_ai_visual_jobs.sql','016_ai_visual_candidates.sql')");
       await connection.execute("UPDATE _schema_migrations SET status='running', applied_at=NULL WHERE version='012_item_search_indexes.sql'");
-      assert.equal(await migrate(connection, ownedName), 2);
+      assert.equal(await migrate(connection, ownedName), 5);
       await connection.execute('UPDATE _schema_migrations SET checksum=REPEAT(\'0\',64) WHERE version=?', [last.version]);
       await assert.rejects(() => migrate(connection, ownedName), /history\/checksum/);
       await connection.execute('UPDATE _schema_migrations SET checksum=? WHERE version=?', [last.checksum, last.version]);

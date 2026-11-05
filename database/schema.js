@@ -72,7 +72,28 @@ export const tables = [
   { name: 'activity_logs', pk: 'log_id', columns: {
     log_id: id, user_id: optionalRef, action: 'VARCHAR(100) NOT NULL', entity_type: 'VARCHAR(50) NOT NULL',
     entity_id: optionalRef, details: 'JSON NULL', created_at: time
-  }, foreign: { fk_logs_user: fk('user_id', 'users', 'user_id') } }
+  }, foreign: { fk_logs_user: fk('user_id', 'users', 'user_id') } },
+  { name: 'item_image_embeddings', pk: 'embedding_id', columns: {
+    embedding_id: id, image_id: ref, model_id: 'VARCHAR(120) NOT NULL', model_revision: 'VARCHAR(80) NOT NULL',
+    dimensions: 'SMALLINT UNSIGNED NOT NULL', embedding_data: 'BLOB NOT NULL', created_at: time
+  }, unique: { uq_image_embedding_model: ['image_id', 'model_id', 'model_revision'] }, foreign: {
+    fk_embedding_image: fk('image_id', 'item_images', 'image_id')
+  }, checks: { ck_embedding_dimensions: 'dimensions = 512' } },
+  { name: 'ai_visual_jobs', pk: 'job_id', columns: {
+    job_id: id, image_id: ref, model_id: 'VARCHAR(120) NOT NULL', model_revision: 'VARCHAR(80) NOT NULL',
+    status: "ENUM('QUEUED','PROCESSING','COMPLETED','FAILED','CANCELLED') NOT NULL DEFAULT 'QUEUED'",
+    attempts: 'TINYINT UNSIGNED NOT NULL DEFAULT 0', available_at: time, locked_until: 'DATETIME NULL',
+    lease_token: 'CHAR(36) NULL', last_error_code: 'VARCHAR(80) NULL', created_at: time, updated_at: time
+  }, unique: { uq_ai_visual_job_image_model: ['image_id', 'model_id', 'model_revision'] }, foreign: {
+    fk_ai_visual_job_image: fk('image_id', 'item_images', 'image_id')
+  }, indexes: { idx_ai_visual_jobs_ready: ['status', 'available_at', 'job_id'] } },
+  { name: 'ai_visual_candidates', pk: 'candidate_id', columns: {
+    candidate_id: id, lost_item_id: ref, found_item_id: ref, model_id: 'VARCHAR(120) NOT NULL',
+    model_revision: 'VARCHAR(80) NOT NULL', cosine_score: 'DOUBLE NOT NULL', updated_at: time
+  }, unique: { uq_ai_visual_candidate_pair_model: ['lost_item_id', 'found_item_id', 'model_id', 'model_revision'] }, foreign: {
+    fk_ai_visual_candidate_lost: fk('lost_item_id', 'items', 'item_id'),
+    fk_ai_visual_candidate_found: fk('found_item_id', 'items', 'item_id')
+  }, checks: { ck_ai_visual_distinct: 'lost_item_id <> found_item_id' } }
 ];
 
 export const metadata = {
@@ -88,6 +109,7 @@ export const quote = (name) => {
 export function indexes(table) {
   const result = { PRIMARY: { unique: true, columns: [table.pk] } };
   for (const [name, columns] of Object.entries(table.unique ?? {})) result[name] = { unique: true, columns };
+  for (const [name, columns] of Object.entries(table.indexes ?? {})) result[name] = { unique: false, columns };
   for (const relation of Object.values(table.foreign ?? {})) {
     if (!Object.values(result).some((index) => index.columns[0] === relation.column)) {
       result[`idx_${table.name}_${relation.column}`] = { unique: false, columns: [relation.column] };

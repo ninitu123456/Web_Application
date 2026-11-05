@@ -10,6 +10,8 @@
     "test": "npm run test:backend && npm run test:auth && npm run db:test",
     "start": "node server/server.js",
     "dev": "node --watch server/server.js",
+    "worker:ai-visual": "node server/ai-visual/main.js",
+    "ai-visual:smoke": "node server/ai-visual/smoke.js",
     "test:backend": "node --test server/tests/*.test.js",
     "test:items": "node --test server/tests/items.test.js",
     "test:claims": "node --test server/tests/claims.test.js",
@@ -37,6 +39,7 @@
     "audit:production": "npm audit --omit=dev"
   },
   "dependencies": {
+    "@huggingface/transformers": "3.8.1",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.11.0",
     "cors": "^2.8.6",
@@ -47,6 +50,7 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.5.0",
     "mysql2": "^3.15.3",
+    "sharp": "0.34.5",
     "zod": "^4.6.7"
   },
   "devDependencies": {

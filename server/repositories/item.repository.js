@@ -93,6 +93,36 @@ export function createItemRepository(pool, execute = (sql, values = []) => query
       const [result] = await execute('INSERT INTO item_images (item_id, image_url, cloudinary_public_id, created_at) VALUES (?, ?, ?, UTC_TIMESTAMP())', [id, url, publicId]);
       return { image_id: String(result.insertId), image_url: url, cloudinary_public_id: publicId };
     },
+    async enqueueAiVisualJob(imageId, modelId, modelRevision) {
+      await execute(`INSERT IGNORE INTO ai_visual_jobs
+        (image_id, model_id, model_revision, status, attempts, available_at, created_at, updated_at)
+        VALUES (?, ?, ?, 'QUEUED', 0, UTC_TIMESTAMP(), UTC_TIMESTAMP(), UTC_TIMESTAMP())`, [imageId, modelId, modelRevision]);
+    },
+    async deleteAiVisualData(itemId) {
+      await execute('DELETE FROM ai_visual_candidates WHERE lost_item_id=? OR found_item_id=?', [itemId, itemId]);
+      await execute('DELETE j FROM ai_visual_jobs j JOIN item_images im ON im.image_id=j.image_id WHERE im.item_id=?', [itemId]);
+      await execute('DELETE e FROM item_image_embeddings e JOIN item_images im ON im.image_id=e.image_id WHERE im.item_id=?', [itemId]);
+    },
+    async deleteAiVisualDataIfPresent(itemId, imageId) {
+      const [rows] = await execute(`SELECT TABLE_NAME AS table_name FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('ai_visual_candidates','ai_visual_jobs','item_image_embeddings')`);
+      const tables = new Set(rows.map((row) => row.table_name));
+      if (tables.has('ai_visual_candidates')) {
+        await execute('DELETE FROM ai_visual_candidates WHERE lost_item_id=? OR found_item_id=?', [itemId, itemId]);
+      }
+      if (tables.has('ai_visual_jobs')) {
+        if (imageId === undefined) await execute('DELETE j FROM ai_visual_jobs j JOIN item_images im ON im.image_id=j.image_id WHERE im.item_id=?', [itemId]);
+        else await execute('DELETE FROM ai_visual_jobs WHERE image_id=?', [imageId]);
+      }
+      if (tables.has('item_image_embeddings')) {
+        if (imageId === undefined) await execute('DELETE e FROM item_image_embeddings e JOIN item_images im ON im.image_id=e.image_id WHERE im.item_id=?', [itemId]);
+        else await execute('DELETE FROM item_image_embeddings WHERE image_id=?', [imageId]);
+      }
+    },
+    async remainingImageIds(itemId) {
+      const [rows] = await execute('SELECT image_id FROM item_images WHERE item_id=? ORDER BY image_id', [itemId]);
+      return rows.map((row) => String(row.image_id));
+    },
     async countImages(id) {
       const [[row]] = await execute('SELECT COUNT(*) AS total FROM item_images WHERE item_id = ?', [id]);
       return Number(row.total);
