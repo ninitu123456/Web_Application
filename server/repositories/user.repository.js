@@ -1,6 +1,6 @@
 import { query, withConnection, databaseTimeout } from '../config/db.js';
 
-const publicColumns = 'u.user_id, u.full_name, u.email, u.account_status, r.name AS role';
+const publicColumns = 'u.user_id, u.full_name, u.email, u.account_status, u.session_version, r.name AS role';
 const fromUsers = 'FROM users u JOIN roles r ON r.role_id = u.role_id';
 export function createUserRepository(pool) {
   return {

@@ -93,6 +93,7 @@ export function indexes(table) {
       result[`idx_${table.name}_${relation.column}`] = { unique: false, columns: [relation.column] };
     }
   }
+  for (const [name, columns] of Object.entries(table.indexes ?? {})) result[name] = { unique: false, columns };
   return result;
 }
 export function createTable(table) {

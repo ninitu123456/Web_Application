@@ -1,3 +1,4 @@
+import { featureTables, sessionAlter } from '../features-schema.js';
 import { readFile, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { tables, metadata, createTable } from '../schema.js';
@@ -10,7 +11,8 @@ export async function migrationFiles() {
   const files = (await readdir(directory)).filter((name) => name.endsWith('.sql')).sort();
   const tableMigrations = tables.map((table, index) => `${String(index + 1).padStart(3, '0')}_${table.name}.sql`);
   const additiveMigrations = ['012_item_search_indexes.sql', '013_notification_report_support.sql'];
-  const expected = [...tableMigrations, ...additiveMigrations];
+  const featureVersions = ['014_session_version.sql', ...featureTables.map((t, i) => `${String(15 + i).padStart(3, '0')}_${t.name}.sql`)];
+  const expected = [...tableMigrations, ...additiveMigrations, ...featureVersions];
   if (JSON.stringify(files) !== JSON.stringify(expected)) throw new Error('Unexpected migration file list');
   const initial = await Promise.all(tableMigrations.map(async (version, index) => {
     const sql = await readFile(new URL(version, directory), 'utf8');
@@ -26,9 +28,14 @@ export async function migrationFiles() {
   if (indexSql.replace(/\r\n/g, '\n').trim() !== indexes.map((index) => `${index.sql};`).join('\n')) throw new Error(`Migration differs from index definition: ${indexVersion}`);
   const phase5Version = additiveMigrations[1], phase5Sql = await readFile(new URL(phase5Version, directory), 'utf8');
   if (phase5Sql.replace(/\r\n/g, '\n').trim() !== Object.keys(phase5Additions).map(phase5Alter).join('\n')) throw new Error(`Migration differs from Phase 5 definition: ${phase5Version}`);
-  return [...initial, { version: indexVersion, sql: indexSql, table: tables.find((table) => table.name === 'items'), kind: 'index', indexes,
+  const features = await Promise.all(featureVersions.map(async (version, i) => {
+    const sql = await readFile(new URL(version, directory), 'utf8');
+    if (sql.replace(/\r\n/g, '\n').trim() !== (i === 0 ? sessionAlter : createTable(featureTables[i - 1])).trim()) throw new Error(`Feature migration mismatch: ${version}`);
+    return { version, sql, table: i === 0 ? undefined : featureTables[i - 1], kind: i === 0 ? 'session' : 'table', checksum: createHash('sha256').update(sql).digest('hex') };
+  }));
+  return [...initial, ...features, { version: indexVersion, sql: indexSql, table: tables.find((table) => table.name === 'items'), kind: 'index', indexes,
     checksum: createHash('sha256').update(indexSql).digest('hex') },
-  { version: phase5Version, sql: phase5Sql, kind: 'phase5', checksum: createHash('sha256').update(phase5Sql).digest('hex') }];
+  { version: phase5Version, sql: phase5Sql, kind: 'phase5', checksum: createHash('sha256').update(phase5Sql).digest('hex') }].sort((a, b) => a.version.localeCompare(b.version));
 }
 async function history(connection, files) {
   const [rows] = await connection.query('SELECT version, checksum, status FROM _schema_migrations ORDER BY version');
@@ -49,7 +56,7 @@ export async function verifyMigrations(connection, database) {
 export async function migrate(connection, database) {
   const files = await migrationFiles();
   return withLock(connection, database, async () => {
-    const existing = await assertExistingSchema(connection, database, { allowPendingAdditiveIndexes: true, allowPendingPhase5: true });
+    const existing = await assertExistingSchema(connection, database, { allowPendingAdditiveIndexes: true, allowPendingPhase5: true, allowPendingFeatures: true });
     if (!existing.includes(metadata.name) && existing.length) throw new Error('Existing tables have no migration history; manual review required');
     let rows = [];
     if (existing.includes(metadata.name)) rows = await history(connection, files);
@@ -73,6 +80,11 @@ export async function migrate(connection, database) {
       // only after comparing every column, index, FK and CHECK to the manifest.
       if (file.kind === 'table') {
         if (!existing.includes(file.table.name)) await connection.query(file.sql);
+      } else if (file.kind === 'session') {
+        const [columns] = await connection.query("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME='users' AND COLUMN_NAME='session_version'", [database]);
+        if (!columns.length) await connection.query(file.sql);
+        const problems = await inspectTable(connection, database, tables.find(t => t.name === 'users'));
+        if (problems.length) throw new Error(problems.join('\n'));
       } else if (file.kind === 'phase5') {
         // Each ALTER is atomic on MySQL 8. A rerun accepts only the exact
         // before/after table shape, never repairs arbitrary partial definitions.
@@ -80,7 +92,7 @@ export async function migrate(connection, database) {
           const table = tables.find((table) => table.name === name);
           const [columns] = await connection.execute('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME=? AND COLUMN_NAME=?', [database, name, Object.keys(phase5Additions[name].columns)[0]]);
           if (!columns.length) await connection.query(phase5Alter(name));
-          const problems = await inspectTable(connection, database, table);
+          const problems = await inspectTable(connection, database, table, { allowPendingFeatures: true });
           if (problems.length) throw new Error(problems.join('\n'));
         }
       } else {
@@ -90,7 +102,7 @@ export async function migrate(connection, database) {
           else if (JSON.stringify(rows.map((row) => row.name)) !== JSON.stringify(index.columns)) throw new Error(`Index ${index.name} differs from expected definition`);
         }
       }
-      const problems = file.table ? await inspectTable(connection, database, file.table, { allowPendingAdditiveIndexes: file.kind === 'table', allowPendingPhase5: true }) : [];
+      const problems = file.table ? await inspectTable(connection, database, file.table, { allowPendingAdditiveIndexes: file.kind === 'table', allowPendingPhase5: true, allowPendingFeatures: true }) : [];
       if (problems.length) throw new Error(problems.join('\n'));
       await connection.execute("UPDATE _schema_migrations SET status = 'applied', applied_at = UTC_TIMESTAMP() WHERE version = ?", [file.version]);
       applied++;

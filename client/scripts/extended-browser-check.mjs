@@ -412,6 +412,7 @@ export async function extendedBrowserCheck({
           fullName: "Người nhận kiểm thử",
           email: thirdEmail,
           password,
+          confirmPassword: password,
         })
       ).status,
       201,

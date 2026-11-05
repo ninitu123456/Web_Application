@@ -1,9 +1,11 @@
+import { useChat } from "../lib/chat";
 import { useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { useNotifications } from "../lib/notifications";
 export function Layout() {
   const { user, logout } = useAuth();
+  const chat = useChat();
   const notifications = useNotifications();
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
@@ -40,6 +42,9 @@ export function Layout() {
           {user && (
             <>
               <NavLink to="/bai-dang-cua-toi">Bài đăng của tôi</NavLink>
+              <NavLink to="/tin-nhan">
+                Tin nhắn {chat.unread > 0 ? `(${chat.unread})` : ""}
+              </NavLink>
               <NavLink to="/yeu-cau-cua-toi">Yêu cầu đã gửi</NavLink>
             </>
           )}
@@ -88,6 +93,7 @@ export function Layout() {
               <div className="account-menu">
                 <strong>{user.fullName}</strong>
                 <small>{user.email}</small>
+                <Link to="/tin-nhan">Tin nhắn</Link>
                 <Link to="/ho-so">Hồ sơ cá nhân</Link>
                 <Link to="/thong-bao">Thông báo</Link>
                 <Link to="/bai-dang-cua-toi">Bài đăng của tôi</Link>

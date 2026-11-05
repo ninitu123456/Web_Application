@@ -304,7 +304,7 @@ test('Phase 5 integration: real notifications, reports, transactions and additiv
       const database = await legacy();
       const [oldNotifications] = await connection.query('SELECT notification_id,user_id,type,message,is_read,created_at FROM notifications');
       const [oldReports] = await connection.query('SELECT report_id,reporter_id,target_type,item_id,reason,status,created_at FROM reports');
-      const last = files.at(-1);
+      const last = files.find(file => file.version === '013_notification_report_support.sql');
       const proxy = new Proxy(connection, { get(target, key) {
         if (key === 'query') return (sql, values) => {
           if (typeof sql === 'string' && sql.startsWith('ALTER TABLE `reports`')) throw new Error('interrupted between ALTERs');
@@ -315,7 +315,7 @@ test('Phase 5 integration: real notifications, reports, transactions and additiv
       await assert.rejects(() => migrate(proxy, database), /interrupted between ALTERs/);
       assert.equal((await connection.query('SHOW COLUMNS FROM notifications LIKE \'event_key\''))[0].length, 1);
       assert.equal((await connection.query('SHOW COLUMNS FROM reports LIKE \'active_target_key\''))[0].length, 0);
-      assert.equal(await migrate(connection, database), 1); assert.equal(await migrate(connection, database), 0);
+      assert.equal(await migrate(connection, database), 6); assert.equal(await migrate(connection, database), 0);
       assert.deepEqual((await connection.query('SELECT notification_id,user_id,type,message,is_read,created_at FROM notifications'))[0], oldNotifications);
       assert.deepEqual((await connection.query('SELECT report_id,reporter_id,target_type,item_id,reason,status,created_at FROM reports'))[0], oldReports);
       await connection.query('ALTER TABLE notifications DROP INDEX uq_notifications_user_event');
@@ -326,7 +326,7 @@ test('Phase 5 integration: real notifications, reports, transactions and additiv
       assert.equal((await connection.query('SELECT * FROM reports'))[0].length, 2);
       assert.equal((await connection.query('SHOW COLUMNS FROM notifications LIKE \'event_key\''))[0].length, 0);
       await connection.query("UPDATE reports SET status='DISMISSED'");
-      assert.equal(await migrate(connection, duplicateDb), 1);
+      assert.equal(await migrate(connection, duplicateDb), 6);
       assert.equal((await connection.query("SELECT * FROM reports WHERE active_target_key IS NULL"))[0].length, 2);
       assert.equal(last.version, '013_notification_report_support.sql');
       assert.ok(phase5Alter('reports').includes('active_target_key'));

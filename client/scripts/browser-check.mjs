@@ -130,6 +130,9 @@ export async function browserCheck({
     );
     await pageB.getByLabel("Họ và tên").fill("Người dùng kiểm thử");
     await pageB.getByLabel("Email", { exact: true }).fill(registrationEmail);
+    await pageB
+      .getByLabel("Nhập lại mật khẩu", { exact: true })
+      .fill("placeholder123");
     await expect(
       pageB.getByText("Sử dụng ít nhất 8 ký tự.", { exact: true }),
     ).toBeVisible();
@@ -156,6 +159,9 @@ export async function browserCheck({
       "Sử dụng ít nhất 8 ký tự cho mật khẩu.",
     );
     await pageB.getByLabel("Mật khẩu", { exact: true }).fill("ắ".repeat(24));
+    await pageB
+      .getByLabel("Nhập lại mật khẩu", { exact: true })
+      .fill("ắ".repeat(24));
     await pageB
       .getByRole("button", { name: "Tạo tài khoản →", exact: true })
       .click();

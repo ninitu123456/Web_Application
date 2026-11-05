@@ -1,3 +1,4 @@
+import { featureTables, sessionAlter } from '../features-schema.js';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { tables, metadata, createTable } from '../schema.js';
@@ -21,5 +22,7 @@ await writeFile(new URL('database-schema.sql', root),
   '\nCREATE INDEX `idx_items_status_event_date` ON `items` (`status`, `event_date`);\n' +
   'CREATE INDEX `idx_items_type_status` ON `items` (`type`, `status`);\n' +
   'CREATE INDEX `idx_items_created_at` ON `items` (`created_at`);\n' +
-  Object.keys(phase5Additions).map(phase5Alter).join('\n') + '\n');
+  Object.keys(phase5Additions).map(phase5Alter).join('\n') + '\n' + sessionAlter + '\n' + featureTables.map(createTable).join('\n'));
+await writeFile(new URL('migrations/014_session_version.sql', root), sessionAlter + '\n');
+for (const [index, table] of featureTables.entries()) await writeFile(new URL(`migrations/${String(index + 15).padStart(3, '0')}_${table.name}.sql`, root), createTable(table));
 console.log(`Generated ${tables.length} migrations and ${fileURLToPath(new URL('database-schema.sql', root))}`);

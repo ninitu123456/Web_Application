@@ -1,3 +1,4 @@
+import { PasswordInput } from "../components/PasswordInput";
 import { useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth, safeNext } from "../lib/auth";
@@ -13,6 +14,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
@@ -40,6 +42,10 @@ export function AuthPage({ register = false }: { register?: boolean }) {
       setError("Họ tên cần từ 1 đến 150 ký tự.");
       return;
     }
+    if (register && password !== confirmPassword) {
+      setError("Mật khẩu xác nhận không khớp.");
+      return;
+    }
     lock.current = true;
     setBusy(true);
     setError("");
@@ -51,6 +57,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
             fullName: name.trim(),
             email: email.trim().toLowerCase(),
             password,
+            confirmPassword,
           },
           auth: false,
         });
@@ -117,14 +124,27 @@ export function AuthPage({ register = false }: { register?: boolean }) {
             autoComplete="email"
             required
           />
-          <Input
+          <PasswordInput
             label="Mật khẩu"
-            type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete={register ? "new-password" : "current-password"}
             required
           />
+          {register && (
+            <PasswordInput
+              label="Nhập lại mật khẩu"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
+              required
+            />
+          )}
+          {!register && (
+            <p>
+              <Link to="/quen-mat-khau">Quên mật khẩu?</Link>
+            </p>
+          )}
           {register && (
             <small className="muted">Sử dụng ít nhất 8 ký tự.</small>
           )}
