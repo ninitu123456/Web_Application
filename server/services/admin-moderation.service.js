@@ -1,4 +1,5 @@
 import { HttpError } from '../utils/http-error.js';
+import { deleteAiVisualCandidatesIfPresent } from '../ai-visual/invalidation.js';
 import { adminClaimDto, adminClaimSummary, activityLogDto } from '../utils/admin-dto.js';
 import { paged } from '../utils/workflow-dto.js';
 import { itemDto } from '../utils/item-dto.js';
@@ -36,6 +37,7 @@ export function createAdminModerationService(repository) {
         const { item, pending } = await context(source, identity, id);
         for (const claim of pending) await transition(source, claim, 'REJECTED');
         await itemStatus(source, item, 'CLOSED');
+        await deleteAiVisualCandidatesIfPresent(source.run, id);
         const decisionLogId = await source.audit('ITEM_MODERATED_CLOSED', 'ITEM', id, { previousStatus: item.status, status: 'CLOSED', reason, source: 'ADMIN_MODERATION', rejectedClaimCount: pending.length });
         for (const claim of pending) await source.audit('CLAIM_REJECTED', 'CLAIM', claim.claim_id, { previousStatus: 'PENDING', status: 'REJECTED', itemId: String(id), automatic: true, source: 'ADMIN_MODERATION', decisionLogId });
         await source.notify([{ userId: item.user_id, type: 'ITEM_MODERATED_CLOSED', id }, ...pending.map((claim) => ({ userId: claim.claimant_id, type: 'CLAIM_REJECTED', id: claim.claim_id }))]);

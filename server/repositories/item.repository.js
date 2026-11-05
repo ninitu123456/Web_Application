@@ -2,6 +2,7 @@ import { query, transaction, inTransaction, databaseTimeout } from '../config/db
 import { matchingTransaction } from '../services/matching-transaction.js';
 import { createMatchingService } from '../services/matching.service.js';
 import { createMatchingRepository } from './matching.repository.js';
+import { deleteAiVisualCandidatesIfPresent } from '../ai-visual/invalidation.js';
 
 const columns = 'i.item_id, i.user_id, i.category_id, i.location_id, i.title, i.description, i.type, i.color, i.event_date, i.status, i.created_at, i.updated_at, c.name AS category_name, l.name AS location_name';
 const joins = 'FROM items i JOIN categories c ON c.category_id = i.category_id JOIN locations l ON l.location_id = i.location_id';
@@ -87,6 +88,7 @@ export function createItemRepository(pool, execute = (sql, values = []) => query
     },
     async close(id) {
       const [result] = await execute("UPDATE items SET status = 'CLOSED', updated_at = UTC_TIMESTAMP() WHERE item_id = ? AND status = 'OPEN'", [id]);
+      if (result.affectedRows) await deleteAiVisualCandidatesIfPresent(execute, id);
       return result.affectedRows;
     },
     async addImage(id, url, publicId) {
