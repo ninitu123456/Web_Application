@@ -186,3 +186,65 @@ ALTER TABLE `reports`
   ADD UNIQUE KEY `uq_reports_active_target` (`reporter_id`, `active_target_key`),
   ADD INDEX `idx_reports_status_created` (`status`, `created_at`, `report_id`),
   ADD INDEX `idx_reports_reporter_created` (`reporter_id`, `created_at`, `report_id`);
+ALTER TABLE `users` ADD COLUMN `session_version` INT UNSIGNED NOT NULL DEFAULT 0;
+CREATE TABLE `password_reset_tokens` (
+  `token_hash` CHAR(64) NOT NULL,
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`token_hash`),
+  KEY `idx_password_reset_tokens_user_id` (`user_id`),
+  CONSTRAINT `fk_reset_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `email_outbox` (
+  `job_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `event_key` VARCHAR(100) NOT NULL,
+  `payload` JSON NOT NULL,
+  `status` ENUM('PENDING','PROCESSING','SENT','FAILED') NOT NULL DEFAULT 'PENDING',
+  `attempts` INT UNSIGNED NOT NULL DEFAULT 0,
+  `next_attempt_at` DATETIME NOT NULL,
+  `lease_token` CHAR(36) NULL,
+  `lease_until` DATETIME NULL,
+  `last_error` VARCHAR(50) NULL,
+  `created_at` DATETIME NOT NULL,
+  `sent_at` DATETIME NULL,
+  PRIMARY KEY (`job_id`),
+  UNIQUE KEY `uq_email_event` (`user_id`, `event_key`),
+  KEY `idx_email_ready` (`status`, `next_attempt_at`, `job_id`),
+  KEY `idx_email_lease` (`status`, `lease_until`),
+  CONSTRAINT `fk_email_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `conversations` (
+  `conversation_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_low` BIGINT UNSIGNED NOT NULL,
+  `user_high` BIGINT UNSIGNED NOT NULL,
+  `last_read_low` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `last_read_high` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `created_at` DATETIME NOT NULL,
+  `updated_at` DATETIME NOT NULL,
+  PRIMARY KEY (`conversation_id`),
+  UNIQUE KEY `uq_conversation_pair` (`user_low`, `user_high`),
+  KEY `idx_conversations_user_high` (`user_high`),
+  CONSTRAINT `fk_chat_low` FOREIGN KEY (`user_low`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_chat_high` FOREIGN KEY (`user_high`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `ck_chat_distinct` CHECK (user_low <> user_high)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `messages` (
+  `message_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `conversation_id` BIGINT UNSIGNED NOT NULL,
+  `sender_id` BIGINT UNSIGNED NOT NULL,
+  `client_id` CHAR(36) NOT NULL,
+  `content` VARCHAR(2000) NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`message_id`),
+  UNIQUE KEY `uq_message_retry` (`sender_id`, `client_id`),
+  KEY `idx_messages_conversation_id` (`conversation_id`),
+  KEY `idx_message_history` (`conversation_id`, `message_id`),
+  KEY `idx_message_unread` (`conversation_id`, `sender_id`, `message_id`),
+  CONSTRAINT `fk_message_chat` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`conversation_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_message_sender` FOREIGN KEY (`sender_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

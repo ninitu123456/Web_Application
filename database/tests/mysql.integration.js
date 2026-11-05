@@ -41,7 +41,7 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
     created = true;
     await initialize(connection, ownedName);
     await t.test('empty database migrates and seeds with verified password hashes', async () => {
-      assert.equal(await migrate(connection, ownedName), 13);
+      assert.equal(await migrate(connection, ownedName), 18);
       await seed(connection, ownedName, credentials);
       await verifyMigrations(connection, ownedName);
       assert.deepEqual(await verifySeed(connection, ownedName, credentials), { roles: 2, users: 2, categories: 4, locations: 4, items: 4 });
@@ -141,9 +141,11 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
       assert.equal(await migrate(connection, ownedName), 1);
       // Failure after only part of an additive DDL migration: safely create the missing index.
       await connection.query('DROP INDEX idx_items_created_at ON items');
-      await connection.execute('DELETE FROM _schema_migrations WHERE version=?', [last.version]);
+      await connection.execute("DELETE FROM _schema_migrations WHERE version>='013'");
+      for (const name of ['messages', 'conversations', 'email_outbox', 'password_reset_tokens']) await connection.query(`DROP TABLE ${quote(name)}`);
+      await connection.query('ALTER TABLE users DROP COLUMN session_version');
       await connection.execute("UPDATE _schema_migrations SET status='running', applied_at=NULL WHERE version='012_item_search_indexes.sql'");
-      assert.equal(await migrate(connection, ownedName), 2);
+      assert.equal(await migrate(connection, ownedName), 7);
       await connection.execute('UPDATE _schema_migrations SET checksum=REPEAT(\'0\',64) WHERE version=?', [last.version]);
       await assert.rejects(() => migrate(connection, ownedName), /history\/checksum/);
       await connection.execute('UPDATE _schema_migrations SET checksum=? WHERE version=?', [last.checksum, last.version]);

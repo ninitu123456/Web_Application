@@ -14,7 +14,7 @@ import { serveApp, request } from './helpers.js';
 
 const secret = randomBytes(32).toString('hex');
 const tokens = createTokenService({ secret, expiresIn: 3600 });
-const registration = { fullName: '  Nguyễn Văn A  ', email: ' A@Example.test ', password: ' sample123 ' };
+const registration = { fullName: '  Nguyễn Văn A  ', email: ' A@Example.test ', password: ' sample123 ', confirmPassword: ' sample123 ' };
 const publicUser = { user_id: '7', full_name: 'Nguyễn Văn A', email: 'a@example.test', role: 'USER', account_status: 'ACTIVE' };
 
 test('strict validation normalizes name/email and preserves password bytes', () => {
@@ -24,7 +24,7 @@ test('strict validation normalizes name/email and preserves password bytes', () 
     { ...registration, password: '1234567' }, { ...registration, password: 'đ'.repeat(37) }]) {
     assert.throws(() => validateRegister(body), (error) => error.status === 400);
   }
-  assert.equal(validateRegister({ ...registration, password: 'a'.repeat(72) }).password.length, 72);
+  assert.equal(validateRegister({ ...registration, password: 'a'.repeat(72), confirmPassword: 'a'.repeat(72) }).password.length, 72);
   assert.equal(validateLogin({ email: 'a@example.test', password: 'x' }).password, 'x');
   assert.throws(() => validateProfile({ fullName: 'Valid', roleId: 2 }), (error) => error.status === 400);
 });

@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { api, errorText, invalidate, itemDetail } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useResource } from "../lib/hooks";
@@ -28,6 +33,7 @@ export function ItemDetailPage() {
 }
 function Detail({ item }: { item: Item }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const toast = useToast();
   const [selected, setSelected] = useState(0);
@@ -40,6 +46,24 @@ function Detail({ item }: { item: Item }) {
   const canInspect = item.type === "FOUND" && (owner || user?.role === "ADMIN");
   const tab =
     params.get("tab") === "claims" && canInspect ? "claims" : "matches";
+  async function startChat() {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api<{ id: string }>("/conversations", {
+        method: "POST",
+        body: { userId: item.userId },
+      });
+      navigate(`/tin-nhan?hoi-thoai=${result.data.id}`);
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
   async function closeItem() {
     if (lock.current) return;
     lock.current = true;
@@ -140,6 +164,13 @@ function Detail({ item }: { item: Item }) {
             <p className="inline-error" role="alert">
               {error}
             </p>
+          )}
+          {user && !owner && (
+            <div className="actions">
+              <Button variant="secondary" disabled={busy} onClick={startChat}>
+                Nhắn tin
+              </Button>
+            </div>
           )}
           {owner && item.status === "OPEN" && (
             <div className="actions">

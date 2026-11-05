@@ -6,8 +6,14 @@ export const audience = 'findit-client';
 export const unauthorized = () => new HttpError(401, 'Chưa xác thực hoặc token không hợp lệ');
 export function createTokenService({ secret, expiresIn }) {
   return {
-    sign(userId) {
-      return jwt.sign({}, secret, { algorithm: 'HS256', subject: String(userId), issuer, audience, expiresIn });
+    sign(userId, version) {
+      return jwt.sign(version === undefined ? {} : { sv: Number(version) }, secret, { algorithm: 'HS256', subject: String(userId), issuer, audience, expiresIn });
+    },
+    version(token) {
+      this.verify(token);
+      const value = jwt.decode(token).sv;
+      if (value !== undefined && (!Number.isSafeInteger(value) || value < 0)) throw unauthorized();
+      return value ?? 0;
     },
     verify(token) {
       let payload;

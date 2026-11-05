@@ -50,7 +50,7 @@ test('Auth/User integration: real HTTP and MySQL, all writes isolated from findi
   const secret = randomBytes(32).toString('hex');
   const tokens = createTokenService({ secret, expiresIn: 3600 });
   const password = randomBytes(18).toString('hex');
-  const input = { fullName: 'Nguyễn Test', email: 'auth-user@example.test', password };
+  const input = { fullName: 'Nguyễn Test', email: 'auth-user@example.test', password, confirmPassword: password };
   let created = false, pool, http, adminHttp, userId, token;
   try {
     await connection.query(`CREATE DATABASE ${quote(ownedName)} CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci`);

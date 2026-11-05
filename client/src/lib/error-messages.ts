@@ -7,6 +7,13 @@ export interface ErrorContext {
 // Match complete, known messages and HTTP status. Never echo arbitrary server text.
 const messages: Record<number, Record<string, string>> = {
   400: {
+    "Mật khẩu xác nhận không khớp": "Mật khẩu xác nhận không khớp.",
+    "Liên kết không hợp lệ hoặc đã hết hạn":
+      "Liên kết không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu liên kết mới.",
+    "Tin nhắn không hợp lệ":
+      "Tin nhắn không hợp lệ. Vui lòng kiểm tra và thử lại.",
+    "Tin nhắn cần từ 1 đến 2000 ký tự": "Tin nhắn cần từ 1 đến 2000 ký tự.",
+    "Không thể nhắn tin với chính mình": "Không thể nhắn tin với chính mình.",
     "Dữ liệu yêu cầu không hợp lệ":
       "Thông tin gửi lên chưa hợp lệ. Vui lòng kiểm tra và thử lại.",
     "Dữ liệu JSON không hợp lệ":
@@ -35,6 +42,8 @@ const messages: Record<number, Record<string, string>> = {
       "Không thể đăng nhập bằng thông tin này. Vui lòng kiểm tra email và mật khẩu.",
   },
   403: {
+    "Người dùng hiện không thể nhận tin nhắn":
+      "Người dùng hiện không thể nhận tin nhắn.",
     "Không có quyền truy cập": "Bạn không có quyền thực hiện thao tác này.",
     "Không có quyền quản trị": "Thao tác này chỉ dành cho quản trị viên.",
     "Khu vực này chỉ dành cho quản trị viên.":
@@ -55,6 +64,9 @@ const messages: Record<number, Record<string, string>> = {
       "Bạn không có quyền xem hoặc thay đổi thông báo này.",
   },
   404: {
+    "Không tìm thấy cuộc trò chuyện":
+      "Không tìm thấy cuộc trò chuyện hoặc bạn không có quyền truy cập.",
+    "Không tìm thấy người dùng": "Không tìm thấy người dùng.",
     "Không tìm thấy Item": "Không tìm thấy bài đăng.",
     "Không tìm thấy Claim hoặc Item":
       "Không tìm thấy yêu cầu nhận đồ hoặc bài đăng liên quan.",
@@ -72,6 +84,8 @@ const messages: Record<number, Record<string, string>> = {
       "Không tìm thấy yêu cầu nhận đồ. Dữ liệu có thể vừa thay đổi; hãy tải lại danh sách.",
   },
   409: {
+    "Mã tin nhắn đã được sử dụng":
+      "Tin nhắn đã được gửi với nội dung khác. Vui lòng kiểm tra lại hội thoại.",
     "Địa chỉ email đã tồn tại trong hệ thống":
       "Email này đã được đăng ký. Vui lòng đăng nhập hoặc dùng email khác.",
     "Tên đã tồn tại": "Tên này đã được sử dụng. Vui lòng chọn tên khác.",
@@ -97,6 +111,8 @@ const messages: Record<number, Record<string, string>> = {
       "Không thể xử lý báo cáo ở trạng thái hiện tại. Vui lòng tải lại để kiểm tra.",
   },
   503: {
+    "Dịch vụ email tạm thời chưa khả dụng. Vui lòng thử lại sau.":
+      "Dịch vụ email tạm thời chưa khả dụng. Vui lòng thử lại sau.",
     "Dịch vụ lưu trữ ảnh chưa được cấu hình":
       "Hiện chưa thể lưu hoặc xóa ảnh. Vui lòng thử lại sau.",
     "Hệ thống xử lý ảnh đang bận":

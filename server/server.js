@@ -1,3 +1,9 @@
+import { createMailer } from './services/mail.service.js';
+import { createPasswordResetService } from './services/password-reset.service.js';
+import { createEmailWorker, startEmailWorker } from './services/email-worker.js';
+import { createChatRepository } from './repositories/chat.repository.js';
+import { createChatService } from './services/chat.service.js';
+import { attachChatSocket } from './chat-socket.js';
 import { createMatchingRepository } from './repositories/matching.repository.js';
 import { createLookupRepository } from './repositories/lookup.repository.js';
 import { createLookupService } from './services/lookup.service.js';
@@ -45,22 +51,33 @@ export async function startServer(config = readConfig()) {
   const notificationService = createNotificationService(createNotificationRepository(pool));
   const reportService = createReportService(createReportRepository(pool));
   const adminService = createAdminService(createAdminRepository(pool), itemService);
+  const mailer = createMailer();
+  const chatService = createChatService(createChatRepository(pool));
+  let io;
+  const passwordResetService = createPasswordResetService(pool, mailer, id => {
+    for (const socket of io?.sockets.sockets.values() ?? []) if (socket.data.identity.id === id) socket.disconnect(true);
+  });
   let server;
   try {
     await healthService.check({ fresh: true });
     console.log('MySQL connection verified: findit_db');
-    server = createServer(createApp({ healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, lookupService, corsOrigins: config.corsOrigins, security: config.security }));
+    server = createServer(createApp({ healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, lookupService, chatService, passwordResetService, corsOrigins: config.corsOrigins, security: config.security }));
+    io = attachChatSocket(server, { authService, chatService, corsOrigins: config.corsOrigins });
     await new Promise((resolve, reject) => {
       server.once('error', reject);
       server.listen(config.port, config.host, () => { server.removeListener('error', reject); resolve(); });
     });
   } catch (error) {
     if (server?.listening) server.close();
+    chatService.close();
+    io?.close();
+    mailer.close();
     await pool.end();
     throw error;
   }
   console.log(`FindIT backend listening at http://${config.host}:${server.address().port}`);
   const stopCleanup = imageStorage ? startImageCleanup(imageOperations) : async () => {};
+  const stopEmail = startEmailWorker(createEmailWorker(pool, mailer));
   let closing;
   function close() {
     if (closing) return closing;
@@ -72,7 +89,12 @@ export async function startServer(config = readConfig()) {
       }, 10000);
       deadline.unref();
       try {
-        await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+        io.disconnectSockets(true);
+        io.close();
+        chatService.close();
+        await stopEmail();
+        mailer.close();
+        await new Promise((resolve, reject) => server.close((error) => error && error.code !== 'ERR_SERVER_NOT_RUNNING' ? reject(error) : resolve()));
         await stopCleanup();
         await pool.end();
       } finally { clearTimeout(deadline); }

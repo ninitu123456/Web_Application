@@ -23,7 +23,7 @@ test('seed credentials are mandatory, distinct, and within bcrypt byte limit', (
 });
 test('committed migrations and SQL export match the physical schema source', async () => {
   const files = await migrationFiles();
-  assert.equal(files.length, 13);
+  assert.equal(files.length, 18);
   const sql = (await readFile(new URL('../database-schema.sql', import.meta.url), 'utf8')).replace(/\r\n/g, '\n');
   for (const table of [...tables, metadata]) assert.ok(sql.includes(createTable(table)), table.name);
   for (const name of ['idx_items_status_event_date', 'idx_items_type_status', 'idx_items_created_at']) {

@@ -128,7 +128,7 @@ test('login/register limiter rejects before service work and counts successful a
     async login() { calls++; throw new HttpError(401, 'Invalid credentials'); }, async register() { calls++; return { id: 1 }; }
   } });
   try {
-    for (const [route, body, status] of [['login', { email: 'a@b.test', password: '12345678' }, 401], ['register', { email: 'a@b.test', password: '12345678', fullName: 'A' }, 201]]) {
+    for (const [route, body, status] of [['login', { email: 'a@b.test', password: '12345678' }, 401], ['register', { email: 'a@b.test', password: '12345678', confirmPassword: '12345678', fullName: 'A' }, 201]]) {
       const send = () => fetch(http.url + '/api/auth/' + route, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       assert.equal((await send()).status, status); assert.equal((await send()).status, 429);
     }
@@ -169,7 +169,7 @@ test('multipart rejects unexpected fields/files/framing and accepts exactly five
 });
 
 test('Unicode boundaries, profile disappearance and security config fail safely', async () => {
-  const input = { fullName: '😀'.repeat(150), email: 'a@b.test', password: 'đ'.repeat(36) };
+  const input = { fullName: '😀'.repeat(150), email: 'a@b.test', password: 'đ'.repeat(36), confirmPassword: 'đ'.repeat(36) };
   assert.equal(validateRegister(input).password, input.password);
   assert.throws(() => validateFullName('😀'.repeat(151)), (e) => e.status === 400);
   assert.throws(() => validateRegister({ ...input, password: 'đ'.repeat(37) }), (e) => e.status === 400);

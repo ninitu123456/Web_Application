@@ -63,12 +63,12 @@ test('Claim integration: private evidence, state machine, MySQL transactions and
     const ownerToken = userLogin.json.data.token, adminToken = adminLogin.json.data.token;
     const ownerId = userLogin.json.data.user.id;
     const owner = { id: String(ownerId), role: 'USER' };
-    const otherLogin = await request(http, '/api/auth/register', { method: 'POST', body: { fullName: 'Claimant Two', email: 'second@claims.test', password } });
+    const otherLogin = await request(http, '/api/auth/register', { method: 'POST', body: { fullName: 'Claimant Two', email: 'second@claims.test', password, confirmPassword: password } });
     assert.equal(otherLogin.status, 201);
     const secondLogin = await request(http, '/api/auth/login', { method: 'POST', body: { email: 'second@claims.test', password } });
     assert.equal(secondLogin.status, 200);
     const secondToken = secondLogin.json.data.token;
-    const unrelatedLogin = await request(http, '/api/auth/register', { method: 'POST', body: { fullName: 'Claimant Three', email: 'third@claims.test', password } });
+    const unrelatedLogin = await request(http, '/api/auth/register', { method: 'POST', body: { fullName: 'Claimant Three', email: 'third@claims.test', password, confirmPassword: password } });
     assert.equal(unrelatedLogin.status, 201);
     const thirdLogin = await request(http, '/api/auth/login', { method: 'POST', body: { email: 'third@claims.test', password } });
     const thirdToken = thirdLogin.json.data.token;

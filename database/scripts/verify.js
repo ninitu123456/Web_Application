@@ -1,3 +1,4 @@
+import { featureTables } from '../features-schema.js';
 import { isDeepStrictEqual } from 'node:util';
 import { tables, metadata, indexes } from '../schema.js';
 import { phase5Additions, activeTargetExpression } from '../phase5-schema.js';
@@ -66,10 +67,11 @@ export async function listTables(connection, database) {
     'SELECT TABLE_NAME AS name, ENGINE AS engine, TABLE_COLLATION AS collation, TABLE_TYPE AS kind FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ?', [database]);
   return rows;
 }
-export async function inspectTable(connection, database, table, { allowPendingAdditiveIndexes = false, allowPendingPhase5 = false } = {}) {
+export async function inspectTable(connection, database, table, { allowPendingAdditiveIndexes = false, allowPendingPhase5 = false, allowPendingFeatures = false } = {}) {
   const problems = [];
   const [columns] = await connection.execute(
     'SELECT COLUMN_NAME AS name, COLUMN_TYPE AS type, IS_NULLABLE AS nullable, COLUMN_DEFAULT AS value_default, EXTRA AS extra, COLLATION_NAME AS collation, GENERATION_EXPRESSION AS generation_expression FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION', [database, table.name]);
+  if (table.name === 'users' && (!allowPendingFeatures || columns.some(c => c.name === 'session_version'))) table = { ...table, columns: { ...table.columns, session_version: 'INT UNSIGNED NOT NULL DEFAULT 0' } };
   const addition = phase5Additions[table.name];
   const useAddition = addition && (!allowPendingPhase5 || columns.some((column) => Object.hasOwn(addition.columns, column.name)));
   if (useAddition) table = { ...table, columns: { ...table.columns, ...addition.columns }, unique: { ...table.unique, ...addition.unique } };
@@ -145,14 +147,14 @@ export async function inspectTable(connection, database, table, { allowPendingAd
   if (triggers.length) problems.push('unexpected triggers');
   return problems.map((problem) => `${table.name}: ${problem}`);
 }
-export async function assertExistingSchema(connection, database, { complete = false, allowPendingAdditiveIndexes = false, allowPendingPhase5 = false } = {}) {
-  const expected = new Map([...tables, metadata].map((table) => [table.name, table]));
+export async function assertExistingSchema(connection, database, { complete = false, allowPendingAdditiveIndexes = false, allowPendingPhase5 = false, allowPendingFeatures = false } = {}) {
+  const expected = new Map([...tables, ...featureTables, metadata].map((table) => [table.name, table]));
   const existing = await listTables(connection, database);
   const problems = [];
   for (const table of existing) {
     if (!expected.has(table.name)) { problems.push(`unexpected table/view ${table.name}`); continue; }
     if (table.kind !== 'BASE TABLE' || table.engine !== 'InnoDB' || table.collation !== 'utf8mb4_0900_ai_ci') problems.push(`${table.name}: storage options`);
-    problems.push(...await inspectTable(connection, database, expected.get(table.name), { allowPendingAdditiveIndexes, allowPendingPhase5 }));
+    problems.push(...await inspectTable(connection, database, expected.get(table.name), { allowPendingAdditiveIndexes, allowPendingPhase5, allowPendingFeatures }));
   }
   if (complete) for (const name of expected.keys()) if (!existing.some((table) => table.name === name)) problems.push(`missing table ${name}`);
   if (problems.length) throw new Error(`Schema mismatch; refusing changes:\n${problems.join('\n')}`);

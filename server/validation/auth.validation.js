@@ -22,8 +22,23 @@ function password(value, minimum) {
   return value;
 }
 export function validateRegister(body) {
-  objectWith(body, ['fullName', 'email', 'password']);
+  objectWith(body, ['fullName', 'email', 'password', 'confirmPassword']);
+  validatePasswordConfirmation(body);
   return { fullName: validateFullName(body.fullName), email: email(body.email), password: password(body.password, 8) };
+}
+export function validatePasswordConfirmation(body) {
+  password(body.password, 8);
+  if (typeof body.confirmPassword !== 'string' || body.password !== body.confirmPassword) throw new HttpError(400, 'Mật khẩu xác nhận không khớp');
+}
+export function validateForgot(body) {
+  objectWith(body, ['email']);
+  return { email: email(body.email) };
+}
+export function validateReset(body) {
+  objectWith(body, ['token', 'password', 'confirmPassword']);
+  validatePasswordConfirmation(body);
+  if (typeof body.token !== 'string' || !/^[a-f0-9]{64}$/.test(body.token)) throw new HttpError(400, 'Liên kết không hợp lệ hoặc đã hết hạn');
+  return { token: body.token, password: body.password };
 }
 export function validateLogin(body) {
   objectWith(body, ['email', 'password']);
