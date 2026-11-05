@@ -10,7 +10,6 @@ import {
   ErrorState,
   Input,
   ItemCard,
-  Loading,
   Pagination,
   Select,
 } from "../components/ui";
@@ -18,6 +17,9 @@ export function ExplorePage() {
   const [params, setParams] = useSearchParams();
   const [keyword, setKeyword] = useState(params.get("keyword") || "");
   const [expanded, setExpanded] = useState(false);
+  const activeFilters = ["category", "location", "status", "dateFrom", "dateTo", "sort"].filter(
+    (key) => params.has(key) && !(key === "sort" && params.get(key) === "newest"),
+  ).length;
   const [searchError, setSearchError] = useState("");
   useEffect(() => setKeyword(params.get("keyword") || ""), [params]);
   const query: Query = Object.fromEntries(params.entries());
@@ -44,43 +46,37 @@ export function ExplorePage() {
   return (
     <>
       <section className="hero">
-        <span className="pill">MỘT KHUÔN VIÊN · NHIỀU KẾT NỐI</span>
+        <span className="pill">Cộng đồng tìm và trả lại đồ thất lạc</span>
         <h1>
-          Tìm lại đồ thất lạc.
+          Mất đồ ở trường?
           <br />
-          <span>Trao lại niềm vui.</span>
+          <span>FindIt giúp bạn tìm lại.</span>
         </h1>
         <p>
-          Nơi những món đồ đi lạc tìm được đường về.
+          Tìm đồ đã thất lạc, đăng đồ bạn nhặt được và liên hệ với nhau an toàn.
           <br />
-          Tìm kiếm, chia sẻ và kết nối ngay trong trường.
+          Bắt đầu chỉ với một vài thông tin về món đồ.
         </p>
         <div className="hero-actions">
-          <a className="button primary" href="#explore">
-            Tìm đồ của bạn ↓
-          </a>
-          <Link className="text-link" to="/dang-bai?type=FOUND">
-            Tôi nhặt được đồ ↗
+          <Link className="button primary" to="/dang-bai?type=LOST">
+            Tôi bị mất đồ
           </Link>
+          <Link className="button secondary" to="/dang-bai?type=FOUND">
+            Tôi nhặt được đồ
+          </Link>
+          <a className="hero-explore-link" href="#explore">
+            Xem các bài đăng
+          </a>
         </div>
-        <div className="hero-note">
-          <span className="note-mark" aria-hidden="true">
-            ↗
-          </span>
-          <span>
-            Một chút quan tâm.
-            <br />
-            <strong>Một kết nối ý nghĩa.</strong>
-          </span>
-        </div>
+        <p className="hero-trust-note">Tìm kiếm miễn phí · Thông tin xác minh được bảo vệ</p>
       </section>
       <section id="explore" className="explore">
         <div className="section-heading">
           <div>
-            <span className="eyebrow">TÌM KIẾM & KẾT NỐI</span>
-            <h2>Có thể, đồ của bạn ở đây.</h2>
+            <span className="eyebrow">Bài đăng trong cộng đồng</span>
+            <h2>Khám phá đồ thất lạc</h2>
           </div>
-          <span className="result-count">
+          <span className="result-count" role="status" aria-live="polite">
             {items.data
               ? `${items.data.pagination?.total ?? 0} bài đăng`
               : "Khám phá đồ vật"}
@@ -96,10 +92,10 @@ export function ExplorePage() {
             onChange={(e) => setKeyword(e.target.value)}
             maxLength={400}
           />
-          <Button>Tìm kiếm ↗</Button>
+          <Button type="submit">Tìm kiếm</Button>
         </form>
         <div className="filter-top">
-          <div className="tabs" aria-label="Loại bài đăng">
+          <div className="tabs" role="group" aria-label="Loại bài đăng">
             {[
               ["", "Tất cả"],
               ["LOST", "Đồ bị mất"],
@@ -107,7 +103,9 @@ export function ExplorePage() {
             ].map(([value, label]) => (
               <button
                 key={value}
+                type="button"
                 className={(params.get("type") || "") === value ? "active" : ""}
+                aria-pressed={(params.get("type") || "") === value}
                 onClick={() => change("type", value)}
               >
                 {label}
@@ -116,13 +114,15 @@ export function ExplorePage() {
           </div>
           <button
             className="filter-toggle"
+            type="button"
+            aria-controls="explore-filters"
             aria-expanded={expanded}
             onClick={() => setExpanded(!expanded)}
           >
-            Bộ lọc {expanded ? "−" : "＋"}
+            Bộ lọc {activeFilters > 0 ? `(${activeFilters})` : ""} {expanded ? "−" : "＋"}
           </button>
         </div>
-        <div className={`filters ${expanded ? "expanded" : ""}`}>
+        <div id="explore-filters" className={`filters ${expanded ? "expanded" : ""}`}>
           <Select
             label="Danh mục"
             value={params.get("category") || ""}
@@ -197,17 +197,28 @@ export function ExplorePage() {
         )}
         {params.size > 0 && (
           <button
+            type="button"
             className="reset-filters"
             onClick={() => {
               setKeyword("");
+              setSearchError("");
               setParams({});
             }}
           >
-            Xóa các bộ lọc ×
+            Xóa bộ lọc và tìm kiếm
           </button>
         )}
         {items.loading ? (
-          <Loading />
+          <div className="item-grid item-grid-loading" role="status" aria-label="Đang tải bài đăng">
+            {Array.from({ length: 6 }, (_, index) => (
+              <div key={index} className="item-card-skeleton" aria-hidden="true">
+                <div className="skeleton-image" />
+                <div className="skeleton-line" />
+                <div className="skeleton-line short" />
+              </div>
+            ))}
+            <span className="sr-only">Đang tải bài đăng…</span>
+          </div>
         ) : items.error ? (
           <ErrorState error={items.error} retry={invalidate} />
         ) : items.data?.data.length ? (
@@ -219,11 +230,11 @@ export function ExplorePage() {
         ) : (
           <EmptyState title="Chưa tìm thấy đồ vật phù hợp">
             <p>
-              Thử đổi từ khóa, mở rộng bộ lọc hoặc đăng bài để cộng đồng giúp
-              bạn.
+              Chưa có bài đăng phù hợp. Hãy thử tìm từ khóa khác, xóa bộ lọc
+              hoặc đăng thông tin để mọi người cùng giúp.
             </p>
             <Link className="button secondary" to="/dang-bai">
-              Đăng bài tìm đồ ↗
+              Đăng bài tìm đồ
             </Link>
           </EmptyState>
         )}
@@ -240,8 +251,8 @@ export function ExplorePage() {
         />
       </section>
       <section className="how-it-works">
-        <span className="eyebrow">MỘT HÀNH TRÌNH ĐƠN GIẢN</span>
-        <h2>Từ đi lạc đến trở về.</h2>
+        <span className="eyebrow">Cách FindIt hoạt động</span>
+        <h2>Ba bước để đồ vật trở về đúng chủ</h2>
         <div className="steps">
           {[
             [
