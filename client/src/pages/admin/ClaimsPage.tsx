@@ -41,10 +41,6 @@ export function AdminClaimsPage() {
   return (
     <>
       <AdminTitle title="Yêu cầu & tranh chấp" />
-      <p className="admin-page-intro">
-        Theo dõi yêu cầu nhận đồ và xử lý khi cần can thiệp. Thông thường, chủ
-        bài xác minh và xác nhận bàn giao.
-      </p>
       {filters.params.get("claim") && (
         <p className="notice">
           Báo cáo liên quan đến yêu cầu #{filters.params.get("claim")}. Dùng bộ
@@ -234,10 +230,6 @@ function ClaimComparison({ claim }: { claim: AdminClaim }) {
   const data = item.data?.data;
   return (
     <>
-      <p className="admin-verification-guide">
-        <Icon name="shield" /> Đối chiếu bài đăng → kiểm tra bằng chứng riêng tư
-        → ghi lý do và quyết định.
-      </p>
       <div className="admin-claim-comparison">
         <section className="admin-claim-item">
           <h3>Thông tin bài đăng</h3>

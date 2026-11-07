@@ -321,11 +321,7 @@ function ItemForm({
       >
         ← Quay lại
       </Link>
-      <span className="eyebrow">CHIA SẺ ĐỂ KẾT NỐI</span>
-      <h1>{original ? "Chỉnh sửa bài đăng" : "Chia sẻ một món đồ"}</h1>
-      <p className="muted">
-        Mô tả rõ ràng sẽ giúp mọi người tìm thấy nhau nhanh hơn.
-      </p>
+      <h1>{original ? "Chỉnh sửa bài đăng" : "Đăng bài"}</h1>
       {savedMessage && (
         <div className="notice" role="status">
           Nội dung bài #{saved?.id} đã được lưu. Nếu tải ảnh gặp lỗi, kiểm tra

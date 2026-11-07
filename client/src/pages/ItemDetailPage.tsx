@@ -99,9 +99,9 @@ function Detail({ item }: { item: Item }) {
       </Link>
       {hidden && (
         <p className="notice" role="status">
-          Bài đã được quản trị viên gỡ khỏi phần công khai. Chỉ chủ bài và admin
-          xem được trang này. Bạn vẫn có thể xử lý yêu cầu nhận đồ và bàn giao
-          hiện có.
+          Bài đã được quản trị viên gỡ khỏi phần công khai. Chỉ chủ bài và quản
+          trị viên xem được trang này. Bạn vẫn có thể xử lý yêu cầu nhận đồ và
+          bàn giao hiện có.
         </p>
       )}
       <div className="detail-grid">

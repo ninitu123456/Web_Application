@@ -78,33 +78,8 @@ export function AuthPage({ register = false }: { register?: boolean }) {
   }
   return (
     <div className="auth-layout">
-      <section className="auth-story">
-        <span className="eyebrow">KẾT NỐI ĐỂ TRAO LẠI</span>
-        <h1>
-          Đồ vật đi lạc.
-          <br />
-          <span>Niềm tin ở lại.</span>
-        </h1>
-        <p>
-          Một bài đăng nhỏ có thể giúp ai đó tìm lại thứ quan trọng với mình.
-        </p>
-        <div className="story-note">
-          <span aria-hidden="true">↗</span>
-          <p>
-            Cùng xây dựng một khuôn viên
-            <br />
-            tử tế và gắn kết hơn.
-          </p>
-        </div>
-      </section>
       <section className="panel auth-panel">
-        <span className="eyebrow">CHÀO MỪNG ĐẾN FINDIT</span>
-        <h2>{register ? "Tạo tài khoản" : "Đăng nhập"}</h2>
-        <p className="muted">
-          {register
-            ? "Bắt đầu kết nối với cộng đồng trong trường."
-            : "Đăng nhập để đăng bài và nhận lại đồ vật."}
-        </p>
+        <h1>{register ? "Tạo tài khoản" : "Đăng nhập"}</h1>
         <form onSubmit={submit}>
           {register && (
             <Input

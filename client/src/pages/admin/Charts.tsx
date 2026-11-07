@@ -81,11 +81,10 @@ export function ActivityChart({
         </div>
       </div>
       <p id={id} className="admin-chart-note">
-        Ngày theo UTC. Chỉ vẽ các ngày API trả về; ngày không có bản ghi không
-        xuất hiện trên biểu đồ.
+        Ngày theo UTC; chỉ hiển thị ngày có dữ liệu.
       </p>
       <details className="admin-data-table">
-        <summary>Xem số liệu hoạt động bằng bảng</summary>
+        <summary>Xem bảng số liệu</summary>
         <Table columns={["Ngày (UTC)", "Số thao tác"]}>
           {rows.map((row) => (
             <tr key={row.date}>

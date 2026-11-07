@@ -19,11 +19,7 @@ export function MyItemsPage() {
     <section className="page-section">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">GÓC CỦA BẠN</span>
           <h1>Bài đăng của tôi</h1>
-          <p className="muted">
-            Theo dõi đồ vật, xem yêu cầu và kết nối với người cần.
-          </p>
         </div>
         <Link className="button primary" to="/dang-bai">
           ＋ Đăng bài mới

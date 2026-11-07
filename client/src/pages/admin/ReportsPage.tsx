@@ -40,10 +40,6 @@ export function AdminReportsPage() {
   return (
     <>
       <AdminTitle title="Báo cáo vi phạm" />
-      <p className="admin-page-intro">
-        Xem ngữ cảnh trước khi quyết định. Xử lý báo cáo độc lập với quyết định
-        về bài đăng và tài khoản.
-      </p>
       {totals && (
         <div className="stat-grid admin-report-stats">
           {[
@@ -143,12 +139,7 @@ export function AdminReportsPage() {
             <ReportDetail key={id} id={id} />
           ) : (
             <div className="panel">
-              <EmptyState title="Chọn báo cáo để xem xét">
-                <p>
-                  Thông tin, đối tượng liên quan và thao tác xử lý sẽ xuất hiện
-                  tại đây.
-                </p>
-              </EmptyState>
+              <EmptyState title="Chọn báo cáo để xem xét" />
             </div>
           )}
         </section>

@@ -249,11 +249,7 @@ export function MyClaimsPage() {
   });
   return (
     <section className="page-section narrow">
-      <span className="eyebrow">THEO DÕI KẾT NỐI</span>
       <h1>Yêu cầu đã gửi</h1>
-      <p className="muted">
-        Xem tiến trình xác minh và nhận lại đồ vật của bạn.
-      </p>
       {result.loading ? (
         <Loading />
       ) : result.error ? (

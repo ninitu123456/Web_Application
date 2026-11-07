@@ -144,23 +144,17 @@ export function RecusalNotice({
   loading: boolean;
 }) {
   return loading ? (
-    <p className="fine-print">
-      Đang kiểm tra bạn có liên quan đến bài đăng này hay không…
-    </p>
+    <p className="fine-print">Đang kiểm tra quyền xử lý…</p>
   ) : related ? (
     <p className="notice">
       Bạn là chủ bài hoặc đã gửi yêu cầu nhận đồ cho bài này. Cần quản trị viên
       khác xử lý.
     </p>
   ) : error ? (
-    <p className="notice">
-      Chưa kiểm tra được bạn có liên quan đến bài đăng này hay không. Hệ thống
-      sẽ kiểm tra quyền của bạn khi xử lý quyết định.
-    </p>
+    <p className="notice">Chưa xác định được quyền xử lý. Vui lòng thử lại.</p>
   ) : related === false ? (
     <p className="notice admin-checked">
-      Đã kiểm tra: bạn không là chủ bài và chưa gửi yêu cầu nhận đồ cho bài này.
-      Backend sẽ kiểm tra lại khi xử lý.
+      Bạn không là chủ bài và chưa gửi yêu cầu nhận đồ cho bài này.
     </p>
   ) : null;
 }
