@@ -6,6 +6,10 @@ thể đóng bài OPEN; thao tác này cùng audit log được commit trong m�
 Các thao tác không hợp lệ theo trạng thái trả 400 theo API Contract §11.4.
 Không bổ sung quyền sửa bài của người khác hoặc thay đổi các luồng Claim.
 
+## Bài bị gỡ khỏi công khai
+
+Item DTO có `visibility: PUBLIC | HIDDEN`, độc lập với `status`. Tìm kiếm công khai loại bài HIDDEN trước khi đếm và phân trang. `GET /api/items/:id` trả 404 cho người ngoài khi bài bị gỡ; nếu gửi Bearer token thì phải hợp lệ, và chỉ chủ bài hoặc ADMIN xem được nội dung ẩn. `/api/items/mine` giữ bài bị gỡ để chủ bài tra cứu. Sửa/đóng qua luồng chủ bài, upload và xóa ảnh bị chặn trong khi HIDDEN; luồng Claim đã có và bàn giao vẫn giữ nguyên. Quy trình gỡ/khôi phục có lý do và quy định lưu nhật ký được mô tả trong [ADMIN.md](ADMIN.md#public-visibility-moderation).
+
 ## Transaction và ảnh
 
 Mutation dùng `SELECT ... FOR UPDATE` trên Item. Upload thực hiện ngoài transaction,

@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { join, posix, win32 } from 'node:path';
+import { tmpdir } from 'node:os';
+import { runInNewContext } from 'node:vm';
 import { createVisualSuggestionsService } from '../services/visual-suggestions.service.js';
 import { createVisualSuggestionsRepository, isMissingAiVisualTable } from '../repositories/visual-suggestions.repository.js';
 import { readAiVisualSuggestionsConfig, readConfig } from '../config/env.js';
@@ -18,8 +21,21 @@ test('visual suggestion exposure defaults off and enabling requires a disposable
   assert.throws(() => readAiVisualSuggestionsConfig({ AI_VISUAL_SUGGESTIONS_ENABLED: 'yes' }), /must be true or false/);
   assert.throws(() => readAiVisualSuggestionsConfig({ AI_VISUAL_SUGGESTIONS_ENABLED: 'true', NODE_ENV: 'production', DB_HOST: '127.0.0.1', DB_PORT: '62123' }), /development\/test/);
   assert.throws(() => readAiVisualSuggestionsConfig({ AI_VISUAL_SUGGESTIONS_ENABLED: 'true', NODE_ENV: 'development', DB_HOST: '127.0.0.1', DB_PORT: '3306', FINDIT_ISOLATED_DATADIR: 'C:\\Temp\\findit-mysql-test\\data' }), /isolated local MySQL/);
-  const safe = readAiVisualSuggestionsConfig({ AI_VISUAL_SUGGESTIONS_ENABLED: 'true', NODE_ENV: 'test', DB_HOST: '127.0.0.1', DB_PORT: '62123', FINDIT_ISOLATED_DATADIR: `${process.env.TEMP ?? process.env.TMP ?? 'C:\\Temp'}\\findit-mysql-test\\data` });
+  const safe = readAiVisualSuggestionsConfig({ AI_VISUAL_SUGGESTIONS_ENABLED: 'true', NODE_ENV: 'test', DB_HOST: '127.0.0.1', DB_PORT: '62123', FINDIT_ISOLATED_DATADIR: join(tmpdir(), 'findit-mysql-test', 'data') });
   assert.deepEqual(safe, { enabled: true });
+});
+
+test('isolated suggestion fixture paths pass the actual guard on both Ubuntu and Windows', () => {
+  for (const [paths, temporary] of [[posix, '/tmp'], [win32, 'C:\\Temp']]) {
+    // Evaluate the real pure validator with each platform's path semantics.
+    // This reproduces the old Windows-only fixture failure on a Windows host too.
+    const validate = runInNewContext(`(${readAiVisualSuggestionsConfig.toString()})`, {
+      resolve: paths.resolve, relative: paths.relative, sep: paths.sep, tmpdir: () => temporary
+    });
+    const input = { AI_VISUAL_SUGGESTIONS_ENABLED: 'true', NODE_ENV: 'test', DB_HOST: '127.0.0.1', DB_PORT: '62123' };
+    assert.equal(validate({ ...input, FINDIT_ISOLATED_DATADIR: paths.join(temporary, 'findit-mysql-test', 'data') }).enabled, true);
+    if (paths === posix) assert.throws(() => validate({ ...input, FINDIT_ISOLATED_DATADIR: 'C:\\Temp\\findit-mysql-test\\data' }), /isolated local MySQL/);
+  }
 });
 
 test('service hides private/non-owned and ineligible source items and never returns internal fields', async () => {

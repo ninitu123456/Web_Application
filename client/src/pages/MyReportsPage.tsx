@@ -46,9 +46,7 @@ export function MyReportsPage() {
   });
   return (
     <section className="page-section narrow">
-      <span className="eyebrow">NỘI DUNG BẠN ĐÃ PHẢN ÁNH</span>
       <h1>Báo cáo của tôi</h1>
-      <p className="muted">Theo dõi tiến trình xem xét của quản trị viên.</p>
       {result.loading ? (
         <Loading />
       ) : result.error ? (

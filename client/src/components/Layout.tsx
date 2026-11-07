@@ -150,8 +150,7 @@ export function Layout() {
         <Link className="brand" to="/">
           FindIt.
         </Link>
-        <p>Mỗi món đồ tìm lại, một niềm vui được trao.</p>
-        <span>Kết nối trong khuôn viên trường.</span>
+        <span>Tìm và trao trả đồ thất lạc</span>
       </footer>
     </>
   );

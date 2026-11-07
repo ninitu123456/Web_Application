@@ -4,8 +4,9 @@ import { createMatchingService } from '../services/matching.service.js';
 import { createMatchingRepository } from './matching.repository.js';
 import { deleteAiVisualCandidatesIfPresent } from '../ai-visual/invalidation.js';
 import { bumpAiVisualCatalogRevision } from '../ai-visual/catalog-revision.js';
+import { hiddenItemSql } from '../utils/item-visibility.js';
 
-const columns = 'i.item_id, i.user_id, i.category_id, i.location_id, i.title, i.description, i.type, i.color, i.event_date, i.status, i.created_at, i.updated_at, c.name AS category_name, l.name AS location_name';
+const columns = `i.item_id, i.user_id, i.category_id, i.location_id, i.title, i.description, i.type, i.color, i.event_date, i.status, i.created_at, i.updated_at, c.name AS category_name, l.name AS location_name, ${hiddenItemSql()} AS is_hidden`;
 const joins = 'FROM items i JOIN categories c ON c.category_id = i.category_id JOIN locations l ON l.location_id = i.location_id';
 export function createItemRepository(pool, execute = (sql, values = []) => query(pool, sql, values), { lockReferences = false } = {}) {
   async function attachImages(items) {
@@ -64,8 +65,10 @@ export function createItemRepository(pool, execute = (sql, values = []) => query
       const [images] = await execute('SELECT image_id, image_url FROM item_images WHERE item_id = ? ORDER BY image_id', [id]);
       return { ...item, images };
     },
-    async list(filters, ownerId) {
+    async list(filters, ownerId, { includeHidden = false } = {}) {
       const where = [], values = [];
+      if (!includeHidden && ownerId === undefined) where.push(`${hiddenItemSql()} = 0`);
+      if (includeHidden && filters.visibility) where.push(`${hiddenItemSql()} = ${filters.visibility === 'HIDDEN' ? 1 : 0}`);
       if (ownerId !== undefined) { where.push('i.user_id = ?'); values.push(ownerId); }
       if (filters.keyword) { where.push('(i.title LIKE ? OR i.description LIKE ? OR i.color LIKE ?)'); const term = `%${filters.keyword}%`; values.push(term, term, term); }
       if (filters.type) { where.push('i.type = ?'); values.push(filters.type); }

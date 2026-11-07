@@ -19,11 +19,7 @@ export function MyItemsPage() {
     <section className="page-section">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">GÓC CỦA BẠN</span>
           <h1>Bài đăng của tôi</h1>
-          <p className="muted">
-            Theo dõi đồ vật, xem yêu cầu và kết nối với người cần.
-          </p>
         </div>
         <Link className="button primary" to="/dang-bai">
           ＋ Đăng bài mới
@@ -39,11 +35,14 @@ export function MyItemsPage() {
             <div key={item.id}>
               <ItemCard item={item} />
               <div className="my-item-actions">
-                {item.status === "OPEN" && (
+                {item.status === "OPEN" && item.visibility !== "HIDDEN" && (
                   <Link to={`/do-vat/${item.id}/sua`}>Sửa bài ↗</Link>
                 )}
                 <Link to={`/do-vat/${item.id}`}>
-                  Chi tiết{item.status === "OPEN" ? " / Đóng bài" : ""}
+                  Chi tiết
+                  {item.status === "OPEN" && item.visibility !== "HIDDEN"
+                    ? " / Đóng bài"
+                    : ""}
                 </Link>
                 {item.type === "FOUND" && (
                   <Link to={`/do-vat/${item.id}?tab=claims`}>

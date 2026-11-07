@@ -2,6 +2,8 @@ import { HttpError } from '../utils/http-error.js';
 import { notificationDto, paged } from '../utils/workflow-dto.js';
 
 const messages = {
+  ITEM_HIDDEN: 'Bài đăng đã được quản trị viên gỡ khỏi phần công khai',
+  ITEM_RESTORED: 'Bài đăng đã được quản trị viên khôi phục hiển thị',
   ITEM_MODERATED_CLOSED: 'Bài đăng đã được quản trị viên đóng',
   CLAIM_ADMIN_RESOLVED: 'Quản trị viên đã xử lý yêu cầu nhận đồ',
   NEW_MATCH: 'Có gợi ý ghép nối mới', NEW_CLAIM: 'Có yêu cầu nhận đồ mới',
@@ -11,10 +13,10 @@ const messages = {
 export function createNotificationService(repository) {
   return {
     // For events the repository MUST be bound to the caller's transaction executor.
-    async emit(type, entityId, recipients) {
+    async emit(type, entityId, recipients, eventId = entityId) {
       if (!Object.hasOwn(messages, type)) throw new Error('Unknown notification event');
       for (const userId of [...new Set(recipients.map(String))].sort((a, b) => BigInt(a) < BigInt(b) ? -1 : BigInt(a) > BigInt(b) ? 1 : 0)) {
-        await repository.insert(userId, type, `${messages[type]} (#${entityId}).`, `${type}:${entityId}`);
+        await repository.insert(userId, type, `${messages[type]} (#${entityId}).`, `${type}:${eventId}`);
       }
     },
     async list(identity, options) { const { rows, total } = await repository.list(identity.id, options); return paged(rows, total, options, notificationDto); },

@@ -30,6 +30,28 @@ export function createAdminModerationService(repository) {
     if (result.affectedRows !== 1) throw conflict();
   }
   return {
+    setItemVisibility(identity, id, { visibility, reason }) {
+      return authorized(identity, true, async (source) => {
+        const item = await source.lockItem(id); if (!item) throw missing();
+        const claims = await source.lockClaims(id);
+        if (String(item.user_id) === String(identity.id) || claims.some((claim) => String(claim.claimant_id) === String(identity.id))) throw new HttpError(403, 'ADMIN liên quan phải nhờ quản trị viên khác xử lý');
+        const previousVisibility = Number(item.is_hidden) ? 'HIDDEN' : 'PUBLIC';
+        if (visibility === previousVisibility) throw new HttpError(409, 'Bài đăng đã ở chế độ hiển thị này');
+        const action = visibility === 'HIDDEN' ? 'ITEM_HIDDEN' : 'ITEM_RESTORED';
+        const decisionLogId = await source.audit(action, 'ITEM', id, { previousVisibility, visibility, reason, source: 'ADMIN_VISIBILITY' });
+        await source.run('UPDATE items SET updated_at=UTC_TIMESTAMP() WHERE item_id=?', [id]);
+        // The audit event changes visibility even when status/images stay the same.
+        // Invalidate before restore can publish fresh candidates; keep all writes atomic.
+        await source.bumpVisualCatalog();
+        await deleteAiVisualCandidatesIfPresent(source.run, id);
+        if (visibility === 'PUBLIC') {
+          await source.requeueVisualJobs(id);
+          await source.synchronize(id);
+        }
+        await source.notify([{ userId: item.user_id, type: action, id, eventId: `${id}:${decisionLogId}` }]);
+        return { item: itemDto(await source.items.findById(id)) };
+      });
+    },
     listClaims(identity, options) { return authorized(identity, false, async (source) => { const { rows, total } = await repository.listClaims(source, options); return paged(rows, total, options, adminClaimDto); }); },
     activityLogs(identity, options) { return authorized(identity, false, async (source) => { const { rows, total } = await repository.activityLogs(source, options); return paged(rows, total, options, activityLogDto); }); },
     moderateClose(identity, id, { reason }) {

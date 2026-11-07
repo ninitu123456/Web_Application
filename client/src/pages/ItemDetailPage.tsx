@@ -53,6 +53,7 @@ function Detail({ item }: { item: Item }) {
   const [error, setError] = useState("");
   const lock = useRef(false);
   const owner = item.userId === user?.id;
+  const hidden = item.visibility === "HIDDEN";
   const canInspect = item.type === "FOUND" && (owner || user?.role === "ADMIN");
   const tab =
     params.get("tab") === "claims" && canInspect ? "claims" : "matches";
@@ -98,6 +99,13 @@ function Detail({ item }: { item: Item }) {
       <Link className="back-link" to={exploreFrom}>
         ← Khám phá đồ vật
       </Link>
+      {hidden && (
+        <p className="notice" role="status">
+          Bài đã được quản trị viên gỡ khỏi phần công khai. Chỉ chủ bài và quản
+          trị viên xem được trang này. Bạn vẫn có thể xử lý yêu cầu nhận đồ và
+          bàn giao hiện có.
+        </p>
+      )}
       <div className="detail-grid">
         <div className="gallery">
           <div className="gallery-main">
@@ -161,7 +169,8 @@ function Detail({ item }: { item: Item }) {
               {error}
             </p>
           )}
-          {!owner &&
+          {!hidden &&
+            !owner &&
             item.type === "FOUND" &&
             ["OPEN", "CLAIM_PENDING"].includes(item.status) &&
             (user ? (
@@ -176,14 +185,14 @@ function Detail({ item }: { item: Item }) {
                 Đăng nhập để nhận đồ →
               </Link>
             ))}
-          {user && !owner && (
+          {!hidden && user && !owner && (
             <div className="actions">
               <Button variant="secondary" disabled={busy} onClick={startChat}>
                 Nhắn tin
               </Button>
             </div>
           )}
-          {owner && item.status === "OPEN" && (
+          {!hidden && owner && item.status === "OPEN" && (
             <div className="actions">
               <Link className="button primary" to={`/do-vat/${item.id}/sua`}>
                 Chỉnh sửa bài ↗
@@ -258,7 +267,7 @@ function Detail({ item }: { item: Item }) {
           )}
         </div>
       </div>
-      {canShowVisualSuggestions({
+      {!hidden && canShowVisualSuggestions({
         enabled: import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_ENABLED === "true",
         owner,
         type: item.type,
@@ -296,6 +305,8 @@ function Detail({ item }: { item: Item }) {
         <div className="tab-content" role="tabpanel">
           {tab === "claims" ? (
             <ReceivedClaims itemId={item.id} canAct={owner} />
+          ) : hidden ? (
+            <EmptyState title="Bài đã gỡ không tham gia gợi ý đồ vật" />
           ) : user ? (
             <Matches itemId={item.id} />
           ) : (

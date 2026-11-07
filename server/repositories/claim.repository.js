@@ -5,6 +5,7 @@ import { createNotificationService } from '../services/notification.service.js';
 import { readSnapshot } from '../config/read-snapshot.js';
 import { deleteAiVisualCandidatesIfPresent } from '../ai-visual/invalidation.js';
 import { bumpAiVisualCatalogRevision } from '../ai-visual/catalog-revision.js';
+import { hiddenItemSql } from '../utils/item-visibility.js';
 
 const claimColumns = 'c.claim_id, c.claimant_id, c.item_id, c.proof_description, c.status, c.submitted_at, c.reviewed_at, c.completed_at';
 export function createClaimRepository(pool) {
@@ -13,7 +14,7 @@ export function createClaimRepository(pool) {
       return readSnapshot(pool, async (connection) => {
         const run = (sql, values = []) => connection.query({ sql, timeout: databaseTimeout }, values);
         const [[count]] = await run('SELECT COUNT(*) AS total FROM claims c WHERE c.claimant_id=?', [claimantId]);
-        const [rows] = await run(`SELECT ${claimColumns}, i.title AS item_title, i.type AS item_type, i.status AS item_status, i.event_date AS item_event_date, cat.name AS category_name, loc.name AS location_name FROM claims c JOIN items i ON i.item_id=c.item_id JOIN categories cat ON cat.category_id=i.category_id JOIN locations loc ON loc.location_id=i.location_id WHERE c.claimant_id = ? ORDER BY c.submitted_at DESC, c.claim_id DESC LIMIT ? OFFSET ?`, [claimantId, options.limit, (options.page - 1) * options.limit]);
+        const [rows] = await run(`SELECT ${claimColumns}, i.title AS item_title, i.type AS item_type, i.status AS item_status, ${hiddenItemSql()} AS item_is_hidden, i.event_date AS item_event_date, cat.name AS category_name, loc.name AS location_name FROM claims c JOIN items i ON i.item_id=c.item_id JOIN categories cat ON cat.category_id=i.category_id JOIN locations loc ON loc.location_id=i.location_id WHERE c.claimant_id = ? ORDER BY c.submitted_at DESC, c.claim_id DESC LIMIT ? OFFSET ?`, [claimantId, options.limit, (options.page - 1) * options.limit]);
         return { rows, total: count.total };
       });
     },
@@ -27,7 +28,7 @@ export function createClaimRepository(pool) {
             await createNotificationService(createNotificationRepository(pool, run)).emit(type, claimId, [type === 'NEW_CLAIM' ? row.user_id : row.claimant_id]);
           },
           async findItem() {
-            const [[item]] = await run('SELECT item_id, user_id, type, status FROM items WHERE item_id = ?', [itemId]);
+            const [[item]] = await run(`SELECT i.item_id, i.user_id, i.type, i.status, ${hiddenItemSql()} AS is_hidden FROM items i WHERE i.item_id = ?`, [itemId]);
             return item;
           },
           async findClaimForUpdate(claimId) {

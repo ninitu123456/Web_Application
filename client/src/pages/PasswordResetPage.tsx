@@ -82,12 +82,11 @@ export function PasswordResetPage({ reset = false }: { reset?: boolean }) {
   }
   return (
     <section className="panel auth-panel reset-panel">
-      <span className="eyebrow">FINDIT · TÀI KHOẢN</span>
       <h1>{reset ? "Đặt lại mật khẩu" : "Quên mật khẩu?"}</h1>
       <p className="muted">
         {reset
-          ? "Tạo mật khẩu mới để tiếp tục kết nối."
-          : "Nhập email của bạn để yêu cầu liên kết khôi phục có hiệu lực 15 phút."}
+          ? "Nhập mật khẩu mới, ít nhất 8 ký tự."
+          : "Nhập email để nhận liên kết đặt lại mật khẩu, có hiệu lực 15 phút."}
       </p>
       <form onSubmit={submit}>
         {reset ? (

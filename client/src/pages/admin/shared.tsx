@@ -65,7 +65,6 @@ export function AdminTitle({
   return (
     <div className="section-heading">
       <div>
-        <span className="eyebrow">QUẢN TRỊ FINDIT</span>
         <h1>{title}</h1>
       </div>
       {children}

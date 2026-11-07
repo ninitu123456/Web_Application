@@ -975,10 +975,10 @@ fieldset > small {
 }
 .auth-layout {
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: 70px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
   align-items: center;
-  max-width: 1050px;
+  max-width: 470px;
   margin: 65px auto 70px;
 }
 .auth-story h1 {
@@ -1017,7 +1017,7 @@ fieldset > small {
 .auth-panel {
   padding: 38px;
 }
-.auth-panel h2 {
+.auth-panel h1 {
   font-size: 29px;
 }
 .auth-panel > p {
@@ -1667,7 +1667,7 @@ dialog .modal-inner > .section-heading .icon-button {
   .auth-panel {
     padding: 28px 24px;
   }
-  .auth-panel h2 {
+  .auth-panel h1 {
     font-size: 27px;
   }
   .item-form {

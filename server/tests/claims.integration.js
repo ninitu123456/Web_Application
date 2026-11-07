@@ -99,7 +99,8 @@ test('Claim integration: private evidence, state machine, MySQL transactions and
       assert.equal(mine.json.data[0].proofDescription, evidence);
       const publicResponse = await request(http, `/api/items/${found}`);
       assertNoEvidence(publicResponse, evidence);
-      assert.deepEqual(Object.keys(publicResponse.json.data).sort(), ['id', 'userId', 'categoryId', 'locationId', 'title', 'description', 'type', 'color', 'eventDate', 'status', 'createdAt', 'updatedAt', 'category', 'location', 'images'].sort());
+      assert.deepEqual(Object.keys(publicResponse.json.data).sort(), ['id', 'userId', 'categoryId', 'locationId', 'title', 'description', 'type', 'color', 'eventDate', 'status', 'visibility', 'createdAt', 'updatedAt', 'category', 'location', 'images'].sort());
+      assert.equal(publicResponse.json.data.visibility, 'PUBLIC');
       assert.equal(publicResponse.json.data.id, found); assert.equal(publicResponse.json.data.type, 'FOUND');
       assert.equal(publicResponse.json.data.status, 'CLAIM_PENDING'); assert.ok(Array.isArray(publicResponse.json.data.images));
       const search = await request(http, '/api/items?keyword=Claim&type=FOUND');

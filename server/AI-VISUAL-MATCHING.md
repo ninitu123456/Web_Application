@@ -42,7 +42,7 @@ For a synthetic-data preview, set the backend flag and `VITE_AI_VISUAL_SUGGESTIO
 
 ## Development commands
 
-The worker and local smoke tool read at most 5 MiB per local image, inspect actual JPEG/PNG/WebP metadata, reject multi-frame images and inputs over 40 million pixels, and decode with Sharp's `limitInputPixels` and strict error handling. RGB output is bounded to 1024 by 1024 before CLIP processing. Sharp 0.34.5 is reused from the existing Transformers.js installation and declared directly because this code calls it. Native processing has a 10-second libvips timeout; this is a decoder processing limit, not a hard OS memory/time sandbox. A future production worker still needs process/container resource limits. Worker cleanup removes downloaded temporary files even when decoding fails.
+The worker and local smoke tool read at most 5 MiB per local image, inspect actual JPEG/PNG/WebP metadata, reject multi-frame images and inputs over 40 million pixels, and decode with Sharp's `limitInputPixels` and strict error handling. RGB output is bounded to 1024 by 1024 before CLIP processing. Sharp 0.35.5 is pinned directly and shared with Transformers.js via a scoped override to remove vulnerable Sharp/libvips versions without changing the pinned CLIP model or Transformers version. Native processing has a 10-second libvips timeout; this is a decoder processing limit, not a hard OS memory/time sandbox. A future production worker still needs process/container resource limits. Worker cleanup removes downloaded temporary files even when decoding fails.
 
 Apply migrations only to a disposable isolated MySQL instance. The project test runner provisions and verifies one automatically:
 

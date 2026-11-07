@@ -249,11 +249,7 @@ export function MyClaimsPage() {
   });
   return (
     <section className="page-section narrow">
-      <span className="eyebrow">THEO DÕI KẾT NỐI</span>
       <h1>Yêu cầu đã gửi</h1>
-      <p className="muted">
-        Xem tiến trình xác minh và nhận lại đồ vật của bạn.
-      </p>
       {result.loading ? (
         <Loading />
       ) : result.error ? (
@@ -265,9 +261,13 @@ export function MyClaimsPage() {
               <div className="section-heading">
                 <div>
                   <h2>
-                    <Link to={`/do-vat/${claim.itemId}`}>
-                      {claim.item?.title || `Bài đăng #${claim.itemId}`} ↗
-                    </Link>
+                    {claim.item?.visibility === "HIDDEN" ? (
+                      claim.item.title
+                    ) : (
+                      <Link to={`/do-vat/${claim.itemId}`}>
+                        {claim.item?.title || `Bài đăng #${claim.itemId}`} ↗
+                      </Link>
+                    )}
                   </h2>
                   <p className="muted">
                     {claim.item?.location} · {dateLabel(claim.submittedAt)}
@@ -280,6 +280,12 @@ export function MyClaimsPage() {
                   Trạng thái bài đăng:{" "}
                   <StatusBadge status={claim.item.status} group="item" />
                 </div>
+              )}
+              {claim.item?.visibility === "HIDDEN" && (
+                <p className="notice">
+                  Bài đăng đã được gỡ khỏi phần công khai. Lịch sử yêu cầu và
+                  bằng chứng của bạn vẫn được giữ; hãy theo dõi kết quả tại đây.
+                </p>
               )}
               <details className="proof">
                 <summary>Bằng chứng bạn đã gửi (riêng tư)</summary>

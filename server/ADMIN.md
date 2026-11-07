@@ -49,7 +49,19 @@ Canonical close supports OPEN without active Claims and FOUND/CLAIM_PENDING with
 
 Every decision, each actual Claim transition, Item update and notification commits or rolls back together on one scoped connection. Child audit entries link to the decision log ID. Reason is stored only in the decision audit and can be read by ADMIN; it is absent from public DTOs and notifications. Free text can contain PII entered by an ADMIN. Report creation is not required and Report status is never automatically changed. No functional migration is required: existing states, audit JSON and notification VARCHAR/event keys suffice.
 
-**CLOSED does not hide or remove public content.** Public detail remains readable and unfiltered search can include CLOSED Items. Visibility/moderation takedown and disputes after approval or handover require a separate design.
+**CLOSED does not hide or remove public content.** Public detail remains readable and unfiltered search can include CLOSED Items unless an ADMIN separately hides the Item.
+
+## Public visibility moderation
+
+`PATCH /api/admin/items/:id/visibility` accepts `{ "visibility": "HIDDEN" | "PUBLIC", "reason": "..." }` with the same Unicode reason limits as close. The response is `{ success: true, data: { item: ItemDto } }`. Item DTOs expose `visibility` independently of their lifecycle `status`. Admin lists include both visibility states; filter with `GET /api/admin/items?visibility=HIDDEN` or `PUBLIC`.
+
+Only an active ADMIN may hide or restore; the owner or any historical claimant must ask a different ADMIN. Invalid input returns 400, missing Item 404, related/revoked actor 403 and a repeated target state 409. Both directions acquire the matching advisory lock, actor locks and the Item row lock. Visibility, `updated_at`, private reason audit and the owner notification commit or roll back together. Each transition has a distinct notification event key, including repeated hide/restore cycles. No data or images are deleted.
+
+Hidden Items are excluded from public search and its pagination totals, matching sources/candidates/results and new claims. Anonymous or unrelated detail reads return 404; optional Bearer authentication on `GET /api/items/:id` permits only the active owner or ADMIN to inspect hidden content. Invalid supplied authentication returns 401. The owner still sees hidden Items in `/api/items/mine`, with a badge and no edit/upload actions; existing claim review and handover remain available. The claimant's private history retains their proof and labels the Item as hidden without linking to an inaccessible detail. Admin reports and evidence inspection remain available.
+
+Restore preserves OPEN/CLAIM_PENDING/CLAIMED/RETURNED/CLOSED as-is and resynchronizes eligible matches. Pending match emails recheck visibility before delivery and fail permanently as `ITEM_UNAVAILABLE` for hidden targets. A delivery already in progress cannot be recalled. Previously shared image URLs are retained with the archived assets; this feature removes public Item discovery/detail access, not the underlying image files.
+
+No schema migration or production configuration change is required. The existing append-only `activity_logs` stores `ITEM_HIDDEN`/`ITEM_RESTORED`; the larger log ID determines the current visibility, with no event meaning PUBLIC. These events are durable application state, like image-operation journals: **do not purge or edit visibility events independently of the Item**. Queries use an uncorrelated grouped visibility set so the log is aggregated once per query, not scanned separately for each Item. A future log-retention policy must first migrate this state to dedicated storage. Reasons are ADMIN-only and never included in public DTOs or notifications.
 
 ## Business activity log
 

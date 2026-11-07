@@ -689,7 +689,7 @@ export async function extendedBrowserCheck({
       adminPage
         .getByRole("dialog")
         .getByText(
-          /Chưa kiểm tra được bạn có liên quan đến bài đăng này hay không/,
+          "Chưa xác định được quyền xử lý. Vui lòng thử lại.",
         ),
     ).toBeVisible();
     await adminPage
@@ -835,6 +835,19 @@ export async function extendedBrowserCheck({
       url,
       artifacts,
       reportId: itemReport.id,
+    });
+    const { visibilityBrowserCheck } =
+      await import("./visibility-browser-check.mjs");
+    await visibilityBrowserCheck({
+      browser,
+      page,
+      adminPage,
+      url,
+      artifacts,
+      found,
+      request,
+      userToken,
+      adminToken,
     });
     // A role change is seen by the actual JWT middleware and the frontend guard.
     await query(pool, "UPDATE users SET role_id=? WHERE user_id=?", [

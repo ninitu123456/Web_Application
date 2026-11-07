@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { transaction, query, databaseTimeout } from '../config/db.js';
 import { cosineSimilarity, decodeEmbedding } from './embeddings.js';
 import { aiVisualEventKey, decideVisualNotification } from './notification-policy.js';
+import { hiddenItemSql } from '../utils/item-visibility.js';
 
 const MODEL = 'Xenova/clip-vit-base-patch32';
 const REVISION = '4c1807b705b1d015fb032789cc4d221b23025a6f';
@@ -21,7 +22,7 @@ export function createAiVisualSnapshotService(pool, flags = {}) {
     }
     const [[lost]] = await query(pool, `SELECT i.item_id,i.user_id,i.type,i.status,i.updated_at,u.account_status,p.enabled AS preference_enabled
       FROM items i JOIN users u ON u.user_id=i.user_id LEFT JOIN ai_visual_notification_preferences p ON p.user_id=i.user_id
-      WHERE i.item_id=?`, [lostId]);
+      WHERE i.item_id=? AND ${hiddenItemSql()} = 0`, [lostId]);
     if (!lost || lost.type !== 'LOST' || lost.status !== 'OPEN' || lost.account_status !== 'ACTIVE' || !lost.preference_enabled) return undefined;
     if (demoMode) {
       const [[markedLost]] = await query(pool, "SELECT demo_entity_id FROM ai_visual_demo_entities WHERE item_id=? AND user_id=? AND entity_role='LOST_ITEM' LIMIT 1", [lost.item_id, lost.user_id]);
@@ -30,7 +31,7 @@ export function createAiVisualSnapshotService(pool, flags = {}) {
     const [items] = await query(pool, `SELECT i.item_id,i.user_id,i.type,i.status,i.updated_at,u.account_status
       FROM items i JOIN users u ON u.user_id=i.user_id
       ${demoMode ? "JOIN ai_visual_demo_entities de ON de.item_id=i.item_id AND de.user_id=i.user_id AND de.entity_role='FOUND_ITEM'" : ''}
-      WHERE i.type='FOUND' AND i.status='OPEN' AND u.account_status='ACTIVE' ORDER BY i.item_id`);
+      WHERE i.type='FOUND' AND i.status='OPEN' AND u.account_status='ACTIVE' AND ${hiddenItemSql()} = 0 ORDER BY i.item_id`);
     const manifest = { catalogRevision: String(catalogRevision), lost: { id: String(lost.item_id), owner: String(lost.user_id), updated: String(lost.updated_at) }, found: [] };
     const all = [lost, ...items];
     for (const item of all) {
@@ -62,6 +63,7 @@ export function createAiVisualSnapshotService(pool, flags = {}) {
           JOIN ai_visual_notification_preferences p ON p.user_id=i.user_id AND p.enabled=TRUE
           ${demoMode ? "JOIN ai_visual_demo_entities de ON de.item_id=i.item_id AND de.user_id=i.user_id AND de.entity_role='LOST_ITEM'" : ''}
           WHERE i.type='LOST' AND i.status='OPEN' AND u.account_status='ACTIVE' AND i.item_id>?
+            AND ${hiddenItemSql()} = 0
           ORDER BY i.item_id LIMIT 100`, [lastScannedLostId]);
         if (!lostRows.length) {
           if (lastScannedLostId !== '0' && !wrapped) {
@@ -209,11 +211,11 @@ export function createAiVisualSnapshotService(pool, flags = {}) {
       }
       const [[eligibility]] = await run(`SELECT l.status AS lost_status,l.type AS lost_type,l.user_id AS lost_owner_id,lu.account_status AS lost_owner_status,
         p.enabled AS preference_enabled,f.status AS found_status,f.type AS found_type,fu.account_status AS found_owner_status
-        ,f.user_id AS found_owner_id
+        ,f.user_id AS found_owner_id,${hiddenItemSql('l.item_id')} AS lost_hidden,${hiddenItemSql('f.item_id')} AS found_hidden
         FROM items l JOIN users lu ON lu.user_id=l.user_id JOIN items f ON f.item_id=? JOIN users fu ON fu.user_id=f.user_id
         LEFT JOIN ai_visual_notification_preferences p ON p.user_id=lu.user_id WHERE l.item_id=?`, [row.found_item_id, row.lost_item_id]);
       const syntheticStillPresent = eligibility && (!demoMode || await isDemoPair(run, row.lost_item_id, row.found_item_id, eligibility.lost_owner_id, eligibility.found_owner_id));
-      if (!eligibility || !syntheticStillPresent || eligibility.lost_status !== 'OPEN' || eligibility.found_status !== 'OPEN' || eligibility.lost_type !== 'LOST' || eligibility.found_type !== 'FOUND' || eligibility.lost_owner_status !== 'ACTIVE' || eligibility.found_owner_status !== 'ACTIVE' || !eligibility.preference_enabled) {
+      if (!eligibility || Number(eligibility.lost_hidden) || Number(eligibility.found_hidden) || !syntheticStillPresent || eligibility.lost_status !== 'OPEN' || eligibility.found_status !== 'OPEN' || eligibility.lost_type !== 'LOST' || eligibility.found_type !== 'FOUND' || eligibility.lost_owner_status !== 'ACTIVE' || eligibility.found_owner_status !== 'ACTIVE' || !eligibility.preference_enabled) {
         await run("UPDATE ai_visual_notification_outbox SET status='SUPPRESSED',updated_at=UTC_TIMESTAMP() WHERE outbox_id=?", [row.outbox_id]);
         return true;
       }

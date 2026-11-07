@@ -108,6 +108,11 @@ describe("redesigned item detail with AI integration", () => {
     expect(html).toContain("Nhắn tin");
     expect(html).not.toContain("visual-suggestions-title");
   });
+  it("hides AI suggestions for an owner when moderation hides the LOST item", () => {
+    current = { ...item, visibility: "HIDDEN" };
+    expect(render()).not.toContain("visual-suggestions-title");
+    expect(mocks.resource).not.toHaveBeenCalledWith("/items/5/visual-suggestions");
+  });
   it.each(["loading", "empty", "error"] as const)(
     "keeps the AI %s state inside the redesigned LOST page",
     (state) => {

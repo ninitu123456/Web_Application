@@ -45,14 +45,9 @@ export function ExplorePage() {
     <>
       <section className="hero">
         <div className="hero-copy">
-          <span className="eyebrow">KẾT NỐI TRONG KHUÔN VIÊN TRƯỜNG</span>
           <h1>
             Tìm lại đồ thất lạc<span className="brand-dot">.</span>
           </h1>
-          <p>
-            Kết nối những món đồ với chủ nhân. Một chia sẻ nhỏ, một niềm vui trở
-            về.
-          </p>
         </div>
         <div className="hero-symbol" aria-hidden="true">
           <Icon name="search" />
@@ -261,35 +256,6 @@ export function ExplorePage() {
               ?.scrollIntoView({ behavior: "smooth" });
           }}
         />
-      </section>
-      <section className="how-it-works">
-        <span className="eyebrow">MỘT HÀNH TRÌNH ĐƠN GIẢN</span>
-        <h2>Từ đi lạc đến trở về.</h2>
-        <div className="steps">
-          {[
-            [
-              "01",
-              "Chia sẻ món đồ",
-              "Đăng thông tin đồ bị mất hoặc nhặt được.",
-            ],
-            [
-              "02",
-              "Tìm một kết nối",
-              "Tìm kiếm và tham khảo gợi ý tương đồng.",
-            ],
-            [
-              "03",
-              "Xác minh & trao lại",
-              "Gửi bằng chứng riêng tư và xác nhận bàn giao.",
-            ],
-          ].map(([number, title, description]) => (
-            <div key={number}>
-              <span>{number}</span>
-              <h3>{title}</h3>
-              <p>{description}</p>
-            </div>
-          ))}
-        </div>
       </section>
     </>
   );

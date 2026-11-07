@@ -37,7 +37,7 @@ export function createAiVisualWorker({ repository, encoder, imageSource, config,
     let image, heartbeat;
     try {
       heartbeat = startLeaseHeartbeat(job);
-      if (!ACTIVE.has(job.item_status) || !['LOST', 'FOUND'].includes(job.type)) {
+      if (Number(job.is_hidden) || !ACTIVE.has(job.item_status) || !['LOST', 'FOUND'].includes(job.type)) {
         await repository.cancel(job);
         onEvent({ event: 'job_cancelled', jobId: String(job.job_id), reason: 'inactive_item' });
         return true;

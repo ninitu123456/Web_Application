@@ -13,7 +13,7 @@ export const adminEmptyQuery = (query) => parse(z.strictObject({}), query);
 const pageFields = { page: id.prefault('1'), limit: id.pipe(z.number().max(100)).prefault('10') };
 export const adminPagination = (query, filters = {}) => parse(z.strictObject({ ...pageFields, ...filters }).refine((value) => Number.isSafeInteger((value.page - 1) * value.limit)), query);
 export const adminUserQuery = (query) => adminPagination(query, { accountStatus: z.enum(['ACTIVE', 'SUSPENDED']).optional(), role: z.enum(['USER', 'ADMIN']).optional() });
-export const adminItemQuery = (query) => adminPagination(query, { type: z.enum(['LOST', 'FOUND']).optional(), status: z.enum(['OPEN', 'CLAIM_PENDING', 'CLAIMED', 'RETURNED', 'CLOSED']).optional() });
+export const adminItemQuery = (query) => adminPagination(query, { type: z.enum(['LOST', 'FOUND']).optional(), status: z.enum(['OPEN', 'CLAIM_PENDING', 'CLAIMED', 'RETURNED', 'CLOSED']).optional(), visibility: z.enum(['PUBLIC', 'HIDDEN']).optional() });
 const name = (maximum) => z.string().trim().min(1).max(maximum);
 export const createLookupInput = (body, maximum) => parse(z.strictObject({ name: name(maximum) }), body);
 export const updateLookupInput = (body, maximum) => parse(z.strictObject({ name: name(maximum).optional(), isActive: z.boolean().optional() }).refine((value) => Object.keys(value).length > 0), body);
@@ -24,6 +24,7 @@ export const adminItemStatusInput = (body) => parse(z.strictObject({ status: z.l
 // range matches only unpaired UTF-16 surrogates that cannot be stored as JSON.
 const reason = z.string().trim().refine((value) => !/[\uD800-\uDFFF]/u.test(value) && [...value].length >= 1 && [...value].length <= 1000 && Buffer.byteLength(value, 'utf8') <= 4000);
 export const adminCloseInput = (body) => parse(z.strictObject({ reason }), body);
+export const adminVisibilityInput = (body) => parse(z.strictObject({ reason, visibility: z.enum(['PUBLIC', 'HIDDEN']) }), body);
 export const adminResolveInput = (body) => parse(z.strictObject({ decision: z.enum(['APPROVE', 'REJECT']), reason }), body);
 const sort = z.enum(['newest', 'oldest']).prefault('newest');
 export const adminClaimQuery = (query) => adminPagination(query, { status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']).optional(), itemId: id.optional(), claimantId: id.optional(), sort });

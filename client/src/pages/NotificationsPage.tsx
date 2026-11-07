@@ -54,7 +54,6 @@ export function NotificationsPage() {
     <section className="page-section narrow">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">CẬP NHẬT CỦA BẠN</span>
           <h1>Thông báo</h1>
           <p className="muted">
             {notifications.error

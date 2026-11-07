@@ -48,9 +48,6 @@ function LookupManager({ kind }: { kind: Kind }) {
   return (
     <section className="admin-section">
       <div className="section-heading">
-        <p className="muted">
-          Danh sách gồm cả {label} đang và đã ngừng hoạt động.
-        </p>
         <Button onClick={() => setEdit("new")}>Thêm {label}</Button>
       </div>
       {result.loading ? (

@@ -6,6 +6,9 @@ import { createNotificationRepository } from './notification.repository.js';
 import { createNotificationService } from '../services/notification.service.js';
 import { businessActions, businessEntities } from '../utils/admin-dto.js';
 import { bumpAiVisualCatalogRevision } from '../ai-visual/catalog-revision.js';
+import { hiddenItemSql } from '../utils/item-visibility.js';
+import { createMatchingService } from '../services/matching.service.js';
+import { createMatchingRepository } from './matching.repository.js';
 
 const summaryColumns = 'c.claim_id,c.item_id,c.claimant_id,c.status,c.submitted_at,c.reviewed_at,c.completed_at';
 export function createAdminModerationRepository(pool) {
@@ -23,7 +26,21 @@ export function createAdminModerationRepository(pool) {
         return operation({
           run, items: createItemRepository(pool, run),
           bumpVisualCatalog() { return bumpAiVisualCatalogRevision(run); },
-          async lockItem(id) { const [[item]] = await run('SELECT item_id,user_id,type,status FROM items WHERE item_id=? FOR UPDATE', [id]); return item; },
+          async lockItem(id) {
+            const [[item]] = await run('SELECT item_id,user_id,type,status FROM items WHERE item_id=? FOR UPDATE', [id]);
+            if (!item) return undefined;
+            // Establish the visibility snapshot only AFTER a contended Item lock
+            // has been acquired, so concurrent decisions see the committed event.
+            const [[state]] = await run(`SELECT ${hiddenItemSql()} AS is_hidden FROM items i WHERE i.item_id=?`, [id]);
+            return { ...item, ...state };
+          },
+          synchronize(id) { return createMatchingService(createMatchingRepository(pool, run)).synchronize(id); },
+          async requeueVisualJobs(id) {
+            const [tables] = await run("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='ai_visual_jobs'");
+            if (tables.length) await run(`UPDATE ai_visual_jobs j JOIN item_images im ON im.image_id=j.image_id
+              SET j.status='QUEUED',j.attempts=0,j.available_at=UTC_TIMESTAMP(),j.locked_until=NULL,j.lease_token=NULL,j.updated_at=UTC_TIMESTAMP()
+              WHERE im.item_id=? AND j.status IN ('COMPLETED','CANCELLED','FAILED')`, [id]);
+          },
           async lockClaims(id) { const [rows] = await run(`SELECT ${summaryColumns} FROM claims c WHERE c.item_id=? ORDER BY c.claim_id FOR UPDATE`, [id]); return rows; },
           async audit(action, entityType, entityId, details) {
             const [result] = await run('INSERT INTO activity_logs(user_id,action,entity_type,entity_id,details,created_at) VALUES(?,?,?,?,?,UTC_TIMESTAMP())', [identity.id, action, entityType, entityId, JSON.stringify(details)]);
@@ -32,7 +49,7 @@ export function createAdminModerationRepository(pool) {
           async notify(events) {
             events.sort((a, b) => BigInt(a.userId) < BigInt(b.userId) ? -1 : BigInt(a.userId) > BigInt(b.userId) ? 1 : a.type.localeCompare(b.type) || Number(a.id) - Number(b.id));
             const service = createNotificationService(createNotificationRepository(pool, run));
-            for (const event of events) await service.emit(event.type, event.id, [event.userId]);
+            for (const event of events) await service.emit(event.type, event.id, [event.userId], event.eventId);
           }
         });
       });

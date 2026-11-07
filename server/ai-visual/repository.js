@@ -1,6 +1,7 @@
 import { transaction, query, databaseTimeout } from '../config/db.js';
 import { randomUUID } from 'node:crypto';
 import { cosineSimilarity, decodeEmbedding } from './embeddings.js';
+import { hiddenItemSql } from '../utils/item-visibility.js';
 
 const ACTIVE = "('OPEN','CLAIM_PENDING','CLAIMED')";
 
@@ -18,7 +19,7 @@ export function createAiVisualRepository(pool) {
           ORDER BY j.available_at, j.job_id LIMIT 1 FOR UPDATE SKIP LOCKED`, timeout: databaseTimeout });
         if (!rows.length) return undefined;
         const job = rows[0];
-        const [[image]] = await connection.query({ sql: `SELECT im.item_id, im.cloudinary_public_id, i.type, i.status AS item_status
+        const [[image]] = await connection.query({ sql: `SELECT im.item_id, im.cloudinary_public_id, i.type, i.status AS item_status, ${hiddenItemSql()} AS is_hidden
           FROM item_images im JOIN items i ON i.item_id=im.item_id WHERE im.image_id=?`, timeout: databaseTimeout }, [job.image_id]);
         await connection.query({ sql: `UPDATE ai_visual_jobs SET status = 'PROCESSING', attempts = attempts + 1,
           locked_until = DATE_ADD(UTC_TIMESTAMP(), INTERVAL 2 MINUTE), lease_token = ?, last_error_code = NULL, updated_at = UTC_TIMESTAMP()
@@ -35,11 +36,11 @@ export function createAiVisualRepository(pool) {
     async saveEmbedding(job, embeddingData) {
       return transaction(pool, async (connection) => {
         await connection.query({ sql: 'SELECT item_id FROM items WHERE item_id=? FOR UPDATE', timeout: databaseTimeout }, [job.item_id]);
-        const [[context]] = await connection.query({ sql: `SELECT i.item_id, i.type, i.status FROM ai_visual_jobs j
+        const [[context]] = await connection.query({ sql: `SELECT i.item_id, i.type, i.status, ${hiddenItemSql()} AS is_hidden FROM ai_visual_jobs j
           JOIN item_images im ON im.image_id = j.image_id JOIN items i ON i.item_id = im.item_id
           WHERE j.job_id = ? AND j.status = 'PROCESSING' AND j.lease_token=? AND j.locked_until>UTC_TIMESTAMP() FOR UPDATE`, timeout: databaseTimeout }, [job.job_id, job.lease_token]);
         if (!context) return undefined;
-        if (!['OPEN', 'CLAIM_PENDING', 'CLAIMED'].includes(context.status)) {
+        if (Number(context.is_hidden) || !['OPEN', 'CLAIM_PENDING', 'CLAIMED'].includes(context.status)) {
           await connection.query({ sql: "UPDATE ai_visual_jobs SET status='CANCELLED', locked_until=NULL, lease_token=NULL, updated_at=UTC_TIMESTAMP() WHERE job_id=? AND lease_token=?", timeout: databaseTimeout }, [job.job_id, job.lease_token]);
           return undefined;
         }
@@ -52,11 +53,11 @@ export function createAiVisualRepository(pool) {
     async finish(job, itemId) {
       return transaction(pool, async (connection) => {
         await connection.query({ sql: 'SELECT item_id FROM items WHERE item_id=? FOR UPDATE', timeout: databaseTimeout }, [itemId]);
-        const [[item]] = await connection.query({ sql: `SELECT i.status FROM ai_visual_jobs j
+        const [[item]] = await connection.query({ sql: `SELECT i.status, ${hiddenItemSql()} AS is_hidden FROM ai_visual_jobs j
           JOIN item_images im ON im.image_id=j.image_id JOIN items i ON i.item_id=im.item_id
           WHERE j.job_id=? AND j.status='PROCESSING' AND j.lease_token=? AND j.locked_until>UTC_TIMESTAMP() FOR UPDATE`, timeout: databaseTimeout }, [job.job_id, job.lease_token]);
         if (!item) return false;
-        if (!['OPEN', 'CLAIM_PENDING', 'CLAIMED'].includes(item.status)) {
+        if (Number(item.is_hidden) || !['OPEN', 'CLAIM_PENDING', 'CLAIMED'].includes(item.status)) {
           await connection.query({ sql: "UPDATE ai_visual_jobs SET status='CANCELLED', locked_until=NULL, lease_token=NULL, updated_at=UTC_TIMESTAMP() WHERE job_id=? AND lease_token=?", timeout: databaseTimeout }, [job.job_id, job.lease_token]);
           await connection.query({ sql: 'DELETE FROM ai_visual_candidates WHERE lost_item_id=? OR found_item_id=?', timeout: databaseTimeout }, [itemId, itemId]);
           return false;
@@ -70,6 +71,7 @@ export function createAiVisualRepository(pool) {
         JOIN item_images im ON im.item_id=i.item_id
         JOIN item_image_embeddings e ON e.image_id=im.image_id AND e.model_id=? AND e.model_revision=?
         WHERE i.type=? AND i.status IN ${ACTIVE} AND i.item_id<>? AND im.image_id>?
+          AND ${hiddenItemSql()} = 0
         ORDER BY im.image_id LIMIT ?`, [modelId, modelRevision, type === 'LOST' ? 'FOUND' : 'LOST', itemId, afterImageId, limit]);
       return rows;
     },
@@ -85,12 +87,17 @@ export function createAiVisualRepository(pool) {
           const [[item]] = await connection.query({ sql: 'SELECT item_id, type, status FROM items WHERE item_id=? FOR UPDATE', timeout: databaseTimeout }, [id]);
           if (item) items.set(String(item.item_id), item);
         }
+        // Open the visibility read view only after every contended Item lock.
+        // A page read before an admin hide must never recreate a hidden pair.
+        const [visibility] = await connection.query({ sql: `SELECT i.item_id, ${hiddenItemSql()} AS is_hidden
+          FROM items i WHERE i.item_id IN (${ids.map(() => '?').join(',')})`, timeout: databaseTimeout }, ids);
+        for (const row of visibility) if (items.has(String(row.item_id))) items.get(String(row.item_id)).is_hidden = row.is_hidden;
         const [[lease]] = await connection.query({ sql: `SELECT job_id FROM ai_visual_jobs
           WHERE job_id=? AND status='PROCESSING' AND lease_token=? AND locked_until>UTC_TIMESTAMP()
           AND image_id=? AND model_id=? AND model_revision=? FOR UPDATE`, timeout: databaseTimeout }, [job.job_id, job.lease_token, job.image_id, modelId, modelRevision]);
         if (!lease) return false;
         const own = items.get(String(itemId));
-        if (!own || own.type !== type || !['OPEN', 'CLAIM_PENDING', 'CLAIMED'].includes(own.status)) return false;
+        if (!own || Number(own.is_hidden) || own.type !== type || !['OPEN', 'CLAIM_PENDING', 'CLAIMED'].includes(own.status)) return false;
         // Read after all locks using a current read, never the earlier page
         // snapshot. At most five vectors per item; recomputing all pairs is cheap.
         const [embeddings] = await connection.query({ sql: `SELECT im.item_id, e.embedding_data
@@ -108,7 +115,7 @@ export function createAiVisualRepository(pool) {
           const foundId = type === 'FOUND' ? itemId : candidate.itemId;
           if (String(lostId) === String(foundId)) continue;
           const opposite = items.get(String(candidate.itemId));
-          if (!opposite || opposite.type === type || !['OPEN', 'CLAIM_PENDING', 'CLAIMED'].includes(opposite.status)) continue;
+          if (!opposite || Number(opposite.is_hidden) || opposite.type === type || !['OPEN', 'CLAIM_PENDING', 'CLAIMED'].includes(opposite.status)) continue;
           const left = vectors.get(String(itemId)) ?? [], right = vectors.get(String(candidate.itemId)) ?? [];
           if (!left.length || !right.length) continue;
           let score = -1;

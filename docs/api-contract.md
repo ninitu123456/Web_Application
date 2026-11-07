@@ -543,6 +543,7 @@ Người dùng có vai trò USER truy cập các endpoint này phải nhận mã
 | PATCH | /api/admin/users/:id/status | status: ACTIVE/SUSPENDED | Cập nhật trạng thái |
 | GET | /api/admin/items | filters, page, limit | 200 – Danh sách bài đăng |
 | PATCH | /api/admin/items/:id/close | reason | 200 – Đóng bài |
+| PATCH | /api/admin/items/:id/visibility | visibility: PUBLIC/HIDDEN, reason | 200 – Gỡ/khôi phục hiển thị |
 | GET | /api/admin/claims | status?, itemId?, claimantId?, page?, limit?, sort? | 200 – Danh sách Claim |
 | PATCH | /api/admin/claims/:id/resolve | decision, reason | Xử lý tranh chấp |
 | GET | /api/admin/categories | Không có | 200 – Danh mục |
@@ -786,6 +787,14 @@ Yêu cầu bảo mật:
 **Các lỗi có thể xảy ra:** `400` dữ liệu không hợp lệ; `401` chưa xác thực; `403` thiếu quyền hoặc xung đột lợi ích; `404` Item không tồn tại; `409` trạng thái không cho phép đóng hoặc thao tác lặp lại.
 
 **Quy tắc kết quả:** Chỉ hỗ trợ `OPEN` không có Claim đang hoạt động hoặc `FOUND/CLAIM_PENDING` với Claim chờ. Claim `PENDING` được từ chối, ghi thời gian xét duyệt, sau đó Item chuyển `CLOSED`. Dữ liệu lịch sử vẫn được giữ. `CLOSED` không đồng nghĩa ẩn nội dung khỏi API công khai.
+
+#### 12.4. Gỡ/khôi phục hiển thị bài đăng
+
+`PATCH /api/admin/items/:id/visibility` nhận `{ "visibility": "HIDDEN", "reason": "Nội dung vi phạm" }` hoặc `visibility: "PUBLIC"` để khôi phục. Lý do có cùng giới hạn Unicode như 12.2. Chỉ `ACTIVE ADMIN` không là chủ bài và chưa từng gửi Claim trên bài được thao tác. Thành công trả `200` với `{ success: true, data: { item: ItemDto } }`; Item DTO có thêm `visibility: PUBLIC | HIDDEN`.
+
+Các lỗi: `400` sai input/query; `401` chưa xác thực; `403` thiếu quyền/xung đột lợi ích; `404` không tồn tại; `409` bài đã ở chế độ được yêu cầu. Không thay đổi trạng thái Item/Claim; hiển thị, nhật ký lý do riêng tư và thông báo chủ bài phải nguyên tử. Khôi phục không mở lại bài CLOSED/RETURNED.
+
+`GET /api/admin/items` hỗ trợ bộ lọc `visibility=PUBLIC|HIDDEN`, mặc định trả cả hai. Tìm kiếm công khai và Matching chỉ gồm bài PUBLIC, tổng phân trang dùng cùng điều kiện. `GET /api/items/:id` cho bài HIDDEN trả 404 với người ngoài; Bearer token hợp lệ của chủ bài hoặc ADMIN cho phép đọc riêng. Token được gửi nhưng không hợp lệ trả 401. Bài HIDDEN không nhận Claim mới hoặc sửa nội dung/ảnh, nhưng lịch sử và bàn giao hiện có vẫn được giữ. Lý do gỡ/khôi phục chỉ có trong nhật ký ADMIN.
 
 ### 13. API kiểm tra sức khỏe hệ thống (Health API)
 

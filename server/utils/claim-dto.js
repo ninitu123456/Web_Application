@@ -18,5 +18,6 @@ export function claimDto(claim) {
     category: claim.category_name ?? null, location: claim.location_name ?? null
   };
   if (claim.claimant_name !== undefined) result.claimant = { id: id(claim.claimant_id), fullName: claim.claimant_name };
+  if (result.item && claim.item_is_hidden !== undefined) result.item.visibility = Number(claim.item_is_hidden) ? 'HIDDEN' : 'PUBLIC';
   return result;
 }

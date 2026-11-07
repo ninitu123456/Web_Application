@@ -1,5 +1,6 @@
 import { query } from '../config/db.js';
 import { CLIP_MODEL_ID, CLIP_MODEL_REVISION } from '../ai-visual/config.js';
+import { hiddenItemSql } from '../utils/item-visibility.js';
 
 const ACTIVE = "('OPEN','CLAIM_PENDING','CLAIMED')";
 export function isMissingAiVisualTable(error) {
@@ -12,8 +13,9 @@ export function isMissingAiVisualTable(error) {
 export function createVisualSuggestionsRepository(pool, execute = (sql, values = []) => query(pool, sql, values)) {
   return {
     async isEligibleOwnedLostItem(itemId, ownerId) {
-      const [[row]] = await execute(`SELECT item_id FROM items
-        WHERE item_id = ? AND user_id = ? AND type = 'LOST' AND status IN ${ACTIVE} LIMIT 1`, [itemId, ownerId]);
+      const [[row]] = await execute(`SELECT i.item_id FROM items i
+        WHERE i.item_id = ? AND i.user_id = ? AND i.type = 'LOST' AND i.status IN ${ACTIVE}
+          AND ${hiddenItemSql()} = 0 LIMIT 1`, [itemId, ownerId]);
       return Boolean(row);
     },
     async listForLostItem(itemId, limit = 3) {
@@ -29,6 +31,7 @@ export function createVisualSuggestionsRepository(pool, execute = (sql, values =
         JOIN locations l ON l.location_id = f.location_id
         WHERE candidate.lost_item_id = ? AND lost.type = 'LOST' AND lost.status IN ${ACTIVE}
           AND f.type = 'FOUND' AND f.status IN ${ACTIVE}
+          AND ${hiddenItemSql('lost.item_id')} = 0 AND ${hiddenItemSql('f.item_id')} = 0
           AND candidate.model_id = ? AND candidate.model_revision = ?
           AND candidate.cosine_score BETWEEN -1 AND 1
           AND EXISTS (SELECT 1 FROM item_images li JOIN item_image_embeddings le ON le.image_id = li.image_id

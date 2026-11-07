@@ -49,7 +49,6 @@ export function ProfilePage() {
     return <ErrorState error={current.error} retry={invalidate} />;
   return (
     <section className="page-section narrow">
-      <span className="eyebrow">TÀI KHOẢN CỦA BẠN</span>
       <h1>Hồ sơ cá nhân</h1>
       <form className="panel" onSubmit={save}>
         <Input
@@ -66,10 +65,6 @@ export function ProfilePage() {
           value={user?.role === "ADMIN" ? "Quản trị viên" : "Người dùng"}
           readOnly
         />
-        <p className="fine-print">
-          Bạn có thể cập nhật họ tên. Email và vai trò được giữ theo tài khoản
-          hiện tại.
-        </p>
         {error && (
           <p className="inline-error" role="alert">
             {error}

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { query, transaction, databaseTimeout } from '../config/db.js';
 import { matchEmail } from './mail.service.js';
+import { hiddenItemSql } from '../utils/item-visibility.js';
 
 export const retryDelay = attempts => Math.min(3600, 30 * 2 ** (attempts - 1));
 export function createEmailWorker(pool, mailer) {
@@ -18,13 +19,17 @@ export function createEmailWorker(pool, mailer) {
       });
       if (!job) return false;
       try {
+        const [[match]] = await query(pool, `SELECT m.match_id FROM matches m
+          JOIN items l ON l.item_id=m.lost_item_id JOIN items f ON f.item_id=m.found_item_id
+          WHERE CONCAT('MATCH:',m.match_id)=? AND ${hiddenItemSql('l.item_id')}=0 AND ${hiddenItemSql('f.item_id')}=0`, [job.event_key]);
+        if (!match) throw Object.assign(new Error('Unavailable Item'), { code: 'ITEM_UNAVAILABLE', permanent: true });
         const [[user]] = await query(pool, "SELECT email FROM users WHERE user_id=? AND account_status='ACTIVE'", [job.user_id]);
         if (!user) throw Object.assign(new Error('Unavailable recipient'), { code: 'INVALID_RECIPIENT' });
         const payload = typeof job.payload === 'string' ? JSON.parse(job.payload) : job.payload;
         await mailer.send({ to: user.email, ...matchEmail(payload, mailer.frontendUrl), messageId: `<findit-match-${job.job_id}@${new URL(mailer.frontendUrl).hostname}>` });
         await query(pool, "UPDATE email_outbox SET status='SENT',sent_at=UTC_TIMESTAMP(),lease_token=NULL,lease_until=NULL,last_error=NULL WHERE job_id=? AND lease_token=?", [job.job_id, lease]);
       } catch (error) {
-        const code = ['INVALID_RECIPIENT', 'EMAIL_UNAVAILABLE', 'EMAIL_TIMEOUT', 'RESEND_RATE_LIMIT', 'RESEND_AUTH', 'RESEND_REJECTED', 'RESEND_FAILED'].includes(error.code) ? error.code : 'SEND_FAILED';
+        const code = ['ITEM_UNAVAILABLE', 'INVALID_RECIPIENT', 'EMAIL_UNAVAILABLE', 'EMAIL_TIMEOUT', 'RESEND_RATE_LIMIT', 'RESEND_AUTH', 'RESEND_REJECTED', 'RESEND_FAILED'].includes(error.code) ? error.code : 'SEND_FAILED';
         const delay = Math.max(retryDelay(job.attempts), Number.isFinite(error.retryAfter) ? Math.min(86400, Math.max(0, error.retryAfter)) : 0);
         await query(pool, "UPDATE email_outbox SET status=?,next_attempt_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? SECOND),last_error=?,lease_token=NULL,lease_until=NULL WHERE job_id=? AND lease_token=?", [job.attempts >= 5 || code === 'INVALID_RECIPIENT' || error.permanent ? 'FAILED' : 'PENDING', delay, code, job.job_id, lease]);
       }

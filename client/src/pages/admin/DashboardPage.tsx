@@ -28,9 +28,6 @@ export function DashboardPage() {
           Làm mới
         </Button>
       </AdminTitle>
-      <p className="admin-page-intro">
-        Nắm tình hình, xử lý đúng việc. Các chỉ số tổng tính trên toàn hệ thống.
-      </p>
       <section className="admin-queue" aria-label="Hàng đợi công việc">
         <strong>
           <Icon name="alert" />
@@ -71,10 +68,7 @@ export function DashboardPage() {
       </div>
       <div className="admin-dashboard-charts">
         <section className="panel admin-activity-panel">
-          <h2>Hoạt động 30 ngày gần đây</h2>
-          <p className="muted">
-            Số thao tác được ghi trong nhật ký, không phải lượt truy cập.
-          </p>
+          <h2>Số thao tác trong 30 ngày gần đây</h2>
           <ActivityChart rows={data.recentActivity} />
         </section>
         <section className="panel">
@@ -87,10 +81,7 @@ export function DashboardPage() {
           />
         </section>
         <section className="panel">
-          <h2>Bài đăng theo danh mục</h2>
-          <p className="muted">
-            Tối đa 20 danh mục, theo số bài giảm dần từ API.
-          </p>
+          <h2>20 danh mục có nhiều bài đăng nhất</h2>
           <CategoryChart rows={data.categories} />
         </section>
         <PendingReports />
