@@ -13,7 +13,8 @@ export async function migrationFiles() {
   const tableMigrations = legacyTables.map((table, index) => `${String(index + 1).padStart(3, '0')}_${table.name}.sql`);
   const additiveMigrations = ['012_item_search_indexes.sql', '013_notification_report_support.sql'];
   const visualMigrations = visualTables.map((table, index) => `${String(index + 14).padStart(3, '0')}_${table.name}.sql`);
-  const expected = [...tableMigrations, ...additiveMigrations, ...visualMigrations];
+  const visualCatalogSeed = '025_ai_visual_catalog_state_seed.sql';
+  const expected = [...tableMigrations, ...additiveMigrations, ...visualMigrations, visualCatalogSeed];
   if (JSON.stringify(files) !== JSON.stringify(expected)) throw new Error('Unexpected migration file list');
   const initial = await Promise.all(tableMigrations.map(async (version, index) => {
     const sql = await readFile(new URL(version, directory), 'utf8');
@@ -35,9 +36,13 @@ export async function migrationFiles() {
     if (sql.replace(/\r\n/g, '\n') !== createTable(table)) throw new Error(`Migration differs from schema definition: ${version}`);
     return { version, sql, table, kind: 'table', checksum: createHash('sha256').update(sql).digest('hex') };
   }));
+  const seedSql = await readFile(new URL(visualCatalogSeed, directory), 'utf8');
+  const expectedSeed = "INSERT IGNORE INTO `ai_visual_catalog_state` (`state_id`, `revision`, `updated_at`) VALUES (1, 0, UTC_TIMESTAMP());\n";
+  if (seedSql.replace(/\r\n/g, '\n') !== expectedSeed) throw new Error(`Migration differs from seed definition: ${visualCatalogSeed}`);
   return [...initial, { version: indexVersion, sql: indexSql, table: tables.find((table) => table.name === 'items'), kind: 'index', indexes,
     checksum: createHash('sha256').update(indexSql).digest('hex') },
-  { version: phase5Version, sql: phase5Sql, kind: 'phase5', checksum: createHash('sha256').update(phase5Sql).digest('hex') }, ...visual];
+  { version: phase5Version, sql: phase5Sql, kind: 'phase5', checksum: createHash('sha256').update(phase5Sql).digest('hex') }, ...visual,
+  { version: visualCatalogSeed, sql: seedSql, kind: 'seed', checksum: createHash('sha256').update(seedSql).digest('hex') }];
 }
 async function history(connection, files) {
   const [rows] = await connection.query('SELECT version, checksum, status FROM _schema_migrations ORDER BY version');
@@ -82,6 +87,8 @@ export async function migrate(connection, database) {
       // only after comparing every column, index, FK and CHECK to the manifest.
       if (file.kind === 'table') {
         if (!existing.includes(file.table.name)) await connection.query(file.sql);
+      } else if (file.kind === 'seed') {
+        await connection.query(file.sql);
       } else if (file.kind === 'phase5') {
         // Each ALTER is atomic on MySQL 8. A rerun accepts only the exact
         // before/after table shape, never repairs arbitrary partial definitions.

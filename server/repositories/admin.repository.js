@@ -1,6 +1,7 @@
 ﻿import { query, transaction, databaseTimeout } from '../config/db.js';
 
 import { createAdminModerationRepository } from './admin-moderation.repository.js';
+import { bumpAiVisualCatalogRevision } from '../ai-visual/catalog-revision.js';
 const userColumns = 'u.user_id, u.full_name, u.email, u.account_status, u.created_at, u.updated_at, r.name AS role';
 const tableConfig = { categories: { table: 'categories', id: 'category_id', entity: 'CATEGORY' }, locations: { table: 'locations', id: 'location_id', entity: 'LOCATION' } };
 export function createAdminRepository(pool, execute = (sql, values = []) => query(pool, sql, values)) {
@@ -47,6 +48,7 @@ export function createAdminRepository(pool, execute = (sql, values = []) => quer
         if (!actor || actor.role !== 'ADMIN' || actor.account_status !== 'ACTIVE') return { actorForbidden: true };
         if (row.account_status !== status) {
           await source.run('UPDATE users SET account_status=?, updated_at=UTC_TIMESTAMP() WHERE user_id=?', [status, id]);
+          await bumpAiVisualCatalogRevision((sql, values = []) => source.run(sql, values));
           await source.run("INSERT INTO activity_logs (user_id, action, entity_type, entity_id, details, created_at) VALUES (?, 'USER_STATUS_CHANGED', 'USER', ?, ?, UTC_TIMESTAMP())", [actorId, id, JSON.stringify({ previousStatus: row.account_status, status })]);
         }
         return source.findUser(id);

@@ -5,6 +5,7 @@ import { createItemRepository } from './item.repository.js';
 import { createNotificationRepository } from './notification.repository.js';
 import { createNotificationService } from '../services/notification.service.js';
 import { businessActions, businessEntities } from '../utils/admin-dto.js';
+import { bumpAiVisualCatalogRevision } from '../ai-visual/catalog-revision.js';
 
 const summaryColumns = 'c.claim_id,c.item_id,c.claimant_id,c.status,c.submitted_at,c.reviewed_at,c.completed_at';
 export function createAdminModerationRepository(pool) {
@@ -21,6 +22,7 @@ export function createAdminModerationRepository(pool) {
         if (!role || !actor || String(actor.role_id) !== String(role.role_id) || actor.account_status !== 'ACTIVE') throw new HttpError(403, 'Quyền quản trị không còn hiệu lực');
         return operation({
           run, items: createItemRepository(pool, run),
+          bumpVisualCatalog() { return bumpAiVisualCatalogRevision(run); },
           async lockItem(id) { const [[item]] = await run('SELECT item_id,user_id,type,status FROM items WHERE item_id=? FOR UPDATE', [id]); return item; },
           async lockClaims(id) { const [rows] = await run(`SELECT ${summaryColumns} FROM claims c WHERE c.item_id=? ORDER BY c.claim_id FOR UPDATE`, [id]); return rows; },
           async audit(action, entityType, entityId, details) {

@@ -2,6 +2,26 @@
 
 The worker stores image embeddings and shadow candidates only. A separate read-only suggestions API may expose current candidates to the owner of an eligible LOST item when its own feature flag is explicitly enabled. It never alters `matches`, creates notifications, or changes Claim state.
 
+## Experimental AI notification foundation (development only)
+
+Before running the changed backend against a database, apply migrations `001–025` using `npm.cmd run db:migrate` with that database selected. In particular, `017–025` create and seed `ai_visual_catalog_state` and the snapshot/notification tables used by unconditional catalog-revision updates. Verify migration `025_ai_visual_catalog_state_seed.sql` is applied before starting the backend; do not skip revision updates to accommodate an older schema.
+
+Migration `017–024` adds a catalog revision, immutable per-generation snapshot manifests/results, owner preferences (default `false`), auditable decisions, a retryable outbox, a lifetime pair-alert ledger, and a registry for synthetic demo entities. Snapshot manifests pin the LOST image IDs and the eligible `OPEN` FOUND universe, image IDs, model/revision, policy version, and catalog revision. A snapshot becomes `COMPLETE` only after every pinned image has a completed job and a 512-dimensional embedding, and only if its input hash and catalog revision still match at finalization. Any relevant item/image/claim/account mutation increments the catalog revision in its transaction. Expired snapshot leases can be reclaimed; stale leases cannot finalize.
+
+Only LOST owners who are `ACTIVE`, have an `OPEN` LOST item with images, and explicitly enabled `ai_visual_notification_preferences.enabled` are considered. FOUND candidates must be `OPEN`, have images, and belong to an `ACTIVE` owner. `CLAIM_PENDING`, `CLAIMED`, `RETURNED`, and `CLOSED` items are excluded. AI decisions are separate from official Match and Claim workflows.
+
+All three process controls default to `false`: `AI_VISUAL_NOTIFICATION_PROCESSING_ENABLED`, `AI_VISUAL_NOTIFICATION_SHADOW_MODE`, and `AI_VISUAL_NOTIFICATION_DEMO_ENABLED`. Processing is development/test only and requires the existing AI worker's isolated-MySQL guard. The demo flag additionally requires a database named `findit_test_<24 hex>`, loopback on a non-service port, and a temporary isolated datadir. The test runner verifies the live `@@datadir` and `@@port`. No email, SMS, push, or external delivery path exists.
+
+There is no validated production notification policy. The decision engine therefore records `ABSTAIN` (including in shadow mode), and never treats cosine as a probability. The only permissive policy is the explicit synthetic fixture policy in the isolated integration test, labeled `DEMO ONLY`; its `AI_VISUAL_NOTIFICATION_DEMO_MIN_COSINE` default is 0.95 and can only be used behind the isolated demo gate. Demo delivery rechecks snapshot revision, item/owner status and preference, then writes the in-app notification, stable event key, pair-alert ledger, and outbox state in one transaction. A unique recipient/LOST/FOUND ledger key prevents another alert across snapshot generations.
+
+Run the reproducible no-Cloudinary fixture demo on a newly provisioned temporary MySQL 8 instance:
+
+```powershell
+npm.cmd run test:integration:isolated -- --suite=ai-visual.integration.js
+```
+
+The suite asserts that a partial snapshot creates no notification, that completed synthetic fixtures can create exactly one in-app demo notification, and that official Matches and Claims remain unchanged. The fixtures are created and dropped inside the owned temporary database. Production notifications remain disabled until an independently validated policy and explicit product/privacy approval exist.
+
 ## Read-only suggestions preview
 
 - Both `AI_VISUAL_SUGGESTIONS_ENABLED` (backend) and `VITE_AI_VISUAL_SUGGESTIONS_ENABLED` (frontend build) default to `false`. Enable both only for a local preview. `VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE=true` adds an explicit synthetic-score label and otherwise defaults to `false`.

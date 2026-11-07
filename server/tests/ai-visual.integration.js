@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { configFromEnv } from '../../database/scripts/config.js';
 import { connect } from '../../database/scripts/connection.js';
@@ -20,6 +20,7 @@ import { createVisualSuggestionsRepository } from '../repositories/visual-sugges
 import { createVisualSuggestionsService } from '../services/visual-suggestions.service.js';
 import { createItemService } from '../services/item.service.js';
 import { createImageOperations } from '../services/image-operations.js';
+import { createAiVisualSnapshotService } from '../ai-visual/snapshot-service.js';
 
 test('AI Visual Matching jobs and shadow candidates use only the isolated MySQL instance', { timeout: 120000 }, async (t) => {
   assert.ok(process.env.FINDIT_ISOLATED_DATADIR, 'Use npm run test:integration:isolated; refusing the installed database');
@@ -366,6 +367,117 @@ test('AI Visual Matching jobs and shadow candidates use only the isolated MySQL 
       assert.equal(await aiRepository.upsertCandidates(replacement, crashLost.id, 'LOST', replacement.model_id, replacement.model_revision,
         [{ itemId: crashFound.id, score: 1 }]), true);
       assert.equal(await aiRepository.finish(replacement, crashLost.id), true);
+    });
+    await t.test('snapshot waits for every pinned image and demo delivery is isolated, revalidated, and pair-deduplicated', async () => {
+      const [[adminOwner]] = await query(pool, "SELECT user_id FROM users WHERE email='admin@ai-visual.example.test'");
+      const [[cat]] = await query(pool, 'SELECT category_id FROM categories ORDER BY category_id LIMIT 1');
+      const [[loc]] = await query(pool, 'SELECT location_id FROM locations ORDER BY location_id LIMIT 1');
+      const [lostInsert] = await query(pool, `INSERT INTO items(user_id,category_id,location_id,title,description,type,event_date,status,created_at,updated_at)
+        VALUES(?,?,?,'DEMO ONLY LOST fixture','synthetic','LOST','2026-10-25','OPEN',UTC_TIMESTAMP(),UTC_TIMESTAMP())`, [owner.user_id,cat.category_id,loc.location_id]);
+      const [foundInsert] = await query(pool, `INSERT INTO items(user_id,category_id,location_id,title,description,type,event_date,status,created_at,updated_at)
+        VALUES(?,?,?,'DEMO ONLY FOUND fixture','synthetic','FOUND','2026-10-25','OPEN',UTC_TIMESTAMP(),UTC_TIMESTAMP())`, [adminOwner.user_id,cat.category_id,loc.location_id]);
+      const lostId = String(lostInsert.insertId), foundId = String(foundInsert.insertId), runId = randomUUID();
+      await query(pool, 'INSERT INTO ai_visual_notification_preferences(user_id,enabled,updated_at) VALUES(?,TRUE,UTC_TIMESTAMP())', [owner.user_id]);
+      await query(pool, `INSERT INTO ai_visual_demo_entities(run_id,user_id,item_id,entity_role,created_at) VALUES
+        (?,?,NULL,'LOST_OWNER',UTC_TIMESTAMP()),(?,?,?,'LOST_ITEM',UTC_TIMESTAMP()),
+        (?,?,NULL,'FOUND_OWNER',UTC_TIMESTAMP()),(?,?,?,'FOUND_ITEM',UTC_TIMESTAMP())`,
+      [runId,owner.user_id,runId,owner.user_id,lostId,runId,adminOwner.user_id,runId,adminOwner.user_id,foundId]);
+      const [[demoInputs]] = await query(pool, `SELECT i.status,i.type,u.account_status,p.enabled,
+        (SELECT COUNT(*) FROM ai_visual_demo_entities WHERE item_id=i.item_id AND user_id=i.user_id AND entity_role='LOST_ITEM') AS marked
+        FROM items i JOIN users u ON u.user_id=i.user_id JOIN ai_visual_notification_preferences p ON p.user_id=i.user_id WHERE i.item_id=?`, [lostId]);
+      assert.deepEqual([demoInputs.status,demoInputs.type,demoInputs.account_status,Number(demoInputs.enabled),Number(demoInputs.marked)], ['OPEN','LOST','ACTIVE',1,1]);
+      const [lostImage] = await query(pool, "INSERT INTO item_images(item_id,image_url,created_at) VALUES(?,'https://mock.invalid/demo-lost',UTC_TIMESTAMP())", [lostId]);
+      const [foundImage] = await query(pool, "INSERT INTO item_images(item_id,image_url,created_at) VALUES(?,'https://mock.invalid/demo-found',UTC_TIMESTAMP())", [foundId]);
+      await query(pool, `INSERT INTO ai_visual_jobs(image_id,model_id,model_revision,status,attempts,available_at,created_at,updated_at) VALUES
+        (?,? ,?,'QUEUED',0,UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP()),(?,?,?,'QUEUED',0,UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP())`,
+      [lostImage.insertId,modelId,revision,foundImage.insertId,modelId,revision]);
+      const demoService = createAiVisualSnapshotService(pool, { processingEnabled: true, shadowMode: false, demoNotificationsEnabled: true, demoMinCosine: 0.9 });
+      assert.deepEqual(await Promise.all([demoService.processNext(), demoService.processNext()]), [false, false], 'concurrent workers share one incomplete generation without duplicate snapshots');
+      const [[partial]] = await query(pool, "SELECT state FROM ai_visual_snapshots WHERE lost_item_id=? ORDER BY generation DESC LIMIT 1", [lostId]);
+      assert.equal(partial.state, 'PENDING');
+      const [[generationCount]] = await query(pool, 'SELECT COUNT(*) AS total FROM ai_visual_snapshots WHERE lost_item_id=?', [lostId]);
+      assert.equal(Number(generationCount.total), 1);
+      assert.equal(await demoService.deliverNextDemo(), false);
+      const vector = encodeEmbedding([1, ...Array(511).fill(0)]);
+      await query(pool, 'UPDATE ai_visual_jobs SET status=\'COMPLETED\' WHERE image_id IN (?,?)', [lostImage.insertId,foundImage.insertId]);
+      await query(pool, `INSERT INTO item_image_embeddings(image_id,model_id,model_revision,dimensions,embedding_data,created_at) VALUES
+        (?,?,?,512,?,UTC_TIMESTAMP()),(?,?,?,512,?,UTC_TIMESTAMP())`, [lostImage.insertId,modelId,revision,vector,foundImage.insertId,modelId,revision,vector]);
+      assert.equal(await demoService.processNext(), true);
+      const [[complete]] = await query(pool, "SELECT state FROM ai_visual_snapshots WHERE lost_item_id=? ORDER BY generation DESC LIMIT 1", [lostId]);
+      assert.equal(complete.state, 'COMPLETE');
+      const [[decision]] = await query(pool, "SELECT disposition,reason_code FROM ai_visual_notification_decisions WHERE lost_item_id=? AND found_item_id=? ORDER BY decision_id DESC LIMIT 1", [lostId,foundId]);
+      assert.deepEqual(decision, { disposition: 'DEMO_ELIGIBLE', reason_code: 'DEMO_ONLY_FIXTURE_POLICY' });
+      const shadowDemoService = createAiVisualSnapshotService(pool, { processingEnabled: true, shadowMode: true, demoNotificationsEnabled: true, demoMinCosine: 0.9 });
+      assert.equal(await shadowDemoService.deliverNextDemo(), false, 'shadow mode fails closed even when a demo outbox event is pending');
+      const [[shadowNotices]] = await query(pool, "SELECT COUNT(*) AS total FROM notifications WHERE type='AI_VISUAL_SIMILAR_ITEM' AND user_id=?", [owner.user_id]);
+      assert.equal(Number(shadowNotices.total), 0, 'combined shadow/demo flags cannot create a user-visible notification');
+      const before = await counts();
+      assert.equal(await demoService.deliverNextDemo(), true);
+      assert.equal(await demoService.deliverNextDemo(), false);
+      const [[notices]] = await query(pool, "SELECT COUNT(*) AS total FROM notifications WHERE type='AI_VISUAL_SIMILAR_ITEM' AND user_id=?", [owner.user_id]);
+      assert.equal(Number(notices.total), 1);
+      const [secondFound] = await query(pool, `INSERT INTO items(user_id,category_id,location_id,title,description,type,event_date,status,created_at,updated_at)
+        VALUES(?,?,?,'DEMO ONLY later FOUND fixture','synthetic','FOUND','2026-10-25','OPEN',UTC_TIMESTAMP(),UTC_TIMESTAMP())`, [adminOwner.user_id,cat.category_id,loc.location_id]);
+      const secondFoundId = String(secondFound.insertId);
+      const foreignRunId = randomUUID();
+      await query(pool, `INSERT INTO ai_visual_demo_entities(run_id,user_id,item_id,entity_role,created_at) VALUES
+        (?, ?, NULL, 'FOUND_OWNER', UTC_TIMESTAMP()), (?, ?, ?, 'FOUND_ITEM', UTC_TIMESTAMP())`, [foreignRunId,adminOwner.user_id,foreignRunId,adminOwner.user_id,secondFoundId]);
+      const [secondImage] = await query(pool, "INSERT INTO item_images(item_id,image_url,created_at) VALUES(?,'https://mock.invalid/demo-found-2',UTC_TIMESTAMP())", [secondFoundId]);
+      await query(pool, `INSERT INTO ai_visual_jobs(image_id,model_id,model_revision,status,attempts,available_at,created_at,updated_at)
+        VALUES(?,?,?,'COMPLETED',1,UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP())`, [secondImage.insertId,modelId,revision]);
+      await query(pool, `INSERT INTO item_image_embeddings(image_id,model_id,model_revision,dimensions,embedding_data,created_at)
+        VALUES(?,?,?,512,?,UTC_TIMESTAMP())`, [secondImage.insertId,modelId,revision,vector]);
+      await query(pool, 'UPDATE ai_visual_catalog_state SET revision=revision+1,updated_at=UTC_TIMESTAMP() WHERE state_id=1');
+      assert.equal(await demoService.processNext(), true, 'a newly eligible FOUND row creates the next pinned generation');
+      const [[generations]] = await query(pool, "SELECT COUNT(*) AS total FROM ai_visual_snapshots WHERE lost_item_id=? AND state='COMPLETE'", [lostId]);
+      assert.equal(Number(generations.total), 2);
+      assert.equal(await demoService.deliverNextDemo(), true, 'new-generation retry for the existing pair is idempotently delivered');
+      assert.equal(await demoService.deliverNextDemo(), false, 'cross-run fixture markers cannot queue another demo alert');
+      const [[originalPair]] = await query(pool, `SELECT COUNT(a.alert_id) AS alerts,COUNT(n.notification_id) AS notices
+        FROM ai_visual_pair_alerts a LEFT JOIN notifications n ON n.user_id=a.recipient_id AND n.event_key=a.event_key
+        WHERE a.recipient_id=? AND a.lost_item_id=? AND a.found_item_id=?`, [owner.user_id,lostId,foundId]);
+      assert.deepEqual([Number(originalPair.alerts),Number(originalPair.notices)], [1,1]);
+      const [[newPairNotice]] = await query(pool, 'SELECT COUNT(*) AS total FROM notifications WHERE user_id=? AND event_key=(SELECT event_key FROM ai_visual_pair_alerts WHERE recipient_id=? AND lost_item_id=? AND found_item_id=?)', [owner.user_id,owner.user_id,lostId,secondFoundId]);
+      assert.equal(Number(newPairNotice.total), 0, 'FOUND item and owner markers from another run are rejected');
+      const [[foreignRunDecision]] = await query(pool, 'SELECT disposition,reason_code FROM ai_visual_notification_decisions WHERE lost_item_id=? AND found_item_id=? ORDER BY decision_id DESC LIMIT 1', [lostId,secondFoundId]);
+      assert.deepEqual(foreignRunDecision, { disposition: 'SUPPRESSED', reason_code: 'NO_VALIDATED_NOTIFICATION_POLICY' });
+      const after = await counts();
+      assert.equal(after[0], before[0], 'official Match rows unchanged');
+      assert.equal(after[2], before[2], 'Claim rows unchanged');
+    });
+    await t.test('snapshot keyset acquisition reaches and completes LOST items beyond the first 100', async () => {
+      const [[cat]] = await query(pool, 'SELECT category_id FROM categories ORDER BY category_id LIMIT 1');
+      const [[loc]] = await query(pool, 'SELECT location_id FROM locations ORDER BY location_id LIMIT 1');
+      await query(pool, "UPDATE items SET status='CLOSED',updated_at=UTC_TIMESTAMP() WHERE status='OPEN' AND type IN ('LOST','FOUND')");
+      await query(pool, `INSERT INTO ai_visual_notification_preferences(user_id,enabled,updated_at)
+        VALUES(?,TRUE,UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE enabled=TRUE,updated_at=UTC_TIMESTAMP()`, [owner.user_id]);
+      const total = 105;
+      const itemsSql = Array(total).fill('(?,?,?, ?,\'pagination fixture\',\'LOST\',\'2026-10-25\',\'OPEN\',UTC_TIMESTAMP(),UTC_TIMESTAMP())').join(',');
+      const itemsValues = Array.from({ length: total }, (_, index) => [owner.user_id,cat.category_id,loc.location_id,`AI-PAGINATION-${String(index).padStart(3,'0')}`]).flat();
+      await query(pool, `INSERT INTO items(user_id,category_id,location_id,title,description,type,event_date,status,created_at,updated_at) VALUES ${itemsSql}`, itemsValues);
+      const [fixtures] = await query(pool, "SELECT item_id FROM items WHERE title LIKE 'AI-PAGINATION-%' ORDER BY item_id");
+      assert.equal(fixtures.length, total);
+      const imageSql = Array(total).fill('(?,?,UTC_TIMESTAMP())').join(',');
+      const imageValues = fixtures.flatMap((row, index) => [row.item_id,`https://mock.invalid/pagination/${index}`]);
+      await query(pool, `INSERT INTO item_images(item_id,image_url,created_at) VALUES ${imageSql}`, imageValues);
+      const [images] = await query(pool, "SELECT image_id,item_id FROM item_images WHERE image_url LIKE 'https://mock.invalid/pagination/%' ORDER BY item_id");
+      const jobSql = Array(total).fill('(?,?,?,\'COMPLETED\',1,UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP())').join(',');
+      const jobValues = images.flatMap((row) => [row.image_id,modelId,revision]);
+      await query(pool, `INSERT INTO ai_visual_jobs(image_id,model_id,model_revision,status,attempts,available_at,created_at,updated_at) VALUES ${jobSql}`, jobValues);
+      const embeddingSql = Array(total).fill('(?,?,?,512,?,UTC_TIMESTAMP())').join(',');
+      const embeddingValues = images.flatMap((row) => [row.image_id,modelId,revision,direction]);
+      await query(pool, `INSERT INTO item_image_embeddings(image_id,model_id,model_revision,dimensions,embedding_data,created_at) VALUES ${embeddingSql}`, embeddingValues);
+      const pagedService = createAiVisualSnapshotService(pool, { processingEnabled: true, shadowMode: false, demoNotificationsEnabled: false });
+      let completed = 0;
+      for (let attempt = 0; attempt < 400 && completed < total; attempt++) {
+        await pagedService.processNext();
+        const [[count]] = await query(pool, `SELECT COUNT(*) AS total FROM ai_visual_snapshots
+          WHERE state='COMPLETE' AND lost_item_id BETWEEN ? AND ?`, [fixtures[0].item_id,fixtures.at(-1).item_id]);
+        completed = Number(count.total);
+      }
+      assert.equal(completed, total, 'all eligible LOST items, including those beyond the initial 100-row page, complete snapshots');
+      const [[lastSnapshot]] = await query(pool, `SELECT s.state FROM ai_visual_snapshots s WHERE s.lost_item_id=? ORDER BY s.generation DESC LIMIT 1`, [fixtures.at(-1).item_id]);
+      assert.equal(lastSnapshot.state, 'COMPLETE');
     });
   } finally {
     if (pool) await pool.end();

@@ -23,7 +23,7 @@ test('seed credentials are mandatory, distinct, and within bcrypt byte limit', (
 });
 test('committed migrations and SQL export match the physical schema source', async () => {
   const files = await migrationFiles();
-  assert.equal(files.length, 16);
+  assert.equal(files.length, 25);
   const sql = (await readFile(new URL('../database-schema.sql', import.meta.url), 'utf8')).replace(/\r\n/g, '\n');
   for (const table of [...tables, metadata]) assert.ok(sql.includes(createTable(table)), table.name);
   for (const name of ['idx_items_status_event_date', 'idx_items_type_status', 'idx_items_created_at']) {
@@ -31,8 +31,11 @@ test('committed migrations and SQL export match the physical schema source', asy
     assert.ok(sql.includes(name), name);
   }
   assert.ok(sql.includes(files.at(-1).sql.replace(/\r\n/g, '\n').trim()));
-  assert.deepEqual(files.slice(-3).map((file) => file.version), [
-    '014_item_image_embeddings.sql', '015_ai_visual_jobs.sql', '016_ai_visual_candidates.sql'
+  assert.deepEqual(files.slice(-9).map((file) => file.version), [
+    '017_ai_visual_catalog_state.sql', '018_ai_visual_snapshots.sql', '019_ai_visual_snapshot_results.sql',
+    '020_ai_visual_notification_preferences.sql', '021_ai_visual_notification_decisions.sql',
+    '022_ai_visual_notification_outbox.sql', '023_ai_visual_pair_alerts.sql', '024_ai_visual_demo_entities.sql',
+    '025_ai_visual_catalog_state_seed.sql'
   ]);
 });
 test('CHECK comparison accepts MySQL formatting and preserves AND/OR precedence', () => {

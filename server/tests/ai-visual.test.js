@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import sharp from 'sharp';
 import { readAiVisualConfig } from '../ai-visual/config.js';
+import { decideVisualNotification, aiVisualEventKey } from '../ai-visual/notification-policy.js';
 import { decodeEmbedding, encodeEmbedding, normalizeEmbedding, cosineSimilarity, rankOppositeObjects } from '../ai-visual/embeddings.js';
 import { createCloudinaryImageSource } from '../ai-visual/cloudinary-image-source.js';
 import { createAiVisualWorker } from '../ai-visual/worker.js';
@@ -22,6 +23,30 @@ test('AI visual configuration is disabled by default and restricted to developme
   assert.throws(() => readAiVisualConfig({ NODE_ENV: 'production', AI_VISUAL_MATCHING_ENABLED: 'true' }), /development or test/);
   assert.throws(() => readAiVisualConfig({ AI_VISUAL_MATCHING_ENABLED: 'yes' }), /true or false/);
   assert.throws(() => readAiVisualConfig({ AI_VISUAL_MATCHING_POLL_MS: '1' }), /POLL_MS/);
+});
+
+test('AI notification controls default off and demo mode requires isolated test database identity', () => {
+  const defaults = readAiVisualConfig({ NODE_ENV: 'development' });
+  assert.equal(defaults.notificationProcessingEnabled, false);
+  assert.equal(defaults.notificationShadowMode, false);
+  assert.equal(defaults.demoNotificationsEnabled, false);
+  assert.throws(() => readAiVisualConfig({ NODE_ENV: 'production', AI_VISUAL_NOTIFICATION_SHADOW_MODE: 'true' }), /development\/test/);
+  assert.throws(() => readAiVisualConfig({ NODE_ENV: 'test', AI_VISUAL_MATCHING_ENABLED: 'true', AI_VISUAL_NOTIFICATION_PROCESSING_ENABLED: 'true' }), /isolated local MySQL/);
+  assert.throws(() => readAiVisualConfig({ NODE_ENV: 'test', AI_VISUAL_MATCHING_ENABLED: 'true', AI_VISUAL_MATCHING_CLOUD_NAME: 'demo', CLOUDINARY_CLOUD_NAME: 'demo',
+    AI_VISUAL_NOTIFICATION_PROCESSING_ENABLED: 'true', AI_VISUAL_NOTIFICATION_SHADOW_MODE: 'true', AI_VISUAL_NOTIFICATION_DEMO_ENABLED: 'true',
+    DB_HOST: '127.0.0.1', DB_PORT: '44000', DB_NAME: 'findit_test_0123456789abcdef01234567', FINDIT_ISOLATED_DATADIR: join(tmpdir(), 'findit-mysql-x', 'data') }), /mutually exclusive/);
+  assert.throws(() => readAiVisualConfig({ NODE_ENV: 'test', AI_VISUAL_MATCHING_ENABLED: 'true', AI_VISUAL_MATCHING_CLOUD_NAME: 'demo', CLOUDINARY_CLOUD_NAME: 'demo',
+    AI_VISUAL_NOTIFICATION_DEMO_ENABLED: 'true', AI_VISUAL_NOTIFICATION_PROCESSING_ENABLED: 'true', DB_HOST: '127.0.0.1', DB_PORT: '44000', DB_NAME: 'findit_test_bad', FINDIT_ISOLATED_DATADIR: join(tmpdir(), 'findit-mysql-x', 'data') }), /disposable test database/);
+});
+
+test('notification decisions abstain without a validated policy and fixture thresholds are explicitly demo only', () => {
+  assert.deepEqual(decideVisualNotification({ snapshotComplete: false, eligible: true, demoMode: true, synthetic: true, score: 1, demoThreshold: 0.9 }), { disposition: 'SUPPRESSED', reason: 'SNAPSHOT_INCOMPLETE' });
+  assert.deepEqual(decideVisualNotification({ snapshotComplete: true, eligible: true, shadowMode: true }), { disposition: 'ABSTAIN', reason: 'SHADOW_MODE_NO_DELIVERY' });
+  assert.deepEqual(decideVisualNotification({ snapshotComplete: true, eligible: true, shadowMode: true, demoMode: true, synthetic: true, score: 1, demoThreshold: 0.9 }), { disposition: 'ABSTAIN', reason: 'SHADOW_MODE_NO_DELIVERY' });
+  assert.deepEqual(decideVisualNotification({ snapshotComplete: true, eligible: true, demoMode: true, synthetic: true, score: 0.91, demoThreshold: 0.9 }), { disposition: 'DEMO_ELIGIBLE', reason: 'DEMO_ONLY_FIXTURE_POLICY' });
+  assert.deepEqual(decideVisualNotification({ snapshotComplete: true, eligible: true, demoMode: true, synthetic: true, score: 0.89, demoThreshold: 0.9 }), { disposition: 'SUPPRESSED', reason: 'DEMO_ONLY_FIXTURE_BELOW_THRESHOLD' });
+  assert.equal(aiVisualEventKey('1', '2', '3'), aiVisualEventKey('1', '2', '3'));
+  assert.notEqual(aiVisualEventKey('1', '2', '3'), aiVisualEventKey('1', '2', '4'));
 });
 
 test('embedding storage round-trips normalized 512-float vectors and cosine is bounded', () => {

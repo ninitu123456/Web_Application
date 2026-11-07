@@ -3,7 +3,7 @@ import { encodeEmbedding, rankOppositeObjects } from './embeddings.js';
 
 const ACTIVE = new Set(['OPEN', 'CLAIM_PENDING', 'CLAIMED']);
 
-export function createAiVisualWorker({ repository, encoder, imageSource, config, onEvent = () => {} }) {
+export function createAiVisualWorker({ repository, encoder, imageSource, config, snapshotService, onEvent = () => {} }) {
   if (!repository || !encoder?.embedFile || !imageSource?.download || !config?.enabled) throw new Error('AI_VISUAL_WORKER_NOT_CONFIGURED');
 
   function startLeaseHeartbeat(job) {
@@ -28,7 +28,12 @@ export function createAiVisualWorker({ repository, encoder, imageSource, config,
 
   async function processNext() {
     const job = await repository.claimNext(config.maxAttempts);
-    if (!job) return false;
+    if (!job) {
+      if (!snapshotService?.flags?.processingEnabled) return false;
+      const worked = await snapshotService.processNext();
+      const delivered = await snapshotService.deliverNextDemo();
+      return Boolean(worked || delivered);
+    }
     let image, heartbeat;
     try {
       heartbeat = startLeaseHeartbeat(job);

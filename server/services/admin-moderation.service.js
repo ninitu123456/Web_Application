@@ -37,6 +37,7 @@ export function createAdminModerationService(repository) {
         const { item, pending } = await context(source, identity, id);
         for (const claim of pending) await transition(source, claim, 'REJECTED');
         await itemStatus(source, item, 'CLOSED');
+        await source.bumpVisualCatalog();
         await deleteAiVisualCandidatesIfPresent(source.run, id);
         const decisionLogId = await source.audit('ITEM_MODERATED_CLOSED', 'ITEM', id, { previousStatus: item.status, status: 'CLOSED', reason, source: 'ADMIN_MODERATION', rejectedClaimCount: pending.length });
         for (const claim of pending) await source.audit('CLAIM_REJECTED', 'CLAIM', claim.claim_id, { previousStatus: 'PENDING', status: 'REJECTED', itemId: String(id), automatic: true, source: 'ADMIN_MODERATION', decisionLogId });
@@ -56,6 +57,7 @@ export function createAdminModerationService(repository) {
         for (const other of rejected) await transition(source, other, 'REJECTED');
         const nextStatus = approved ? 'CLAIMED' : pending.length === 1 ? 'OPEN' : 'CLAIM_PENDING';
         await itemStatus(source, item, nextStatus);
+        await source.bumpVisualCatalog();
         const decisionLogId = await source.audit('CLAIM_ADMIN_RESOLVED', 'CLAIM', id, { previousStatus: claim.status, status, itemId: String(itemId), decision, reason, source: 'ADMIN_RESOLVE', autoRejectedClaimCount: rejected.length });
         await source.audit(approved ? 'CLAIM_APPROVED' : 'CLAIM_REJECTED', 'CLAIM', id, { previousStatus: claim.status, status, itemId: String(itemId), source: 'ADMIN_RESOLVE', decisionLogId });
         for (const other of rejected) await source.audit('CLAIM_REJECTED', 'CLAIM', other.claim_id, { previousStatus: 'PENDING', status: 'REJECTED', itemId: String(itemId), automatic: true, source: 'ADMIN_RESOLVE', decisionLogId });

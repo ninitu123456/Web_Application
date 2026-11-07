@@ -3,6 +3,7 @@ import { matchingTransaction } from '../services/matching-transaction.js';
 import { createMatchingService } from '../services/matching.service.js';
 import { createMatchingRepository } from './matching.repository.js';
 import { deleteAiVisualCandidatesIfPresent } from '../ai-visual/invalidation.js';
+import { bumpAiVisualCatalogRevision } from '../ai-visual/catalog-revision.js';
 
 const columns = 'i.item_id, i.user_id, i.category_id, i.location_id, i.title, i.description, i.type, i.color, i.event_date, i.status, i.created_at, i.updated_at, c.name AS category_name, l.name AS location_name';
 const joins = 'FROM items i JOIN categories c ON c.category_id = i.category_id JOIN locations l ON l.location_id = i.location_id';
@@ -36,6 +37,7 @@ export function createItemRepository(pool, execute = (sql, values = []) => query
           await run("INSERT INTO activity_logs (action, entity_type, entity_id, details, created_at) VALUES ('IMAGE_OPERATION_COMMITTED', 'ITEM', ?, ?, UTC_TIMESTAMP())", [id, JSON.stringify({ operationId })]);
         };
         const result = await operation(scoped);
+        await bumpAiVisualCatalogRevision(run);
         if (matching) await createMatchingService(createMatchingRepository(pool, run)).synchronize(id);
         return result;
       });
@@ -51,6 +53,7 @@ export function createItemRepository(pool, execute = (sql, values = []) => query
         await connection.query({ sql: 'INSERT INTO items (user_id, category_id, location_id, title, description, type, color, event_date, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, \'OPEN\', UTC_TIMESTAMP(), UTC_TIMESTAMP())', timeout: databaseTimeout }, [userId, item.categoryId, item.locationId, item.title, item.description, item.type, item.color, item.eventDate]);
         const [[created]] = await connection.query({ sql: `SELECT ${columns} ${joins} WHERE i.item_id = LAST_INSERT_ID()`, timeout: databaseTimeout });
         const run = (sql, values = []) => connection.query({ sql, timeout: databaseTimeout }, values);
+        await bumpAiVisualCatalogRevision(run);
         await createMatchingService(createMatchingRepository(pool, run)).synchronize(created.item_id);
         return { ...created, images: [] };
       });

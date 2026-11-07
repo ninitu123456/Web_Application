@@ -4,6 +4,7 @@ import { createNotificationService } from '../services/notification.service.js';
 
 import { readSnapshot } from '../config/read-snapshot.js';
 import { deleteAiVisualCandidatesIfPresent } from '../ai-visual/invalidation.js';
+import { bumpAiVisualCatalogRevision } from '../ai-visual/catalog-revision.js';
 
 const claimColumns = 'c.claim_id, c.claimant_id, c.item_id, c.proof_description, c.status, c.submitted_at, c.reviewed_at, c.completed_at';
 export function createClaimRepository(pool) {
@@ -82,7 +83,9 @@ export function createClaimRepository(pool) {
           }
         };
         if (!lockedItem) return operation(undefined);
-        return operation(source);
+        const result = await operation(source);
+        if (!snapshot) await bumpAiVisualCatalogRevision(run);
+        return result;
       });
     },
     async findClaimItemId(claimId) {

@@ -20,6 +20,11 @@ async function insert(connection, table, values) {
   const names = Object.keys(values);
   return connection.execute(`INSERT INTO ${quote(table)} (${names.map(quote).join(',')}) VALUES (${names.map(() => '?').join(',')})`, Object.values(values));
 }
+function withoutAutoPrimary(table, values) {
+  const row = { ...values };
+  if (table.columns[table.pk]?.includes('AUTO_INCREMENT')) delete row[table.pk];
+  return row;
+}
 async function snapshot(connection) {
   const result = {};
   for (const table of tables) {
@@ -41,7 +46,7 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
     created = true;
     await initialize(connection, ownedName);
     await t.test('empty database migrates and seeds with verified password hashes', async () => {
-      assert.equal(await migrate(connection, ownedName), 16);
+      assert.equal(await migrate(connection, ownedName), 25);
       await seed(connection, ownedName, credentials);
       await verifyMigrations(connection, ownedName);
       assert.deepEqual(await verifySeed(connection, ownedName, credentials), { roles: 2, users: 2, categories: 4, locations: 4, items: 4 });
@@ -79,6 +84,28 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
         await insert(connection, 'ai_visual_jobs', valid.ai_visual_jobs);
         valid.ai_visual_candidates = { lost_item_id: lost.item_id, found_item_id: found.item_id, model_id: 'test-model', model_revision: 'test-revision', cosine_score: 0.5, updated_at: now };
         await insert(connection, 'ai_visual_candidates', valid.ai_visual_candidates);
+        valid.ai_visual_catalog_state = { state_id: 1, revision: 0, updated_at: now };
+        const [snapshotResult] = await insert(connection, 'ai_visual_snapshots', {
+          lost_item_id: lost.item_id, generation: 1, state: 'PENDING', model_id: 'test-model', model_revision: 'test-revision',
+          policy_version: 'test-policy', input_hash: 'a'.repeat(64), manifest: JSON.stringify({}), created_at: now, updated_at: now
+        });
+        valid.ai_visual_snapshots = { snapshot_id: snapshotResult.insertId, lost_item_id: lost.item_id, generation: 1, state: 'PENDING', model_id: 'test-model', model_revision: 'test-revision', policy_version: 'test-policy', input_hash: 'a'.repeat(64), manifest: JSON.stringify({}), created_at: now, updated_at: now };
+        valid.ai_visual_snapshot_results = { snapshot_id: snapshotResult.insertId, found_item_id: found.item_id, cosine_score: 0.5, created_at: now };
+        await insert(connection, 'ai_visual_snapshot_results', valid.ai_visual_snapshot_results);
+        valid.ai_visual_notification_preferences = { user_id: user.user_id, enabled: false, updated_at: now };
+        await insert(connection, 'ai_visual_notification_preferences', valid.ai_visual_notification_preferences);
+        const [decisionResult] = await insert(connection, 'ai_visual_notification_decisions', {
+          snapshot_id: snapshotResult.insertId, recipient_id: user.user_id, lost_item_id: lost.item_id, found_item_id: found.item_id,
+          policy_version: 'test-policy', disposition: 'ABSTAIN', reason_code: 'TEST', event_key: 'AI_VISUAL:test-event', created_at: now
+        });
+        valid.ai_visual_notification_decisions = { decision_id: decisionResult.insertId, snapshot_id: snapshotResult.insertId, recipient_id: user.user_id,
+          lost_item_id: lost.item_id, found_item_id: found.item_id, policy_version: 'test-policy', disposition: 'ABSTAIN', reason_code: 'TEST', event_key: 'AI_VISUAL:test-event', created_at: now };
+        valid.ai_visual_notification_outbox = { decision_id: decisionResult.insertId, event_key: 'AI_VISUAL:test-event', status: 'PENDING', available_at: now, created_at: now, updated_at: now };
+        await insert(connection, 'ai_visual_notification_outbox', valid.ai_visual_notification_outbox);
+        valid.ai_visual_pair_alerts = { recipient_id: user.user_id, lost_item_id: lost.item_id, found_item_id: found.item_id, event_key: 'AI_VISUAL:test-event', delivered_at: now };
+        await insert(connection, 'ai_visual_pair_alerts', valid.ai_visual_pair_alerts);
+        valid.ai_visual_demo_entities = { run_id: '123e4567-e89b-42d3-a456-426614174000', user_id: user.user_id, item_id: lost.item_id, entity_role: 'LOST_ITEM', created_at: now };
+        await insert(connection, 'ai_visual_demo_entities', valid.ai_visual_demo_entities);
         valid.reports = { reporter_id: user.user_id, target_type: 'ITEM', item_id: found.item_id, reason: 'Test', created_at: now };
         await insert(connection, 'reports', valid.reports);
         // Every primary key and every non-auto-increment NOT NULL column.
@@ -87,18 +114,21 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
           await rejectCode(() => connection.query(`INSERT INTO ${quote(table.name)} (${writableColumns}) SELECT ${writableColumns} FROM ${quote(table.name)} LIMIT 1`), [1062]);
           for (const [column, definition] of Object.entries(table.columns)) {
             if (definition.includes('NOT NULL') && !definition.includes('AUTO_INCREMENT')) {
-              await rejectCode(() => insert(connection, table.name, { ...valid[table.name], [column]: null }), [1048]);
+              await rejectCode(() => insert(connection, table.name, { ...withoutAutoPrimary(table, valid[table.name]), [column]: null }), [1048]);
             }
           }
           for (const columns of Object.values(table.unique ?? {})) {
             if (columns.includes('student_code')) {
               await connection.execute("UPDATE users SET student_code='UNIQUE-TEST' WHERE user_id=?", [user.user_id]);
               await rejectCode(() => insert(connection, 'users', { ...valid.users, email: 'another@example.test', student_code: 'UNIQUE-TEST' }), [1062]);
-            } else await rejectCode(() => insert(connection, table.name, valid[table.name]), [1062]);
+            } else await rejectCode(() => insert(connection, table.name, withoutAutoPrimary(table, valid[table.name])), [1062]);
           }
           for (const relation of Object.values(table.foreign ?? {})) {
-            const row = { ...valid[table.name], [relation.column]: '18446744073709551614' };
+            const row = { ...withoutAutoPrimary(table, valid[table.name]), [relation.column]: '18446744073709551614' };
             if (table.name === 'users') row.email = 'badfk@example.test';
+            if (table.name === 'ai_visual_notification_decisions' && relation.column !== 'recipient_id') row.recipient_id = admin.user_id;
+            if (table.name === 'ai_visual_notification_outbox') row.event_key = `AI_VISUAL:fk-${relation.column}`;
+            if (table.name === 'ai_visual_pair_alerts') row.event_key = `AI_VISUAL:fk-alert-${relation.column}`;
             if (table.name === 'reports') {
               row.status = 'RESOLVED'; // Test the FK independently of active-report uniqueness.
               row.item_id = null; row.reported_user_id = null; row.claim_id = null;
@@ -110,7 +140,7 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
             await rejectCode(() => insert(connection, table.name, row), [1452]);
           }
           for (const [column, definition] of Object.entries(table.columns)) {
-            if (definition.startsWith('ENUM')) await rejectCode(() => insert(connection, table.name, { ...valid[table.name], [column]: 'INVALID' }), [1265]);
+            if (definition.startsWith('ENUM')) await rejectCode(() => insert(connection, table.name, { ...withoutAutoPrimary(table, valid[table.name]), [column]: 'INVALID' }), [1265]);
           }
         }
         // Different LOST/FOUND pair avoids the existing unique match pair.
@@ -148,10 +178,10 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
       assert.equal(await migrate(connection, ownedName), 1);
       // Failure after only part of an additive DDL migration: safely create the missing index.
       await connection.query('DROP INDEX idx_items_created_at ON items');
-      await connection.query('DROP TABLE ai_visual_candidates, ai_visual_jobs, item_image_embeddings');
-      await connection.execute("DELETE FROM _schema_migrations WHERE version IN ('013_notification_report_support.sql','014_item_image_embeddings.sql','015_ai_visual_jobs.sql','016_ai_visual_candidates.sql')");
+      await connection.query('DROP TABLE ai_visual_pair_alerts, ai_visual_notification_outbox, ai_visual_notification_decisions, ai_visual_snapshot_results, ai_visual_snapshots, ai_visual_demo_entities, ai_visual_notification_preferences, ai_visual_candidates, ai_visual_jobs, item_image_embeddings, ai_visual_catalog_state');
+      await connection.execute("DELETE FROM _schema_migrations WHERE version IN ('013_notification_report_support.sql','014_item_image_embeddings.sql','015_ai_visual_jobs.sql','016_ai_visual_candidates.sql','017_ai_visual_catalog_state.sql','018_ai_visual_snapshots.sql','019_ai_visual_snapshot_results.sql','020_ai_visual_notification_preferences.sql','021_ai_visual_notification_decisions.sql','022_ai_visual_notification_outbox.sql','023_ai_visual_pair_alerts.sql','024_ai_visual_demo_entities.sql','025_ai_visual_catalog_state_seed.sql')");
       await connection.execute("UPDATE _schema_migrations SET status='running', applied_at=NULL WHERE version='012_item_search_indexes.sql'");
-      assert.equal(await migrate(connection, ownedName), 5);
+      assert.equal(await migrate(connection, ownedName), 14);
       await connection.execute('UPDATE _schema_migrations SET checksum=REPEAT(\'0\',64) WHERE version=?', [last.version]);
       await assert.rejects(() => migrate(connection, ownedName), /history\/checksum/);
       await connection.execute('UPDATE _schema_migrations SET checksum=? WHERE version=?', [last.checksum, last.version]);

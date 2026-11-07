@@ -2,7 +2,7 @@
 
 Database gồm **11 bảng nghiệp vụ** và bảng kỹ thuật `_schema_migrations`, triển khai theo [ERD](../docs/erd.md), [yêu cầu](../docs/requirements.md), [quy tắc nghiệp vụ](../docs/business-rules.md) và [hợp đồng API](../docs/api-contract.md).
 
-Có 13 migrations: `001–011` tạo các bảng nghiệp vụ, `012` thêm indexes tìm kiếm Item, `013` bổ sung ràng buộc/indexes cho Notification và Report. Runner kiểm tra danh sách migration, định nghĩa và checksum trước khi áp dụng.
+Có 25 migrations: `001–011` tạo các bảng nghiệp vụ, `012–013` bổ sung indexes/ràng buộc, `014–016` hỗ trợ embeddings và candidates AI, `017–024` hỗ trợ revision/snapshot/decision/outbox và demo fixture AI, `025` tạo revision gốc.
 
 ## Chuẩn bị và cấu hình
 
@@ -55,7 +55,7 @@ Seed tìm vai trò/danh mục/địa điểm theo tên; tài khoản theo email 
 
 ## Schema, migration và trách nhiệm backend
 
-- `schema.js` mô tả cấu trúc; `migrations/001_*.sql` đến `011_*.sql` là SQL đã sinh, sắp theo phụ thuộc FK. `database-schema.sql` là bản xuất đầy đủ, dùng cùng nguồn.
+- `schema.js` mô tả cấu trúc; `migrations/*.sql` là SQL đã sinh, sắp theo phụ thuộc FK. `database-schema.sql` là bản xuất đầy đủ, dùng cùng nguồn.
 - MySQL dùng InnoDB, `utf8mb4_0900_ai_ci`; PK là BIGINT UNSIGNED AUTO_INCREMENT. Driver trả BIGINT dưới dạng chuỗi để tránh mất độ chính xác. Khi chuyển sang JSON ID dạng số, backend phải kiểm tra giới hạn số an toàn theo API contract.
 - `users.avatar_url` dùng VARCHAR(1000), `contact_info` dùng TEXT, cả hai nullable, theo quyết định bổ sung cho hai kiểu chưa quy định trong ERD.
 - Datetime lưu UTC; kết nối đặt `time_zone='+00:00'` và scripts truyền thời gian tường minh. Không tự cập nhật `updated_at` bằng trigger; backend phải truyền giá trị khi sửa dữ liệu.
@@ -64,9 +64,11 @@ Seed tìm vai trò/danh mục/địa điểm theo tên; tài khoản theo email 
 - Kiểm tra loại LOST/FOUND của hai phía match, trạng thái hợp lệ, quyền truy cập, Claim chỉ trên FOUND, chống tự Claim và các luồng trạng thái thuộc backend. Xét duyệt Claim phải khóa hàng Item bằng `SELECT ... FOR UPDATE` trong transaction, kiểm tra Claim đã APPROVED/COMPLETED, từ chối Claim cạnh tranh, cập nhật Item/thông báo và audit nguyên tử. Schema không tự bảo đảm chỉ một Claim được duyệt nếu ghi SQL trực tiếp bỏ qua quy trình này.
 - Backend phải bảo vệ `private_identifiers`, `proof_description`, password hash và thông tin riêng tư; database scripts không tạo API.
 
-`_schema_migrations` lưu tên phiên bản, SHA-256, trạng thái running/applied và thời gian UTC. Scripts dùng advisory lock theo database để tránh chạy setup/seed đồng thời. DDL MySQL có implicit commit: không tuyên bố rollback được toàn bộ migration. Trạng thái running được lưu trước DDL; lần chạy sau chỉ tiếp tục nếu bảng đã tạo khớp schema đầy đủ, hoặc chưa tồn tại. Checksum sai, bảng lạ, metadata thiếu, bảng đã áp dụng bị mất, constraint/column/index sai đều khiến script dừng để xem xét thủ công.
+`_schema_migrations` lưu tên phiên bản, SHA-256, trạng thái running/applied và thời gian UTC. AI visual snapshot tables store pinned generations, results, notification decisions, outbox retries, pair alert deduplication and demo fixture markers; user preference defaults off. Scripts dùng advisory lock theo database để tránh chạy setup/seed đồng thời. DDL MySQL có implicit commit: không tuyên bố rollback được toàn bộ migration. Trạng thái running được lưu trước DDL; lần chạy sau chỉ tiếp tục nếu bảng đã tạo khớp schema đầy đủ, hoặc chưa tồn tại. Checksum sai, bảng lạ, metadata thiếu, bảng đã áp dụng bị mất, constraint/column/index sai đều khiến script dừng để xem xét thủ công.
 
-Không sửa migration đã áp dụng rồi chạy `db:build` trên database đang dùng. Thay đổi schema về sau cần migration phiên bản mới và cập nhật runner tương ứng; bộ hiện tại quản lý 13 migrations, gồm 11 migration tạo bảng và 2 migration bổ sung.
+Các backend có cập nhật catalog revision phải chạy trên schema đã áp dụng đầy đủ migrations `001–025`, đặc biệt `017–025` tạo bảng revision, snapshot và notification mà các cập nhật backend sử dụng. Trước khi chạy phiên bản backend này trên một database, chạy `npm.cmd run db:migrate` với cấu hình trỏ đúng database đó và xác nhận migration `025_ai_visual_catalog_state_seed.sql` đã ở trạng thái applied. Không bỏ qua hay điều kiện hóa các cập nhật revision khi bảng chưa tồn tại; database chưa nâng cấp cần được migrate trước khi chạy backend mới.
+
+Không sửa migration đã áp dụng rồi chạy `db:build` trên database đang dùng. Thay đổi schema về sau cần migration phiên bản mới và cập nhật runner tương ứng; bộ hiện tại quản lý 25 migrations.
 
 SQL export tạo `findit_db`, bảng kỹ thuật và 11 bảng nghiệp vụ, không chứa credentials, dữ liệu hoặc bản ghi lịch sử migration. Chỉ import vào database rỗng để tham khảo/khôi phục cấu trúc độc lập. Import tay không được runner tự nhận là migration đã áp dụng; dùng `db:setup` cho cài đặt có quản lý migration.
 
@@ -78,7 +80,7 @@ npm.cmd run db:test:isolated
 ```
 
 - `db:test`: kiểm tra cấu hình, giới hạn bcrypt, đồng bộ SQL export và cách đối chiếu CHECK; không cần kết nối MySQL.
-- `db:test:isolated`: chạy trên MySQL instance tạm do runner tạo, tạo database `findit_test_<24 ký tự hex>` mới. Kiểm tra migrations, seed/hash, chạy lại không đổi dữ liệu, PK của 11 bảng, các cột NOT NULL, các UNIQUE/FK, ENUM/JSON/CHECK, defaults, chặn xóa dữ liệu được tham chiếu, xung đột seed và phục hồi DDL.
+- `db:test:isolated`: chạy trên MySQL instance tạm do runner tạo, tạo database `findit_test_<24 ký tự hex>` mới. Kiểm tra migrations, seed/hash, chạy lại không đổi dữ liệu, các bảng và constraints, ENUM/JSON/CHECK, defaults, chặn xóa dữ liệu được tham chiếu, xung đột seed và phục hồi DDL.
 - Mỗi lần chạy tự tạo database rỗng và xóa trong `finally` chỉ khi chính lần chạy đã tạo thành công. Tên database phải khớp tên sở hữu và mẫu test; `findit_db` luôn bị từ chối bởi cơ chế cleanup.
 - Không có lệnh reset `findit_db`. Muốn tái tạo test, chạy lại bộ integration. Nếu tiến trình bị tắt cưỡng bức, database test có thể còn lại; kiểm tra chính xác tên và quyền sở hữu trước khi tự xóa bằng Workbench.
 
@@ -100,7 +102,7 @@ Thay đường dẫn bằng nơi thực tế đã giải nén MySQL >= 8.0.16. B
 ## Kiểm tra bằng MySQL Workbench
 
 1. Tạo/mở kết nối Standard TCP/IP với host, port và username tương ứng `.env`. Nhập mật khẩu cục bộ trong Workbench.
-2. Refresh **Schemas**, mở `findit_db` → **Tables**. Có 12 bảng vật lý: 11 nghiệp vụ và `_schema_migrations`.
+2. Refresh **Schemas**, mở `findit_db` → **Tables**. Danh sách gồm 11 bảng nghiệp vụ, bảng `_schema_migrations`, và các bảng AI visual được thêm ở migrations `014–024`.
 3. Chạy các truy vấn không chứa thông tin xác minh riêng tư:
 
 ```sql

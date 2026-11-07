@@ -19,7 +19,7 @@ try {
   if (['setup', 'seed'].includes(command)) console.log('Seed verified:', await seed(connection, config.database, credentials));
   if (['setup', 'verify'].includes(command)) {
     await verifyMigrations(connection, config.database);
-    console.log('Schema PASS: 11 business tables + 3 AI Visual tables + _schema_migrations');
+    console.log('Schema PASS: 11 business tables + 11 AI Visual tables + _schema_migrations');
     console.log('Seed PASS:', await verifySeed(connection, config.database, credentials));
   }
 } catch (error) {

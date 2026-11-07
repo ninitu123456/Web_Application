@@ -223,6 +223,132 @@ CREATE TABLE `ai_visual_candidates` (
   CONSTRAINT `ck_ai_visual_distinct` CHECK (lost_item_id <> found_item_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `ai_visual_catalog_state` (
+  `state_id` TINYINT UNSIGNED NOT NULL,
+  `revision` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `updated_at` DATETIME NOT NULL,
+  PRIMARY KEY (`state_id`),
+  CONSTRAINT `ck_ai_visual_catalog_singleton` CHECK (state_id = 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `ai_visual_snapshots` (
+  `snapshot_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `lost_item_id` BIGINT UNSIGNED NOT NULL,
+  `generation` BIGINT UNSIGNED NOT NULL,
+  `state` ENUM('PENDING','PROCESSING','COMPLETE','INVALIDATED','FAILED') NOT NULL DEFAULT 'PENDING',
+  `model_id` VARCHAR(120) NOT NULL,
+  `model_revision` VARCHAR(80) NOT NULL,
+  `policy_version` VARCHAR(80) NOT NULL,
+  `input_hash` CHAR(64) NOT NULL,
+  `manifest` JSON NOT NULL,
+  `lease_token` CHAR(36) NULL,
+  `locked_until` DATETIME NULL,
+  `failure_code` VARCHAR(80) NULL,
+  `created_at` DATETIME NOT NULL,
+  `updated_at` DATETIME NOT NULL,
+  `completed_at` DATETIME NULL,
+  PRIMARY KEY (`snapshot_id`),
+  UNIQUE KEY `uq_ai_visual_snapshot_generation` (`lost_item_id`, `generation`),
+  KEY `idx_ai_visual_snapshot_work` (`state`, `updated_at`, `snapshot_id`),
+  CONSTRAINT `fk_ai_visual_snapshot_lost` FOREIGN KEY (`lost_item_id`) REFERENCES `items` (`item_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `ai_visual_snapshot_results` (
+  `result_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `snapshot_id` BIGINT UNSIGNED NOT NULL,
+  `found_item_id` BIGINT UNSIGNED NOT NULL,
+  `cosine_score` DOUBLE NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`result_id`),
+  UNIQUE KEY `uq_ai_visual_snapshot_result_pair` (`snapshot_id`, `found_item_id`),
+  KEY `idx_ai_visual_snapshot_results_found_item_id` (`found_item_id`),
+  CONSTRAINT `fk_ai_visual_result_snapshot` FOREIGN KEY (`snapshot_id`) REFERENCES `ai_visual_snapshots` (`snapshot_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_ai_visual_result_found` FOREIGN KEY (`found_item_id`) REFERENCES `items` (`item_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `ai_visual_notification_preferences` (
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `enabled` BOOLEAN NOT NULL DEFAULT FALSE,
+  `updated_at` DATETIME NOT NULL,
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `fk_ai_visual_preference_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `ai_visual_notification_decisions` (
+  `decision_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `snapshot_id` BIGINT UNSIGNED NOT NULL,
+  `recipient_id` BIGINT UNSIGNED NOT NULL,
+  `lost_item_id` BIGINT UNSIGNED NOT NULL,
+  `found_item_id` BIGINT UNSIGNED NOT NULL,
+  `policy_version` VARCHAR(80) NOT NULL,
+  `disposition` ENUM('ABSTAIN','SHADOW_CANDIDATE','DEMO_ELIGIBLE','SUPPRESSED') NOT NULL,
+  `reason_code` VARCHAR(80) NOT NULL,
+  `event_key` VARCHAR(160) NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`decision_id`),
+  UNIQUE KEY `uq_ai_visual_decision_snapshot_pair` (`snapshot_id`, `recipient_id`, `found_item_id`),
+  KEY `idx_ai_visual_decision_delivery` (`disposition`, `created_at`),
+  KEY `idx_ai_visual_notification_decisions_recipient_id` (`recipient_id`),
+  KEY `idx_ai_visual_notification_decisions_lost_item_id` (`lost_item_id`),
+  KEY `idx_ai_visual_notification_decisions_found_item_id` (`found_item_id`),
+  CONSTRAINT `fk_ai_visual_decision_snapshot` FOREIGN KEY (`snapshot_id`) REFERENCES `ai_visual_snapshots` (`snapshot_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_ai_visual_decision_recipient` FOREIGN KEY (`recipient_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_ai_visual_decision_lost` FOREIGN KEY (`lost_item_id`) REFERENCES `items` (`item_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_ai_visual_decision_found` FOREIGN KEY (`found_item_id`) REFERENCES `items` (`item_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `ai_visual_notification_outbox` (
+  `outbox_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `decision_id` BIGINT UNSIGNED NOT NULL,
+  `event_key` VARCHAR(160) NOT NULL,
+  `status` ENUM('PENDING','PROCESSING','DELIVERED','SUPPRESSED','FAILED') NOT NULL DEFAULT 'PENDING',
+  `attempts` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  `lease_token` CHAR(36) NULL,
+  `locked_until` DATETIME NULL,
+  `available_at` DATETIME NOT NULL,
+  `last_error_code` VARCHAR(80) NULL,
+  `created_at` DATETIME NOT NULL,
+  `updated_at` DATETIME NOT NULL,
+  PRIMARY KEY (`outbox_id`),
+  UNIQUE KEY `uq_ai_visual_outbox_decision` (`decision_id`),
+  UNIQUE KEY `uq_ai_visual_outbox_event` (`event_key`),
+  KEY `idx_ai_visual_outbox_work` (`status`, `available_at`, `outbox_id`),
+  CONSTRAINT `fk_ai_visual_outbox_decision` FOREIGN KEY (`decision_id`) REFERENCES `ai_visual_notification_decisions` (`decision_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `ai_visual_pair_alerts` (
+  `alert_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `recipient_id` BIGINT UNSIGNED NOT NULL,
+  `lost_item_id` BIGINT UNSIGNED NOT NULL,
+  `found_item_id` BIGINT UNSIGNED NOT NULL,
+  `event_key` VARCHAR(160) NOT NULL,
+  `delivered_at` DATETIME NOT NULL,
+  PRIMARY KEY (`alert_id`),
+  UNIQUE KEY `uq_ai_visual_pair_alert_lifetime` (`recipient_id`, `lost_item_id`, `found_item_id`),
+  UNIQUE KEY `uq_ai_visual_pair_alert_event` (`event_key`),
+  KEY `idx_ai_visual_pair_alerts_lost_item_id` (`lost_item_id`),
+  KEY `idx_ai_visual_pair_alerts_found_item_id` (`found_item_id`),
+  CONSTRAINT `fk_ai_visual_alert_recipient` FOREIGN KEY (`recipient_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_ai_visual_alert_lost` FOREIGN KEY (`lost_item_id`) REFERENCES `items` (`item_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_ai_visual_alert_found` FOREIGN KEY (`found_item_id`) REFERENCES `items` (`item_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `ai_visual_demo_entities` (
+  `demo_entity_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `run_id` CHAR(36) NOT NULL,
+  `user_id` BIGINT UNSIGNED NULL,
+  `item_id` BIGINT UNSIGNED NULL,
+  `entity_role` ENUM('LOST_OWNER','FOUND_OWNER','LOST_ITEM','FOUND_ITEM') NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`demo_entity_id`),
+  UNIQUE KEY `uq_ai_visual_demo_run_entity` (`run_id`, `entity_role`, `user_id`, `item_id`),
+  KEY `idx_ai_visual_demo_run` (`run_id`, `entity_role`),
+  KEY `idx_ai_visual_demo_entities_user_id` (`user_id`),
+  KEY `idx_ai_visual_demo_entities_item_id` (`item_id`),
+  CONSTRAINT `fk_ai_visual_demo_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_ai_visual_demo_item` FOREIGN KEY (`item_id`) REFERENCES `items` (`item_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE INDEX `idx_items_status_event_date` ON `items` (`status`, `event_date`);
 CREATE INDEX `idx_items_type_status` ON `items` (`type`, `status`);
 CREATE INDEX `idx_items_created_at` ON `items` (`created_at`);
@@ -235,3 +361,4 @@ ALTER TABLE `reports`
   ADD UNIQUE KEY `uq_reports_active_target` (`reporter_id`, `active_target_key`),
   ADD INDEX `idx_reports_status_created` (`status`, `created_at`, `report_id`),
   ADD INDEX `idx_reports_reporter_created` (`reporter_id`, `created_at`, `report_id`);
+INSERT IGNORE INTO `ai_visual_catalog_state` (`state_id`, `revision`, `updated_at`) VALUES (1, 0, UTC_TIMESTAMP());
