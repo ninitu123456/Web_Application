@@ -24,7 +24,7 @@ export function itemRoutes(authService, itemService, matchingService, claimServi
     router.get('/:id/claims', authenticate(authService), authorizeRoles('USER', 'ADMIN'), claims.forItem);
     router.post('/:id/claims', authenticate(authService), authorizeRoles('USER', 'ADMIN'), claims.create);
   }
-  router.get('/:id', controller.get);
+  router.get('/:id', (req, res, next) => req.get('Authorization') === undefined ? next() : authenticate(authService)(req, res, next), controller.get);
   router.post('/', authenticate(authService), authorizeRoles('USER', 'ADMIN'), controller.create);
   router.patch('/:id', authenticate(authService), authorizeRoles('USER', 'ADMIN'), controller.update);
   router.patch('/:id/close', authenticate(authService), authorizeRoles('USER', 'ADMIN'), controller.close);

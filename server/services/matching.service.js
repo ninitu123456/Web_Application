@@ -14,7 +14,7 @@ export function createMatchingService(repository) {
     async synchronize(id) {
       const item = await repository.item(id, true);
       if (!item) throw new HttpError(404, 'Không tìm thấy Item');
-      if (['CLOSED', 'RETURNED'].includes(item.status)) return;
+      if (Number(item.is_hidden) || ['CLOSED', 'RETURNED'].includes(item.status)) return;
       let after = '0';
       while (true) {
         const candidates = await repository.candidates(item, after);

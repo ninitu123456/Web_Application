@@ -836,6 +836,19 @@ export async function extendedBrowserCheck({
       artifacts,
       reportId: itemReport.id,
     });
+    const { visibilityBrowserCheck } =
+      await import("./visibility-browser-check.mjs");
+    await visibilityBrowserCheck({
+      browser,
+      page,
+      adminPage,
+      url,
+      artifacts,
+      found,
+      request,
+      userToken,
+      adminToken,
+    });
     // A role change is seen by the actual JWT middleware and the frontend guard.
     await query(pool, "UPDATE users SET role_id=? WHERE user_id=?", [
       owner.role_id,

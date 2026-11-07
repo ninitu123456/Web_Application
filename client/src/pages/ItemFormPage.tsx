@@ -45,6 +45,7 @@ export function ItemFormPage() {
     id &&
     original.data &&
     (original.data.data.userId !== user?.id ||
+      original.data.data.visibility === "HIDDEN" ||
       original.data.data.status !== "OPEN")
   )
     return (

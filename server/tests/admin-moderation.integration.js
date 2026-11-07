@@ -23,6 +23,8 @@ import { createAuthService } from '../services/auth.service.js';
 import { createUserRepository } from '../repositories/user.repository.js';
 import { createTokenService } from '../utils/jwt.js';
 import { assertNoPrivateData } from './fixtures/security.js';
+import { HttpError } from '../utils/http-error.js';
+import { createEmailWorker } from '../services/email-worker.js';
 
 function deferred() { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; }
 async function bounded(promise) {
@@ -431,6 +433,114 @@ test('F04/F05: atomic moderation and dispute regression on isolated MySQL', { ti
         await assert.rejects(() => closing, (e) => e.status === 403);
         assert.equal((await state(item.id)).item.status, 'OPEN');
       } finally { await query(pool, "UPDATE users SET account_status='ACTIVE' WHERE user_id=?", [admin.id]); }
+    });
+
+    await t.test('visibility removes public search/detail/matching but retains authorized history, claims and handover', async () => {
+      const { item, entries } = await fresh(1);
+      const matching = createMatchingService(createMatchingRepository(pool));
+      const lost = await items.create(people[1], { title: item.title, description: item.description, type: 'LOST', categoryId: item.categoryId, locationId: item.locationId, eventDate: item.eventDate, color: null });
+      const actors = { admin, owner, claimant: people[0], other: people[2] };
+      const http = await serve({ healthService: { async check() {} }, userService: {}, itemService: items, matchingService: matching, claimService: claims, adminService: admins, authService: { async authenticate(token) { if (!actors[token]) throw new HttpError(401, 'Unauthorized'); return actors[token]; } } });
+      const api = (path, options = {}) => request(http, '/api' + path, options);
+      const set = (visibility, token = 'admin') => api(`/admin/items/${item.id}/visibility`, { token, method: 'PATCH', body: { visibility, reason: 'PRIVATE_VISIBILITY_REASON' } });
+      try {
+        const before = await state(item.id), initialTotal = (await items.list({ page: 1, limit: 100 })).pagination.total;
+        assert.ok((await allMatches(matching, lost.id)).some(row => row.itemId === item.id));
+        const hidden = await set('HIDDEN'); assert.equal(hidden.status, 200); assert.equal(hidden.json.data.item.visibility, 'HIDDEN');
+        assert.ok(!JSON.stringify(hidden.json).includes('PRIVATE_VISIBILITY_REASON'));
+        assert.deepEqual(await state(item.id), before, 'visibility must not implicitly decide claims or change lifecycle status');
+        assert.equal((await set('HIDDEN')).status, 409);
+        for (const token of [undefined, 'claimant', 'other']) {
+          const detail = await api(`/items/${item.id}`, { token }); assert.equal(detail.status, 404);
+          assertNoPrivateData(assert, detail.json, [item.title, item.description, 'SECRET_PROOF_MARKER', 'PRIVATE_VISIBILITY_REASON']);
+        }
+        assert.equal((await api(`/items/${item.id}`, { token: 'invalid' })).status, 401);
+        for (const token of ['owner', 'admin']) assert.equal((await api(`/items/${item.id}`, { token })).json.data.visibility, 'HIDDEN');
+        assert.equal((await api(`/admin/items/${item.id}`, { token: 'admin' })).json.data.visibility, 'HIDDEN');
+        const mine = await api('/items/mine?limit=100', { token: 'owner' });
+        assert.equal(mine.json.data.find(row => row.id === item.id).visibility, 'HIDDEN');
+        assert.equal((await items.list({ page: 1, limit: 100 })).pagination.total, initialTotal - 1);
+        const publicList = await api('/items?status=CLAIM_PENDING&limit=100'); assert.ok(!publicList.json.data.some(row => row.id === item.id));
+        const adminList = await api('/admin/items?visibility=HIDDEN&limit=100', { token: 'admin' }); assert.equal(adminList.json.pagination.total, 1); assert.equal(adminList.json.data[0].id, item.id);
+        const visibleAdmin = await api('/admin/items?visibility=PUBLIC&limit=100', { token: 'admin' }); assert.ok(!visibleAdmin.json.data.some(row => row.id === item.id));
+        assert.equal((await api(`/items/${item.id}/matches`, { token: 'owner' })).status, 404);
+        assert.ok(!(await allMatches(matching, lost.id)).some(row => row.itemId === item.id));
+        assert.equal((await api(`/items/${item.id}/claims`, { token: 'other', method: 'POST', body: { proofDescription: 'new' } })).status, 404);
+        assert.equal((await api(`/items/${item.id}`, { token: 'owner', method: 'PATCH', body: { title: 'bypass' } })).status, 409);
+        await assert.rejects(() => items.uploadImages(owner, item.id, []), e => e.status === 409);
+        const myClaims = await api('/claims/mine?limit=100', { token: 'claimant' });
+        assert.equal(myClaims.json.data.find(row => row.id === entries[0].id).item.visibility, 'HIDDEN');
+        assert.equal((await api(`/items/${item.id}/claims`, { token: 'owner' })).json.data[0].proofDescription, 'SECRET_PROOF_MARKER');
+        const another = await items.create(people[1], { title: item.title, description: item.description, type: 'LOST', categoryId: item.categoryId, locationId: item.locationId, eventDate: item.eventDate, color: null });
+        const [[newMatch]] = await query(pool, 'SELECT COUNT(*) AS total FROM matches WHERE lost_item_id=? AND found_item_id=?', [another.id, item.id]); assert.equal(Number(newMatch.total), 0);
+        await query(pool, "UPDATE email_outbox SET next_attempt_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL 1 DAY)");
+        const [[job]] = await query(pool, "SELECT e.job_id FROM email_outbox e JOIN matches m ON e.event_key=CONCAT('MATCH:',m.match_id) WHERE m.lost_item_id=? AND m.found_item_id=? LIMIT 1", [lost.id, item.id]);
+        await query(pool, "UPDATE email_outbox SET status='PENDING',attempts=0,next_attempt_at=UTC_TIMESTAMP() WHERE job_id=?", [job.job_id]);
+        let sent = 0; await createEmailWorker(pool, { configured: true, async send() { sent++; } }).tick(); assert.equal(sent, 0);
+        const [[suppressed]] = await query(pool, 'SELECT status,last_error FROM email_outbox WHERE job_id=?', [job.job_id]); assert.deepEqual({ ...suppressed }, { status: 'FAILED', last_error: 'ITEM_UNAVAILABLE' });
+        assert.equal((await set('PUBLIC')).status, 200);
+        assert.ok((await allMatches(matching, another.id)).some(row => row.itemId === item.id), 'restoration recomputes matches skipped while hidden');
+        assert.equal((await set('HIDDEN')).status, 200);
+        await claims.approve(owner, entries[0].id); await claims.complete(owner, entries[0].id);
+        assert.equal((await state(item.id)).item.status, 'RETURNED');
+        assert.equal((await set('PUBLIC')).status, 200);
+        assert.equal((await items.get(item.id)).status, 'RETURNED', 'restore never reopens returned Items');
+        const logs = await api(`/admin/activity-logs?entityType=ITEM&entityId=${item.id}&limit=100`, { token: 'admin' });
+        const visibilityLogs = logs.json.data.filter(row => ['ITEM_HIDDEN', 'ITEM_RESTORED'].includes(row.action));
+        assert.equal(visibilityLogs.length, 4); assert.ok(visibilityLogs.every(row => row.details.reason === 'PRIVATE_VISIBILITY_REASON'));
+        const [notices] = await query(pool, "SELECT event_key,message FROM notifications WHERE user_id=? AND (type='ITEM_HIDDEN' OR type='ITEM_RESTORED')", [owner.id]);
+        assert.equal(notices.length, 4); assert.equal(new Set(notices.map(row => row.event_key)).size, 4); assert.ok(!JSON.stringify(notices).includes('PRIVATE_VISIBILITY_REASON'));
+      } finally { await http.close(); }
+    });
+
+    await t.test('visibility recusal includes owner and historical claimant; missing Items and revoked admins fail', async () => {
+      const own = await fresh(0, admin);
+      await assert.rejects(() => admins.setItemVisibility(admin, own.item.id, { visibility: 'HIDDEN', reason: 'own' }), e => e.status === 403);
+      const { item } = await fresh(0);
+      const entry = await claims.create(admin, item.id, { proofDescription: 'admin history' }); await claims.reject(owner, entry.id);
+      await assert.rejects(() => admins.setItemVisibility(admin, item.id, { visibility: 'HIDDEN', reason: 'history' }), e => e.status === 403);
+      await admins.setItemVisibility(secondAdmin, item.id, { visibility: 'HIDDEN', reason: 'independent' });
+      await assert.rejects(() => admins.setItemVisibility(admin, item.id, { visibility: 'PUBLIC', reason: 'history' }), e => e.status === 403);
+      await assert.rejects(() => admins.setItemVisibility(admin, Number.MAX_SAFE_INTEGER, { visibility: 'HIDDEN', reason: 'missing' }), e => e.status === 404);
+      await query(pool, "UPDATE users SET account_status='SUSPENDED' WHERE user_id=?", [admin.id]);
+      try { await assert.rejects(() => admins.setItemVisibility(admin, own.item.id, { visibility: 'HIDDEN', reason: 'revoked' }), e => e.status === 403); }
+      finally { await query(pool, "UPDATE users SET account_status='ACTIVE' WHERE user_id=?", [admin.id]); }
+    });
+
+    await t.test('duplicate hide races serialize; notification and restore-audit failures roll back visibility and effects', async () => {
+      const { item } = await fresh(0);
+      const input = { visibility: 'HIDDEN', reason: 'simultaneous' };
+      const results = await Promise.allSettled([admins.setItemVisibility(admin, item.id, input), admins.setItemVisibility(secondAdmin, item.id, input)]);
+      assert.equal(results.filter(row => row.status === 'fulfilled').length, 1);
+      assert.equal(results.find(row => row.status === 'rejected').reason.status, 409);
+      await query(pool, "CREATE TRIGGER visibility_restore_failure BEFORE INSERT ON activity_logs FOR EACH ROW BEGIN IF NEW.action='ITEM_RESTORED' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='restore audit failure'; END IF; END");
+      try { await assert.rejects(() => admins.setItemVisibility(admin, item.id, { visibility: 'PUBLIC', reason: 'restore' }), /restore audit failure/); }
+      finally { await query(pool, 'DROP TRIGGER visibility_restore_failure'); }
+      assert.equal((await admins.getItem(item.id)).visibility, 'HIDDEN');
+      await admins.setItemVisibility(admin, item.id, { visibility: 'PUBLIC', reason: 'restore' });
+      const before = await admins.getItem(item.id);
+      const [[effectsBefore]] = await query(pool, 'SELECT (SELECT COUNT(*) FROM activity_logs) AS logs,(SELECT COUNT(*) FROM notifications) AS notices');
+      await query(pool, "CREATE TRIGGER visibility_notice_failure BEFORE INSERT ON notifications FOR EACH ROW BEGIN IF NEW.type='ITEM_HIDDEN' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='visibility notification failure'; END IF; END");
+      try { await assert.rejects(() => admins.setItemVisibility(admin, item.id, input), /visibility notification failure/); }
+      finally { await query(pool, 'DROP TRIGGER visibility_notice_failure'); }
+      assert.deepEqual(await admins.getItem(item.id), before);
+      const [[effectsAfter]] = await query(pool, 'SELECT (SELECT COUNT(*) FROM activity_logs) AS logs,(SELECT COUNT(*) FROM notifications) AS notices'); assert.deepEqual(effectsAfter, effectsBefore);
+      await admins.moderateClose(admin, item.id, { reason: 'close' });
+      await admins.setItemVisibility(admin, item.id, input);
+      await admins.setItemVisibility(admin, item.id, { visibility: 'PUBLIC', reason: 'restore' });
+      assert.equal((await items.get(item.id)).status, 'CLOSED');
+    });
+
+    await t.test('hide racing an in-flight upload prevents attaching images and cleans uploaded assets', async () => {
+      const { item } = await fresh(0), held = deferred(), resume = deferred(), removed = [];
+      const storage = { async upload(_bytes, _mime, id) { held.resolve(); await bounded(resume.promise); return { publicId: id, url: 'https://example.test/hidden.png' }; }, async destroy(id) { removed.push(id); } };
+      const imageService = createItemService(createItemRepository(pool), storage, createImageOperations(pool, storage));
+      const uploading = imageService.uploadImages(owner, item.id, [{ mimetype: 'image/png', buffer: Buffer.from([137,80,78,71,13,10,26,10]) }]); uploading.catch(() => {});
+      await bounded(held.promise);
+      try { await admins.setItemVisibility(admin, item.id, { visibility: 'HIDDEN', reason: 'upload race' }); }
+      finally { resume.resolve(); }
+      await assert.rejects(() => uploading, e => e.status === 409);
+      assert.equal(removed.length, 1); assert.equal((await admins.getItem(item.id)).images.length, 0);
     });
 
     await t.test('moderation uses one connection and no evidence SELECT; all sessions and advisory locks are released', async () => {

@@ -1,7 +1,9 @@
 import { adminEmptyQuery, adminId, adminUserQuery, adminItemQuery, createLookupInput, updateLookupInput, accountStatusInput, adminItemStatusInput, adminClaimQuery, adminActivityQuery, adminCloseInput, adminResolveInput } from '../validation/admin.validation.js';
+import { adminVisibilityInput } from '../validation/admin.validation.js';
 const limits = { categories: 100, locations: 150 };
 export function createAdminController(service) {
   return {
+    async setItemVisibility(req, res) { adminEmptyQuery(req.query); res.json({ success: true, data: await service.setItemVisibility(req.user, adminId(req.params.id), adminVisibilityInput(req.body)) }); },
     async listClaims(req, res) { res.json({ success: true, ...await service.listClaims(req.user, adminClaimQuery(req.query)) }); },
     async activityLogs(req, res) { res.json({ success: true, ...await service.activityLogs(req.user, adminActivityQuery(req.query)) }); },
     async resolveClaim(req, res) { adminEmptyQuery(req.query); res.json({ success: true, data: await service.resolveClaim(req.user, adminId(req.params.id), adminResolveInput(req.body)) }); },

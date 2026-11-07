@@ -7,6 +7,8 @@ export function dashboardNumber(value) { const number = Number(value ?? 0); if (
 export const businessEntities = ['ITEM', 'CLAIM', 'USER', 'CATEGORY', 'LOCATION', 'REPORT'];
 const transition = ['previousStatus', 'status'];
 const actionDetails = {
+  ITEM_HIDDEN: ['previousVisibility', 'visibility', 'reason', 'source'],
+  ITEM_RESTORED: ['previousVisibility', 'visibility', 'reason', 'source'],
   ITEM_MODERATED_CLOSED: [...transition, 'reason', 'source', 'rejectedClaimCount'],
   CLAIM_ADMIN_RESOLVED: [...transition, 'itemId', 'decision', 'reason', 'source', 'autoRejectedClaimCount'],
   CLAIM_APPROVED: [...transition, 'itemId', 'source', 'decisionLogId'],
@@ -32,7 +34,8 @@ export function activityLogDto(row) {
     else if (key === 'automatic') { if (typeof value === 'boolean') details[key] = value; }
     else if (['itemId', 'decisionLogId'].includes(key)) { if (/^[1-9]\d*$/.test(String(value)) && Number.isSafeInteger(Number(value))) details[key] = safeId(value); }
     else if (key.endsWith('Count')) { if (Number.isSafeInteger(value) && value >= 0) details[key] = value; }
-    else if (key === 'source') { if (['ADMIN_MODERATION', 'ADMIN_RESOLVE'].includes(value)) details[key] = value; }
+    else if (key === 'source') { if (['ADMIN_MODERATION', 'ADMIN_RESOLVE', 'ADMIN_VISIBILITY'].includes(value)) details[key] = value; }
+    else if (['visibility', 'previousVisibility'].includes(key)) { if (['PUBLIC', 'HIDDEN'].includes(value)) details[key] = value; }
     else if (key === 'decision') { if (['APPROVE', 'REJECT'].includes(value)) details[key] = value; }
     else if (['OPEN', 'CLAIM_PENDING', 'CLAIMED', 'RETURNED', 'CLOSED', 'PENDING', 'APPROVED', 'REJECTED', 'COMPLETED', 'ACTIVE', 'SUSPENDED', 'REVIEWING', 'RESOLVED', 'DISMISSED'].includes(value)) details[key] = value;
   }

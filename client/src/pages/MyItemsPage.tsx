@@ -39,11 +39,14 @@ export function MyItemsPage() {
             <div key={item.id}>
               <ItemCard item={item} />
               <div className="my-item-actions">
-                {item.status === "OPEN" && (
+                {item.status === "OPEN" && item.visibility !== "HIDDEN" && (
                   <Link to={`/do-vat/${item.id}/sua`}>Sửa bài ↗</Link>
                 )}
                 <Link to={`/do-vat/${item.id}`}>
-                  Chi tiết{item.status === "OPEN" ? " / Đóng bài" : ""}
+                  Chi tiết
+                  {item.status === "OPEN" && item.visibility !== "HIDDEN"
+                    ? " / Đóng bài"
+                    : ""}
                 </Link>
                 {item.type === "FOUND" && (
                   <Link to={`/do-vat/${item.id}?tab=claims`}>

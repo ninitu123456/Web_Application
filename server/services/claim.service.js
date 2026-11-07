@@ -19,6 +19,7 @@ export function createClaimService(repository) {
       return repository.withLockedItem(itemId, async (source) => {
         if (!source) throw missing();
         const item = await source.findItem();
+        if (Number(item.is_hidden)) throw missing();
         if (item.type !== 'FOUND') throw new HttpError(400, 'Chỉ FOUND Item mới nhận Claim');
         if (String(item.user_id) === String(identity.id)) throw new HttpError(403, 'Không thể Claim Item của chính mình');
         if (!['OPEN', 'CLAIM_PENDING'].includes(item.status)) throw conflict('Item không nhận Claim ở trạng thái hiện tại');

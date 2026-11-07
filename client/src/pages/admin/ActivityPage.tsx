@@ -13,6 +13,8 @@ import {
 } from "../../components/ui";
 import { AdminTitle, Table, useAdminQuery } from "./shared";
 const actions: Record<string, string> = {
+  ITEM_HIDDEN: "Gỡ bài khỏi công khai",
+  ITEM_RESTORED: "Khôi phục hiển thị bài",
   ITEM_MODERATED_CLOSED: "Đóng bài đăng",
   CLAIM_ADMIN_RESOLVED: "Giải quyết tranh chấp yêu cầu nhận đồ",
   CLAIM_APPROVED: "Chấp thuận yêu cầu nhận đồ",
@@ -36,6 +38,8 @@ const entities: Record<string, string> = {
   REPORT: "Báo cáo",
 };
 const detailLabels: Record<string, string> = {
+  previousVisibility: "Hiển thị trước",
+  visibility: "Hiển thị sau",
   previousStatus: "Trạng thái trước",
   status: "Trạng thái sau",
   reason: "Lý do",

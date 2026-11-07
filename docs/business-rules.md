@@ -244,6 +244,14 @@ Hệ thống phải bảo toàn các bản ghi lịch sử liên quan đến bà
 
 `CLOSED` **không** đồng nghĩa ẩn hoặc gỡ nội dung công khai. API chi tiết công khai vẫn có thể trả về Item `CLOSED`, và tìm kiếm không lọc trạng thái vẫn có thể bao gồm Item đó. Quy trình ẩn/gỡ bài đăng (takedown) nằm ngoài phạm vi quy tắc đóng bài này.
 
+### `BR-ITEM-08` — Gỡ và khôi phục hiển thị
+
+- ADMIN đang hoạt động, không là chủ bài và chưa từng gửi Claim cho bài, được chuyển hiển thị `PUBLIC ↔ HIDDEN`, bắt buộc ghi lý do. Thao tác lặp cùng đích trả 409.
+- Bài `HIDDEN` không xuất hiện trong tìm kiếm, tổng phân trang hoặc Matching; người ngoài truy cập chi tiết hay gửi Claim mới nhận 404. Chỉ chủ bài và ADMIN còn xem được chi tiết qua xác thực; danh sách riêng của chủ bài giữ lịch sử.
+- Gỡ bài không thay đổi trạng thái Item/Claim, bằng chứng, báo cáo, ảnh hoặc lịch sử. Chủ bài vẫn xử lý được Claim/bàn giao đã có; không được sửa nội dung/thêm/xóa ảnh khi đang bị gỡ.
+- Khôi phục giữ trạng thái nghiệp vụ hiện tại, không mở lại bài đã đóng/đã trao lại, và tính lại Matching cho bài còn đủ điều kiện.
+- Nhật ký riêng tư, hiển thị, thời gian cập nhật và thông báo chủ bài phải cùng commit hoặc rollback. Hai thao tác đồng thời phải được tuần tự hóa. Các sự kiện hiển thị là dữ liệu bền vững, không được xóa bởi việc dọn nhật ký thông thường.
+
 ## 8. Quy tắc yêu cầu nhận lại đồ vật (Claim Rules)
 
 ### `BR-CLAIM-01`

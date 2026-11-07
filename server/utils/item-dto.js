@@ -13,6 +13,7 @@ export function itemDto(item) {
     updatedAt: item.updated_at instanceof Date ? item.updated_at.toISOString() : item.updated_at
   };
   if (item.category_name !== undefined) result.category = { id: id(item.category_id), name: item.category_name };
+  if (item.is_hidden !== undefined) result.visibility = Number(item.is_hidden) ? 'HIDDEN' : 'PUBLIC';
   if (item.location_name !== undefined) result.location = { id: id(item.location_id), name: item.location_name };
   result.images = (item.images ?? []).map((image) => ({ id: id(image.image_id), url: image.image_url }));
   return result;

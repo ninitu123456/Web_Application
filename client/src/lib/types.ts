@@ -25,6 +25,7 @@ export interface Item {
   color: string | null;
   eventDate: string;
   status: ItemStatus;
+  visibility?: "PUBLIC" | "HIDDEN";
   images: { id: number; url: string }[];
   createdAt: string;
   updatedAt: string;
@@ -48,6 +49,7 @@ export interface Claim {
     eventDate: string;
     category: string | null;
     location: string | null;
+    visibility?: "PUBLIC" | "HIDDEN";
   };
 }
 export interface Match {

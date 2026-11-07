@@ -25,12 +25,21 @@ import {
   useMutation,
 } from "./shared";
 export function AdminItemsPage() {
-  const filters = useAdminQuery(["type", "status"]);
+  const filters = useAdminQuery(["type", "status", "visibility"]);
   const result = useResource<Item[]>("/admin/items", filters.query);
   return (
     <>
       <AdminTitle title="Bài đăng" />
       <div className="admin-filters">
+        <Select
+          label="Hiển thị"
+          value={filters.params.get("visibility") || ""}
+          onChange={(e) => filters.change("visibility", e.target.value)}
+        >
+          <option value="">Tất cả bài đăng</option>
+          <option value="PUBLIC">Đang công khai</option>
+          <option value="HIDDEN">Đã gỡ khỏi công khai</option>
+        </Select>
         <Select
           label="Loại bài"
           value={filters.params.get("type") || ""}
@@ -74,6 +83,9 @@ export function AdminItemsPage() {
               </td>
               <td>
                 <StatusBadge status={item.status} group="item" />
+                {item.visibility === "HIDDEN" && (
+                  <span className="badge">Đã gỡ</span>
+                )}
               </td>
               <td>
                 <Link to={`/quan-tri/bai-dang/${item.id}`}>Kiểm tra ↗</Link>
@@ -159,6 +171,9 @@ export function AdminItemDetailPage() {
   const recusal = useRecusal(item?.id, item?.userId);
   const mutation = useMutation();
   const [open, setOpen] = useState(false);
+  const [visibilityTarget, setVisibilityTarget] = useState<
+    "PUBLIC" | "HIDDEN" | null
+  >(null);
   if (result.loading) return <Loading />;
   if (result.error)
     return <ErrorState error={result.error} retry={invalidate} />;
@@ -166,6 +181,7 @@ export function AdminItemDetailPage() {
   const eligible =
     item.status === "OPEN" ||
     (item.type === "FOUND" && item.status === "CLAIM_PENDING");
+  const hidden = item.visibility === "HIDDEN";
   return (
     <>
       <Link className="back-link" to="/quan-tri/bai-dang">
@@ -177,6 +193,9 @@ export function AdminItemDetailPage() {
         <div className="badge-row">
           <StatusBadge status={item.type} group="itemType" />
           <StatusBadge status={item.status} group="item" />
+          <span className="badge">
+            {hidden ? "Đã gỡ khỏi công khai" : "Đang công khai"}
+          </span>
         </div>
         <div className="admin-item-images">
           {item.images.map((image) => (
@@ -210,10 +229,17 @@ export function AdminItemDetailPage() {
           chối.
         </p>
         <RecusalNotice {...recusal} />
+        <p className="notice">
+          {hidden
+            ? "Bài đã được gỡ khỏi tìm kiếm và gợi ý; người ngoài không mở được link chi tiết. Chủ bài và admin vẫn xem được để xử lý các yêu cầu hiện có."
+            : "Gỡ bài sẽ ẩn khỏi tìm kiếm, gợi ý và link công khai. Dữ liệu, bằng chứng và tiến trình bàn giao được giữ nguyên."}
+        </p>
         <div className="actions">
-          <Link className="button secondary" to={`/do-vat/${item.id}`}>
-            Xem công khai ↗
-          </Link>
+          {!hidden && (
+            <Link className="button secondary" to={`/do-vat/${item.id}`}>
+              Xem công khai ↗
+            </Link>
+          )}
           {item.type === "FOUND" && (
             <Link
               className="button secondary"
@@ -222,6 +248,21 @@ export function AdminItemDetailPage() {
               Xem yêu cầu nhận đồ
             </Link>
           )}
+          <Button
+            variant={hidden ? "secondary" : "danger"}
+            disabled={
+              recusal.related === true || recusal.loading || mutation.busy
+            }
+            onClick={() => setVisibilityTarget(hidden ? "PUBLIC" : "HIDDEN")}
+          >
+            {hidden ? "Khôi phục hiển thị" : "Gỡ khỏi công khai"}
+          </Button>
+          <Link
+            className="button secondary"
+            to={`/quan-tri/nhat-ky?entityType=ITEM&entityId=${item.id}`}
+          >
+            Xem lịch sử xử lý
+          </Link>
           <Button
             variant="danger"
             disabled={
@@ -236,6 +277,45 @@ export function AdminItemDetailPage() {
           </Button>
         </div>
       </section>
+      {visibilityTarget && (
+        <ReasonDialog
+          title={
+            visibilityTarget === "PUBLIC"
+              ? "Xác nhận khôi phục hiển thị"
+              : "Xác nhận gỡ khỏi công khai"
+          }
+          confirmVariant={visibilityTarget === "PUBLIC" ? "primary" : "danger"}
+          close={() => setVisibilityTarget(null)}
+          busy={mutation.busy}
+          error={mutation.error}
+          blocked={
+            recusal.loading ||
+            recusal.related === true ||
+            (item.visibility ?? "PUBLIC") === visibilityTarget
+          }
+          note={
+            (item.visibility ?? "PUBLIC") === visibilityTarget ? (
+              <p className="notice">
+                Bài hiện đã ở chế độ hiển thị được yêu cầu. Đóng hộp thoại để
+                kiểm tra kết quả trước khi thực hiện thao tác khác.
+              </p>
+            ) : undefined
+          }
+          submit={async (reason) => {
+            if (
+              await mutation.run(`/admin/items/${item.id}/visibility`, {
+                visibility: visibilityTarget,
+                reason,
+              })
+            )
+              setVisibilityTarget(null);
+          }}
+        >
+          {visibilityTarget === "PUBLIC"
+            ? "Bài sẽ xuất hiện lại công khai theo trạng thái hiện tại. Khôi phục không mở lại bài đã đóng hoặc đã bàn giao. Chủ bài sẽ nhận được thông báo."
+            : "Người ngoài sẽ không tìm thấy hoặc mở được bài, kể cả bằng link trực tiếp. Chủ bài và admin vẫn có thể xem lại; yêu cầu nhận đồ, bằng chứng và bàn giao hiện có không bị thay đổi. Chủ bài sẽ nhận được thông báo."}
+        </ReasonDialog>
+      )}
       {open && (
         <ReasonDialog
           title="Xác nhận đóng bài"

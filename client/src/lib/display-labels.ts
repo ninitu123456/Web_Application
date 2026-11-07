@@ -36,6 +36,12 @@ export function activityDetailLabel(
 ): string {
   if (key === "reason")
     return typeof value === "string" ? value : "Không có lý do";
+  if (key === "visibility" || key === "previousVisibility")
+    return value === "HIDDEN"
+      ? "Đã gỡ khỏi công khai"
+      : value === "PUBLIC"
+        ? "Đang công khai"
+        : "Chưa xác định";
   if (key === "status" || key === "previousStatus") {
     const group = {
       ITEM: "item",
@@ -53,12 +59,14 @@ export function activityDetailLabel(
       : value === "REJECT"
         ? "Từ chối"
         : "Chưa xác định";
-  if (key === "source")
+  if (key === "source") {
+    if (value === "ADMIN_VISIBILITY") return "Quản trị viên thay đổi hiển thị";
     return value === "ADMIN_MODERATION"
       ? "Quản trị viên đóng bài"
       : value === "ADMIN_RESOLVE"
         ? "Quản trị viên giải quyết tranh chấp"
         : "Chưa xác định";
+  }
   if (typeof value === "boolean") return value ? "Có" : "Không";
   // Only counts and references are rendered as numbers; no arbitrary structures or debug text.
   if (

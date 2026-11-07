@@ -157,6 +157,9 @@ export function ItemCard({ item }: { item: Item }) {
       </Link>
       <div className="card-content">
         <StatusBadge status={item.type} group="itemType" />
+        {item.visibility === "HIDDEN" && (
+          <span className="badge">Đã gỡ khỏi công khai</span>
+        )}
         <div className="card-meta">
           <span>{item.category?.name || "Đồ vật"}</span>
           <StatusBadge status={item.status} group="item" />

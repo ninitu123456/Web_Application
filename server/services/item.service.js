@@ -31,6 +31,7 @@ export function createItemService(repository, imageStorage, imageOperations) {
     return item;
   }
   function open(item) {
+    if (Number(item.is_hidden)) throw new HttpError(409, 'Bài đăng đã bị gỡ khỏi phần công khai');
     if (item.status !== 'OPEN') throw new HttpError(400, 'Thao tác chỉ hợp lệ khi Item đang mở');
   }
   async function imageCapacity(source, id, amount) {
@@ -40,9 +41,13 @@ export function createItemService(repository, imageStorage, imageOperations) {
   }
   return {
     async create(identity, item) { await assertReferences(item); return itemDto(await repository.create(identity.id, item, (source) => assertReferences(item, source))); },
-    async get(id) { const item = await repository.findById(id); if (!item) throw notFound(); return itemDto(item); },
-    async list(filters, ownerId) {
-      const result = await repository.list(filters, ownerId);
+    async get(id, identity, { includeHidden = false } = {}) {
+      const item = await repository.findById(id);
+      if (!item || (Number(item.is_hidden) && !includeHidden && identity?.role !== 'ADMIN' && String(identity?.id) !== String(item.user_id))) throw notFound();
+      return itemDto(item);
+    },
+    async list(filters, ownerId, options) {
+      const result = await repository.list(filters, ownerId, options);
       if (!Number.isSafeInteger(result.total) || result.total < 0) throw new Error('Item count cannot be represented safely in the API');
       const totalPages = Math.ceil(result.total / filters.limit);
       return { data: result.items.map(itemDto), pagination: { page: filters.page, limit: filters.limit, total: result.total, totalPages } };
