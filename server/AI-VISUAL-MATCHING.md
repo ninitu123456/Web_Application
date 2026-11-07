@@ -42,6 +42,10 @@ CLIP ViT-B/32 is pinned to revision `4c1807b705b1d015fb032789cc4d221b23025a6f`, 
 
 The worker stores normalized 512-float vectors as 2,048-byte blobs, retries jobs up to three times with backoff, and recovers processing jobs after a two-minute lease expires. Visual scores use max cosine similarity over photo pairs and are stored separately from official matching decisions. No production threshold is configured.
 
+Candidate pages are discovery snapshots only. Before writing a page, the worker locks the participating Items in numeric ID order, checks its current job lease and both Items' active states, and recomputes max cosine from the embeddings still present using a current database read. A deleted image's old score cannot be reinserted from an earlier page. Writes lock Items before Jobs; claiming a Job locks only the queue row and reads Item metadata without a locking join.
+
+Owner close, legacy admin close, admin moderation, and Claim completion remove shadow candidates in the same transaction as the terminal Item transition. Cleanup runs even when AI is disabled and skips the candidate table when it has not been migrated yet. No additional migration is needed for this consistency fix. Regression cases are in `server/tests/ai-visual-consistency.integration.js` and run through the isolated MySQL runner; they mock only Cloudinary and inference, not database locking or lifecycle services.
+
 Use the model smoke command with local test images to check CPU inference without a database or Cloudinary request:
 
 ```powershell
