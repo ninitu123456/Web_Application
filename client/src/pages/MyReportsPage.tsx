@@ -27,7 +27,9 @@ export function TargetReference({
         : `/do-vat/${id}`
       : type === "USER" && admin
         ? `/quan-tri/nguoi-dung/${id}`
-        : null;
+        : type === "CLAIM" && admin
+          ? `/quan-tri/claims?claim=${id}`
+          : null;
   return url ? (
     <Link className="text-link" to={url}>
       {label} ↗

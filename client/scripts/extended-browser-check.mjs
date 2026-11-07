@@ -298,14 +298,18 @@ export async function extendedBrowserCheck({
       .click();
     await confirm(adminPage);
     await expect(
-      adminPage.getByText("Đang xem xét", { exact: true }),
+      adminPage
+        .locator(".admin-report-detail .badge")
+        .filter({ hasText: "Đang xem xét" }),
     ).toBeVisible();
     await adminPage
       .getByRole("button", { name: "Đánh dấu đã giải quyết", exact: true })
       .click();
     await confirm(adminPage);
     await expect(
-      adminPage.getByText("Đã giải quyết", { exact: true }),
+      adminPage
+        .locator(".admin-report-detail .badge")
+        .filter({ hasText: "Đã giải quyết" }),
     ).toBeVisible();
     const [[unchanged]] = await query(
       pool,
@@ -328,7 +332,9 @@ export async function extendedBrowserCheck({
       .click();
     await confirm(adminPage);
     await expect(
-      adminPage.getByText("Đã bác bỏ", { exact: true }),
+      adminPage
+        .locator(".admin-report-detail .badge")
+        .filter({ hasText: "Đã bác bỏ" }),
     ).toBeVisible();
 
     // Both lookup tabs use the same create/update/toggle implementation.
@@ -430,12 +436,69 @@ export async function extendedBrowserCheck({
       "Admin proof approve",
     );
     await adminPage.goto(`${url}/quan-tri/claims?itemId=${approveItem.id}`);
+    let failEvidence = true;
+    let prematureDecisions = 0;
+    adminPage.on("request", (incoming) => {
+      if (
+        incoming.method() === "PATCH" &&
+        incoming.url().endsWith(`/api/admin/claims/${approveClaim.id}/resolve`)
+      )
+        prematureDecisions++;
+    });
+    const evidenceUrl = `**/api/items/${approveItem.id}/claims?**`;
+    await adminPage.route(evidenceUrl, (route) => {
+      if (failEvidence) {
+        failEvidence = false;
+        return route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ success: false }),
+        });
+      }
+      return route.continue();
+    });
     await adminPage
-      .getByRole("button", { name: "Duyệt tranh chấp", exact: true })
+      .getByRole("button", { name: "Chấp thuận yêu cầu", exact: true })
       .click();
     await expect(adminPage.getByRole("dialog")).toContainText(
       "Các yêu cầu đang chờ khác sẽ bị từ chối.",
     );
+    await expect(
+      adminPage
+        .getByRole("dialog")
+        .getByRole("heading", { name: "Chưa thể tải nội dung", exact: true }),
+    ).toBeVisible();
+    await expect(
+      adminPage.getByRole("dialog").locator(".admin-checked"),
+    ).toBeVisible();
+    await adminPage
+      .getByLabel("Lý do xử lý")
+      .fill("Đang đối chiếu, chưa xác nhận quyết định");
+    await adminPage
+      .getByRole("dialog")
+      .getByRole("button", { name: "Thử tải lại", exact: true })
+      .click();
+    await expect(
+      adminPage
+        .getByRole("dialog")
+        .getByText("Admin proof approve", { exact: true }),
+    ).toBeVisible();
+    assert.equal(
+      prematureDecisions,
+      0,
+      "Retrying evidence inside a decision form must never submit a decision",
+    );
+    await adminPage.unroute(evidenceUrl);
+    await expect(
+      adminPage.getByRole("button", {
+        name: "Xác nhận quyết định",
+        exact: true,
+      }),
+    ).toBeInViewport({ ratio: 1 });
+    await adminPage.screenshot({
+      path: resolve(artifacts, "desktop-admin-claim-decision.png"),
+      fullPage: true,
+    });
     await adminPage.getByLabel("Lý do xử lý").fill("😀".repeat(1001));
     await adminPage
       .getByRole("button", { name: "Xác nhận quyết định", exact: true })
@@ -472,7 +535,7 @@ export async function extendedBrowserCheck({
     );
     await adminPage.goto(`${url}/quan-tri/claims?itemId=${rejectItem.id}`);
     await adminPage
-      .getByRole("button", { name: "Từ chối tranh chấp", exact: true })
+      .getByRole("button", { name: "Từ chối yêu cầu", exact: true })
       .click();
     await decide(adminPage, "Bằng chứng không phù hợp");
     await expect(adminPage.locator(".badge.status-rejected")).toBeVisible();
@@ -564,11 +627,26 @@ export async function extendedBrowserCheck({
       adminPage.getByRole("dialog").getByText(targetProof, { exact: true }),
     ).toBeVisible();
     assert.equal(pageTwoRead, true);
+    await adminPage.screenshot({
+      path: resolve(artifacts, "desktop-admin-claim-evidence.png"),
+      fullPage: true,
+    });
+    await adminPage.setViewportSize({ width: 360, height: 800 });
+    await adminPage.screenshot({
+      path: resolve(artifacts, "mobile-admin-claim-evidence.png"),
+      fullPage: true,
+    });
+    assert.ok(
+      await adminPage.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    );
+    await adminPage.setViewportSize({ width: 1440, height: 1000 });
     await adminPage
       .getByRole("button", { name: "Đóng hộp thoại", exact: true })
       .click();
     await adminPage
-      .getByRole("button", { name: "Duyệt tranh chấp", exact: true })
+      .getByRole("button", { name: "Chấp thuận yêu cầu", exact: true })
       .click();
     await expect(
       adminPage
@@ -605,7 +683,7 @@ export async function extendedBrowserCheck({
       else await route.continue();
     });
     await adminPage
-      .getByRole("button", { name: "Duyệt tranh chấp", exact: true })
+      .getByRole("button", { name: "Chấp thuận yêu cầu", exact: true })
       .click();
     await expect(
       adminPage
@@ -708,9 +786,25 @@ export async function extendedBrowserCheck({
     ]) {
       await adminPage.setViewportSize({ width: 390, height: 844 });
       await adminPage.goto(url + path);
+      const toggle = adminPage.getByRole("button", {
+        name: "Mở điều hướng quản trị",
+        exact: true,
+      });
+      await toggle.click();
       await expect(
-        adminPage.getByRole("navigation", { name: "Quản trị", exact: true }),
+        adminPage
+          .getByRole("dialog")
+          .getByRole("navigation", { name: "Quản trị", exact: true }),
       ).toBeVisible();
+      await adminPage.keyboard.press("Tab");
+      assert.ok(
+        await adminPage.evaluate(() =>
+          Boolean(document.activeElement?.closest("dialog")),
+        ),
+        "Navigation drawer traps focus",
+      );
+      await adminPage.keyboard.press("Escape");
+      await expect(toggle).toBeFocused();
       assert.ok(
         await adminPage.evaluate(
           () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -734,6 +828,13 @@ export async function extendedBrowserCheck({
     await page.screenshot({
       path: resolve(artifacts, "mobile-my-reports.png"),
       fullPage: true,
+    });
+    const { adminRefreshCheck } = await import("./admin-refresh-check.mjs");
+    await adminRefreshCheck({
+      page: adminPage,
+      url,
+      artifacts,
+      reportId: itemReport.id,
     });
     // A role change is seen by the actual JWT middleware and the frontend guard.
     await query(pool, "UPDATE users SET role_id=? WHERE user_id=?", [

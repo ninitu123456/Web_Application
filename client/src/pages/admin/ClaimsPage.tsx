@@ -1,3 +1,5 @@
+import { useAuth } from "../../lib/auth";
+import { Icon } from "../../components/Icon";
 import { statusLabel } from "../../lib/display-labels";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -5,13 +7,14 @@ import { useResource } from "../../lib/hooks";
 import { invalidate } from "../../lib/api";
 import { findClaimEvidence } from "../../lib/claim-inspection";
 import type { AdminClaim } from "../../lib/extended-types";
-import type { Claim } from "../../lib/types";
+import type { Claim, Item } from "../../lib/types";
 import {
   Button,
   dateLabel,
   EmptyState,
   ErrorState,
   Input,
+  ItemImage,
   Loading,
   Modal,
   Pagination,
@@ -37,7 +40,17 @@ export function AdminClaimsPage() {
   } | null>(null);
   return (
     <>
-      <AdminTitle title="Yêu cầu nhận đồ và tranh chấp" />
+      <AdminTitle title="Yêu cầu & tranh chấp" />
+      <p className="admin-page-intro">
+        Theo dõi yêu cầu nhận đồ và xử lý khi cần can thiệp. Thông thường, chủ
+        bài xác minh và xác nhận bàn giao.
+      </p>
+      {filters.params.get("claim") && (
+        <p className="notice">
+          Báo cáo liên quan đến yêu cầu #{filters.params.get("claim")}. Dùng bộ
+          lọc và phân trang để tìm đúng mã yêu cầu trong danh sách.
+        </p>
+      )}
       <div className="admin-filters">
         <Select
           label="Trạng thái yêu cầu"
@@ -90,16 +103,24 @@ export function AdminClaimsPage() {
           ]}
         >
           {result.data.data.map((claim) => (
-            <tr key={claim.id}>
+            <tr
+              key={claim.id}
+              className={
+                filters.params.get("claim") === String(claim.id)
+                  ? "admin-selected-row"
+                  : ""
+              }
+            >
               <td>
                 <strong>Yêu cầu nhận đồ #{claim.id}</strong>
                 <Link to={`/quan-tri/bai-dang/${claim.itemId}`}>
                   {claim.item.title} ↗
                 </Link>
-                <small>
-                  {dateLabel(claim.submittedAt)} · Bài đăng:{" "}
-                  {statusLabel(claim.item.status, "item")}
-                </small>
+                <small>{dateLabel(claim.submittedAt)} · Bài đăng: </small>
+                <span className="admin-item-state">
+                  Trạng thái bài:{" "}
+                  <StatusBadge status={claim.item.status} group="item" />
+                </span>
               </td>
               <td>
                 <Link to={`/quan-tri/nguoi-dung/${claim.claimantId}`}>
@@ -126,15 +147,15 @@ export function AdminClaimsPage() {
                             setDecision({ claim, decision: "APPROVE" })
                           }
                         >
-                          Duyệt tranh chấp
+                          Chấp thuận yêu cầu
                         </Button>
                         <Button
-                          variant="secondary"
+                          variant="danger"
                           onClick={() =>
                             setDecision({ claim, decision: "REJECT" })
                           }
                         >
-                          Từ chối tranh chấp
+                          Từ chối yêu cầu
                         </Button>
                       </>
                     )}
@@ -167,48 +188,133 @@ function EvidenceDialog({
   claim: AdminClaim;
   close: () => void;
 }) {
-  const [state, setState] = useState<{ data?: Claim; error?: unknown }>({});
+  return (
+    <Modal
+      className="claim-inspector"
+      title={`Bằng chứng yêu cầu nhận đồ #${claim.id}`}
+      close={close}
+    >
+      <ClaimComparison claim={claim} />
+      <p className="fine-print">
+        Bằng chứng chỉ hiển thị cho người gửi, chủ bài và quản trị viên có thẩm
+        quyền.
+      </p>
+      <ReportButton
+        targetType="CLAIM"
+        targetId={claim.id}
+        label="Báo cáo yêu cầu này"
+      />
+    </Modal>
+  );
+}
+function ClaimComparison({ claim }: { claim: AdminClaim }) {
+  const { user } = useAuth();
+  const scope = `${claim.itemId}:${claim.id}:${user?.id}`;
+  const [state, setState] = useState<{
+    data?: Claim;
+    error?: unknown;
+    scope?: string;
+  }>({});
   const [attempt, setAttempt] = useState(0);
+  const item = useResource<Item>(`/admin/items/${claim.itemId}`);
   useEffect(() => {
     const controller = new AbortController();
-    setState({});
+    setState({ scope });
     findClaimEvidence(claim.itemId, claim.id, controller.signal).then(
       (data) => {
-        if (!controller.signal.aborted) setState({ data });
+        if (!controller.signal.aborted) setState({ data, scope });
       },
-      (error: unknown) => {
-        if (!controller.signal.aborted) setState({ error });
+      (error) => {
+        if (!controller.signal.aborted) setState({ error, scope });
       },
     );
     return () => controller.abort();
-  }, [claim.id, claim.itemId, attempt]);
+  }, [scope, attempt, claim.itemId, claim.id]);
+  const evidence = state.scope === scope ? state : {};
+  const data = item.data?.data;
   return (
-    <Modal title={`Bằng chứng yêu cầu nhận đồ #${claim.id}`} close={close}>
-      {state.error ? (
-        <ErrorState
-          error={state.error}
-          retry={() => setAttempt((old) => old + 1)}
-        />
-      ) : state.data ? (
-        <>
-          <p className="fine-print">
-            Bằng chứng chỉ hiển thị cho người gửi, chủ bài và quản trị viên.
-            Người gửi #{state.data.claimantId}.
+    <>
+      <p className="admin-verification-guide">
+        <Icon name="shield" /> Đối chiếu bài đăng → kiểm tra bằng chứng riêng tư
+        → ghi lý do và quyết định.
+      </p>
+      <div className="admin-claim-comparison">
+        <section className="admin-claim-item">
+          <h3>Thông tin bài đăng</h3>
+          {item.loading ? (
+            <Loading />
+          ) : item.error ? (
+            <ErrorState error={item.error} retry={invalidate} />
+          ) : (
+            data && (
+              <>
+                <div className="admin-claim-summary">
+                  <div className="admin-claim-image">
+                    <ItemImage src={data.images[0]?.url} title={data.title} />
+                  </div>
+                  <div>
+                    <h3>{data.title}</h3>
+                    <div className="badge-row">
+                      <StatusBadge status={data.type} group="itemType" />
+                      <StatusBadge status={data.status} group="item" />
+                    </div>
+                    <p>
+                      Bài đăng{" "}
+                      <Link to={`/quan-tri/bai-dang/${data.id}`}>
+                        #{data.id}
+                      </Link>{" "}
+                      · Chủ bài{" "}
+                      <Link to={`/quan-tri/nguoi-dung/${data.userId}`}>
+                        #{data.userId}
+                      </Link>
+                    </p>
+                    <p>
+                      {data.location?.name} · {dateLabel(data.eventDate)}
+                    </p>
+                  </div>
+                </div>
+                <h4>Mô tả công khai</h4>
+                <p className="pre-wrap">{data.description}</p>
+              </>
+            )
+          )}
+          <p className="admin-claim-sender">
+            <Icon name="users" /> Người gửi yêu cầu{" "}
+            <Link to={`/quan-tri/nguoi-dung/${claim.claimantId}`}>
+              #{claim.claimantId}
+            </Link>
           </p>
-          <p className="proof pre-wrap">{state.data.proofDescription}</p>
-          <ReportButton
-            targetType="CLAIM"
-            targetId={state.data.id}
-            label="Báo cáo yêu cầu này"
-          />
-        </>
-      ) : (
-        <>
-          <p className="muted">Đang tìm bằng chứng của yêu cầu nhận đồ…</p>
-          <Loading />
-        </>
-      )}
-    </Modal>
+          <p>
+            Trạng thái yêu cầu:{" "}
+            <StatusBadge
+              status={evidence.data?.status || claim.status}
+              group="claim"
+            />
+          </p>
+          <small>Gửi ngày {dateLabel(claim.submittedAt)}</small>
+        </section>
+        <section className="admin-private-proof">
+          <h3>
+            <Icon name="shield" /> Bằng chứng sở hữu
+          </h3>
+          <span className="badge">Thông tin riêng tư</span>
+          {evidence.error ? (
+            <ErrorState
+              error={evidence.error}
+              retry={() => setAttempt((old) => old + 1)}
+            />
+          ) : evidence.data ? (
+            <p className="proof pre-wrap">{evidence.data.proofDescription}</p>
+          ) : (
+            <Loading />
+          )}
+          <p className="fine-print">
+            Chỉ dùng thông tin này để đối chiếu. Không sao chép bằng chứng vào
+            nội dung công khai.
+          </p>
+        </section>
+      </div>
+    </>
   );
 }
 function DecisionDialog({
@@ -224,7 +330,9 @@ function DecisionDialog({
   const mutation = useMutation();
   return (
     <ReasonDialog
-      title={`${decision === "APPROVE" ? "Duyệt" : "Từ chối"} tranh chấp yêu cầu nhận đồ #${claim.id}`}
+      wide
+      confirmVariant={decision === "REJECT" ? "danger" : "primary"}
+      title={`${decision === "APPROVE" ? "Chấp thuận" : "Từ chối"} yêu cầu nhận đồ #${claim.id}`}
       close={close}
       busy={mutation.busy}
       blocked={recusal.loading || recusal.related === true}
@@ -240,9 +348,12 @@ function DecisionDialog({
           close();
       }}
     >
-      {decision === "APPROVE"
-        ? "Yêu cầu được chấp thuận; bài đăng chuyển sang chờ bàn giao. Các yêu cầu đang chờ khác sẽ bị từ chối. Chủ bài vẫn cần xác nhận khi đã bàn giao đồ."
-        : "Yêu cầu được từ chối. Bài đăng trở lại trạng thái đang mở nếu không còn yêu cầu chờ duyệt. Lịch sử yêu cầu vẫn được giữ."}
+      <ClaimComparison claim={claim} />
+      <p className="notice">
+        {decision === "APPROVE"
+          ? "Yêu cầu được chấp thuận; bài đăng chuyển sang chờ bàn giao. Các yêu cầu đang chờ khác sẽ bị từ chối. Chủ bài vẫn cần xác nhận khi đã bàn giao đồ."
+          : "Yêu cầu được từ chối. Bài đăng trở lại trạng thái đang mở nếu không còn yêu cầu chờ duyệt. Lịch sử yêu cầu vẫn được giữ."}
+      </p>
     </ReasonDialog>
   );
 }

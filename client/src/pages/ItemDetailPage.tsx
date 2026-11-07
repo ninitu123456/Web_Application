@@ -1,6 +1,8 @@
+import { Icon } from "../components/Icon";
 import { useEffect, useRef, useState } from "react";
 import {
   Link,
+  useLocation,
   useNavigate,
   useParams,
   useSearchParams,
@@ -32,6 +34,12 @@ export function ItemDetailPage() {
   return item.data ? <Detail key={id} item={item.data.data} /> : null;
 }
 function Detail({ item }: { item: Item }) {
+  const location = useLocation();
+  const from = location.state?.exploreFrom;
+  const exploreFrom =
+    typeof from === "string" && (from === "/" || from.startsWith("/?"))
+      ? from
+      : "/";
   const { user } = useAuth();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -85,7 +93,7 @@ function Detail({ item }: { item: Item }) {
   }
   return (
     <section className="page-section">
-      <Link className="back-link" to="/">
+      <Link className="back-link" to={exploreFrom}>
         ← Khám phá đồ vật
       </Link>
       <div className="detail-grid">
@@ -146,25 +154,26 @@ function Detail({ item }: { item: Item }) {
           </dl>
           <h2>Mô tả đồ vật</h2>
           <p className="description">{item.description}</p>
-          {user && (
-            <div className="report-actions">
-              <ReportButton
-                targetType="ITEM"
-                targetId={item.id}
-                label="Báo cáo bài đăng"
-              />
-              <ReportButton
-                targetType="USER"
-                targetId={item.userId}
-                label="Báo cáo chủ bài"
-              />
-            </div>
-          )}
           {error && (
             <p className="inline-error" role="alert">
               {error}
             </p>
           )}
+          {!owner &&
+            item.type === "FOUND" &&
+            ["OPEN", "CLAIM_PENDING"].includes(item.status) &&
+            (user ? (
+              <Button disabled={busy} onClick={() => setClaimOpen(true)}>
+                Đây có thể là đồ của tôi →
+              </Button>
+            ) : (
+              <Link
+                className="button primary"
+                to={`/dang-nhap?next=${encodeURIComponent(`/do-vat/${item.id}`)}`}
+              >
+                Đăng nhập để nhận đồ →
+              </Link>
+            ))}
           {user && !owner && (
             <div className="actions">
               <Button variant="secondary" disabled={busy} onClick={startChat}>
@@ -186,21 +195,6 @@ function Detail({ item }: { item: Item }) {
               </Button>
             </div>
           )}
-          {!owner &&
-            item.type === "FOUND" &&
-            ["OPEN", "CLAIM_PENDING"].includes(item.status) &&
-            (user ? (
-              <Button disabled={busy} onClick={() => setClaimOpen(true)}>
-                Đây có thể là đồ của tôi →
-              </Button>
-            ) : (
-              <Link
-                className="button primary"
-                to={`/dang-nhap?next=${encodeURIComponent(`/do-vat/${item.id}`)}`}
-              >
-                Đăng nhập để nhận đồ →
-              </Link>
-            ))}
           {["CLAIMED", "RETURNED", "CLOSED"].includes(item.status) && (
             <p className="notice">
               {item.status === "CLAIMED"
@@ -210,10 +204,56 @@ function Detail({ item }: { item: Item }) {
                   : "Bài đăng đã đóng và không tiếp nhận yêu cầu mới."}
             </p>
           )}
+          {item.type === "FOUND" && (
+            <section className="recovery-guide" aria-label="Cách nhận lại đồ">
+              <h2>Nhận lại đồ như thế nào?</h2>
+              <ol>
+                {[
+                  [
+                    "Gửi bằng chứng",
+                    "Gửi yêu cầu nhận đồ với đặc điểm chỉ bạn biết.",
+                  ],
+                  [
+                    "Chờ xác minh",
+                    "Chủ bài kiểm tra bằng chứng và xác nhận với bạn.",
+                  ],
+                  [
+                    "Nhận lại đồ",
+                    "Thống nhất thời gian, địa điểm và xác nhận bàn giao.",
+                  ],
+                ].map(([title, text], index) => (
+                  <li key={title}>
+                    <span>{index + 1}</span>
+                    <strong>{title}</strong>
+                    <p>{text}</p>
+                  </li>
+                ))}
+              </ol>
+              <p className="fine-print">
+                <Icon name="shield" /> Bằng chứng sở hữu được gửi riêng tư. Nhắn
+                tin để trao đổi; gửi yêu cầu nhận đồ để được xác minh chính
+                thức.
+              </p>
+            </section>
+          )}
           <p className="fine-print">
             Xác minh thông tin trước khi bàn giao. Không chia sẻ bằng chứng sở
             hữu trong mô tả công khai.
           </p>
+          {user && (
+            <div className="report-actions">
+              <ReportButton
+                targetType="ITEM"
+                targetId={item.id}
+                label="Báo cáo bài đăng"
+              />
+              <ReportButton
+                targetType="USER"
+                targetId={item.userId}
+                label="Báo cáo chủ bài"
+              />
+            </div>
+          )}
         </div>
       </div>
       <div className="detail-tabs">
@@ -314,8 +354,8 @@ function Matches({ itemId }: { itemId: number }) {
         <div>
           <h2>Những kết nối có thể phù hợp</h2>
           <p className="muted">
-            Điểm càng cao, hai bài đăng càng giống nhau. Hãy kiểm tra thông tin
-            để xác định đúng đồ vật.
+            Điểm tương đồng chỉ phản ánh mức giống nhau giữa hai bài đăng, không
+            xác nhận quyền sở hữu. Hãy kiểm tra thông tin và bằng chứng.
           </p>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { Icon } from "./Icon";
 import { statusLabel, type StatusGroup } from "../lib/display-labels";
 import {
   createContext,
@@ -12,7 +13,7 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { errorText } from "../lib/api";
 import type { Item, PaginationData } from "../lib/types";
 
@@ -32,8 +33,11 @@ export function Input({
 }: InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string }) {
   const id = useId();
   return (
-    <div className="field">
-      <label htmlFor={id}>{label}</label>
+    <div className={`field ${props.type === "file" ? "upload-field" : ""}`}>
+      <label htmlFor={id}>
+        {props.type === "file" && <Icon name="image" width="28" height="28" />}
+        {label}
+      </label>
       <input
         id={id}
         aria-invalid={Boolean(error)}
@@ -50,28 +54,56 @@ export function Input({
 }
 export function Select({
   label,
+  error,
   children,
   ...props
-}: SelectHTMLAttributes<HTMLSelectElement> & { label: string }) {
+}: SelectHTMLAttributes<HTMLSelectElement> & {
+  label: string;
+  error?: string;
+}) {
   const id = useId();
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
-      <select id={id} {...props}>
+      <select
+        id={id}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : undefined}
+        {...props}
+      >
         {children}
       </select>
+      {error && (
+        <small id={`${id}-error`} className="error-text">
+          {error}
+        </small>
+      )}
     </div>
   );
 }
 export function Textarea({
   label,
+  error,
   ...props
-}: TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string }) {
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  label: string;
+  error?: string;
+}) {
   const id = useId();
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
-      <textarea id={id} {...props} />
+      <textarea
+        id={id}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : undefined}
+        {...props}
+      />
+      {error && (
+        <small id={`${id}-error`} className="error-text">
+          {error}
+        </small>
+      )}
     </div>
   );
 }
@@ -107,33 +139,47 @@ export function ItemImage({ src, title }: { src?: string; title: string }) {
       role="img"
       aria-label={`${title} — chưa có ảnh`}
     >
-      <span aria-hidden="true">⌕</span>
+      <Icon name="image" width="40" height="40" />
       <small>Chưa có hình ảnh</small>
     </div>
   );
 }
 export function ItemCard({ item }: { item: Item }) {
+  const location = useLocation();
+  const state =
+    location.pathname === "/"
+      ? { exploreFrom: `/${location.search}` }
+      : undefined;
   return (
     <article className="item-card">
-      <Link className="card-image" to={`/do-vat/${item.id}`}>
+      <Link className="card-image" to={`/do-vat/${item.id}`} state={state}>
         <ItemImage src={item.images[0]?.url} title={item.title} />
-        <StatusBadge status={item.type} group="itemType" />
       </Link>
       <div className="card-content">
+        <StatusBadge status={item.type} group="itemType" />
         <div className="card-meta">
           <span>{item.category?.name || "Đồ vật"}</span>
           <StatusBadge status={item.status} group="item" />
         </div>
         <h3>
-          <Link to={`/do-vat/${item.id}`}>{item.title}</Link>
+          <Link to={`/do-vat/${item.id}`} state={state}>
+            {item.title}
+          </Link>
         </h3>
         <p className="muted">
+          <Icon name="pin" />{" "}
           {item.location?.name || `Địa điểm #${item.locationId}`}
         </p>
         <div className="card-bottom">
-          <span>{dateLabel(item.eventDate)}</span>
-          <Link aria-label={`Xem ${item.title}`} to={`/do-vat/${item.id}`}>
-            ↗
+          <span>
+            <Icon name="calendar" /> {dateLabel(item.eventDate)}
+          </span>
+          <Link
+            aria-label={`Xem ${item.title}`}
+            to={`/do-vat/${item.id}`}
+            state={state}
+          >
+            <Icon name="arrow" />
           </Link>
         </div>
       </div>
@@ -158,7 +204,7 @@ export function EmptyState({
   return (
     <div className="state empty">
       <span className="empty-icon" aria-hidden="true">
-        ⌕
+        <Icon name="search" width="40" height="40" />
       </span>
       <h3>{title}</h3>
       {children && <div className="muted">{children}</div>}
@@ -177,7 +223,7 @@ export function ErrorState({
       <h3>Chưa thể tải nội dung</h3>
       <p>{errorText(error)}</p>
       {retry && (
-        <Button variant="secondary" onClick={retry}>
+        <Button type="button" variant="secondary" onClick={retry}>
           Thử tải lại
         </Button>
       )}
@@ -219,11 +265,13 @@ export function Modal({
   children,
   close,
   busy = false,
+  className,
 }: {
   title: string;
   children: ReactNode;
   close: () => void;
   busy?: boolean;
+  className?: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useId();
@@ -241,6 +289,7 @@ export function Modal({
   }, []);
   return (
     <dialog
+      className={className}
       ref={dialog}
       aria-labelledby={heading}
       onCancel={(event) => {

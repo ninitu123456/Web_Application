@@ -1,9 +1,18 @@
+import { Link } from "react-router-dom";
 import { statusLabel } from "../../lib/display-labels";
 import { useResource } from "../../lib/hooks";
 import { invalidate } from "../../lib/api";
-import type { Dashboard } from "../../lib/extended-types";
-import { EmptyState, ErrorState, Loading } from "../../components/ui";
-import { AdminTitle, Table } from "./shared";
+import type { Dashboard, Report } from "../../lib/extended-types";
+import {
+  Button,
+  EmptyState,
+  ErrorState,
+  Loading,
+  StatusBadge,
+} from "../../components/ui";
+import { Icon } from "../../components/Icon";
+import { AdminTitle } from "./shared";
+import { ActivityChart, CategoryChart, DistributionChart } from "./Charts";
 export function DashboardPage() {
   const result = useResource<Dashboard>("/admin/dashboard");
   if (result.loading) return <Loading />;
@@ -13,52 +22,112 @@ export function DashboardPage() {
   if (!data) return null;
   return (
     <>
-      <AdminTitle title="Tổng quan" />
-      <div className="stat-grid">
-        {[
-          ["Người dùng", data.users.total],
-          ["Bài đăng", data.items.total],
-          ["Yêu cầu nhận đồ", data.claims.total],
-          ["Gợi ý đồ vật", data.matches.total],
-          ["Báo cáo", data.reports.total],
-          ["Đồ đã trao lại", data.items.returned],
-        ].map(([label, value]) => (
+      <AdminTitle title="Tổng quan">
+        <Button variant="secondary" onClick={invalidate}>
+          <Icon name="refresh" />
+          Làm mới
+        </Button>
+      </AdminTitle>
+      <p className="admin-page-intro">
+        Nắm tình hình, xử lý đúng việc. Các chỉ số tổng tính trên toàn hệ thống.
+      </p>
+      <section className="admin-queue" aria-label="Hàng đợi công việc">
+        <strong>
+          <Icon name="alert" />
+          Cần xử lý
+        </strong>
+        <Link to="/quan-tri/bao-cao?status=PENDING">
+          {data.reports.byStatus.PENDING} báo cáo chờ xem xét{" "}
+          <Icon name="arrow" />
+        </Link>
+        <Link to="/quan-tri/bao-cao?status=REVIEWING">
+          {data.reports.byStatus.REVIEWING} báo cáo đang xem xét{" "}
+          <Icon name="arrow" />
+        </Link>
+        <Link to="/quan-tri/claims?status=PENDING">
+          {data.claims.byStatus.PENDING} yêu cầu nhận đồ đang chờ{" "}
+          <Icon name="arrow" />
+        </Link>
+      </section>
+      <div className="stat-grid admin-primary-stats">
+        {(
+          [
+            ["Người dùng", data.users.total, "users"],
+            ["Bài đăng", data.items.total, "list"],
+            ["Yêu cầu nhận đồ", data.claims.total, "shield"],
+            ["Đồ đã trao lại", data.items.returned, "box"],
+          ] as const
+        ).map(([label, value, icon]) => (
           <article className="panel stat-card" key={label}>
-            <span>{label}</span>
-            <strong>{Number(value).toLocaleString("vi-VN")}</strong>
+            <span className="admin-stat-icon">
+              <Icon name={icon} />
+            </span>
+            <div>
+              <span>{label}</span>
+              <strong>{value.toLocaleString("vi-VN")}</strong>
+            </div>
           </article>
         ))}
       </div>
-      <div className="dashboard-grid">
-        <section className="panel">
-          <h2>Tài khoản & loại bài</h2>
-          <dl className="summary-list">
-            {[
-              ["Tài khoản hoạt động", data.users.active],
-              ["Tài khoản đình chỉ", data.users.suspended],
-              ["Đồ bị mất", data.items.lost],
-              ["Đồ nhặt được", data.items.found],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <dt>{label}</dt>
-                <dd>{value}</dd>
-              </div>
-            ))}
-          </dl>
+      <div className="admin-dashboard-charts">
+        <section className="panel admin-activity-panel">
+          <h2>Hoạt động 30 ngày gần đây</h2>
+          <p className="muted">
+            Số thao tác được ghi trong nhật ký, không phải lượt truy cập.
+          </p>
+          <ActivityChart rows={data.recentActivity} />
         </section>
-        {[
-          ["Trạng thái bài đăng", data.items.byStatus, "item"],
-          ["Trạng thái yêu cầu nhận đồ", data.claims.byStatus, "claim"],
-          ["Trạng thái báo cáo", data.reports.byStatus, "report"],
-        ].map(([title, statuses, group]) => (
-          <section className="panel" key={String(title)}>
-            <h2>{String(title)}</h2>
+        <section className="panel">
+          <h2>Trạng thái bài đăng</h2>
+          <DistributionChart
+            rows={Object.entries(data.items.byStatus).map(([key, count]) => ({
+              label: statusLabel(key, "item"),
+              count,
+            }))}
+          />
+        </section>
+        <section className="panel">
+          <h2>Bài đăng theo danh mục</h2>
+          <p className="muted">
+            Tối đa 20 danh mục, theo số bài giảm dần từ API.
+          </p>
+          <CategoryChart rows={data.categories} />
+        </section>
+        <PendingReports />
+      </div>
+      <div className="admin-secondary-stats">
+        <span>
+          Gợi ý đồ vật <strong>{data.matches.total}</strong>
+        </span>
+        <span>
+          Tổng báo cáo <strong>{data.reports.total}</strong>
+        </span>
+        <span>
+          Tài khoản hoạt động <strong>{data.users.active}</strong>
+        </span>
+        <span>
+          Tài khoản đình chỉ <strong>{data.users.suspended}</strong>
+        </span>
+        <span>
+          Đồ bị mất <strong>{data.items.lost}</strong>
+        </span>
+        <span>
+          Đồ nhặt được <strong>{data.items.found}</strong>
+        </span>
+      </div>
+      <div className="dashboard-grid">
+        {(
+          [
+            ["Trạng thái yêu cầu nhận đồ", data.claims.byStatus, "claim"],
+            ["Trạng thái báo cáo", data.reports.byStatus, "report"],
+          ] as const
+        ).map(([title, statuses, group]) => (
+          <section className="panel" key={title}>
+            <h2>{title}</h2>
             <dl className="summary-list">
-              {Object.entries(statuses).map(([status, count]) => (
-                <div key={status}>
-                  <dt>
-                    {statusLabel(status, group as "item" | "claim" | "report")}
-                  </dt>
+              {Object.entries(statuses).map(([key, count]) => (
+                <div key={key}>
+                  <dt>{statusLabel(key, group)}</dt>
                   <dd>{count}</dd>
                 </div>
               ))}
@@ -66,49 +135,48 @@ export function DashboardPage() {
           </section>
         ))}
       </div>
-      <section className="panel admin-section">
-        <h2>Đồ vật theo danh mục</h2>
-        {data.categories.length ? (
-          <Table columns={["Danh mục", "Số bài"]}>
-            {data.categories.map((category) => (
-              <tr key={category.id}>
-                <td>{category.name}</td>
-                <td>{category.count}</td>
-              </tr>
-            ))}
-          </Table>
-        ) : (
-          <EmptyState title="Chưa có dữ liệu danh mục" />
-        )}
-      </section>
-      <section className="panel admin-section">
-        <h2>Hoạt động trong 30 ngày gần đây</h2>
-        <p className="muted">
-          Số thao tác được ghi nhận mỗi ngày, không phải số lượt truy cập.
-        </p>
-        {data.recentActivity.length ? (
-          <div className="activity-bars" aria-label="Số hoạt động mỗi ngày">
-            {data.recentActivity.map((row) => (
-              <div key={row.date}>
-                <span>{row.date.split("-").reverse().join("/")}</span>
-                <meter
-                  min={0}
-                  max={Math.max(
-                    1,
-                    ...data.recentActivity.map((value) => value.count),
-                  )}
-                  value={row.count}
-                >
-                  {row.count}
-                </meter>
-                <strong>{row.count}</strong>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState title="Chưa có hoạt động" />
-        )}
-      </section>
     </>
+  );
+}
+function PendingReports() {
+  const reports = useResource<Report[]>("/admin/reports", {
+    status: "PENDING",
+    page: 1,
+    limit: 4,
+  });
+  return (
+    <section className="panel">
+      <div className="section-heading">
+        <h2>Báo cáo chờ xem xét</h2>
+        <Link className="text-link" to="/quan-tri/bao-cao?status=PENDING">
+          Xem tất cả →
+        </Link>
+      </div>
+      {reports.loading ? (
+        <Loading />
+      ) : reports.error ? (
+        <ErrorState error={reports.error} retry={invalidate} />
+      ) : reports.data?.data.length ? (
+        <ul className="admin-report-preview">
+          {reports.data.data.map((report) => (
+            <li key={report.id}>
+              <StatusBadge status={report.status} group="report" />
+              <div>
+                <strong>#{report.id}</strong>
+                <p>{report.reason}</p>
+              </div>
+              <Link
+                to={`/quan-tri/bao-cao/${report.id}?status=PENDING`}
+                aria-label={`Xem xét báo cáo #${report.id}`}
+              >
+                Xem xét →
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <EmptyState title="Không có báo cáo đang chờ" />
+      )}
+    </section>
   );
 }

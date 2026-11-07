@@ -285,6 +285,18 @@ export function MyClaimsPage() {
                 <summary>Bằng chứng bạn đã gửi (riêng tư)</summary>
                 <p>{claim.proofDescription}</p>
               </details>
+              {claim.status === "PENDING" && (
+                <p className="notice">
+                  Đang chờ chủ bài kiểm tra bằng chứng. Bạn có thể theo dõi kết
+                  quả tại đây hoặc trong Thông báo.
+                </p>
+              )}
+              {claim.status === "REJECTED" && (
+                <p className="notice">
+                  Yêu cầu đã bị từ chối. Bạn không thể gửi lại yêu cầu cho bài
+                  này; hãy tiếp tục tìm kiếm đồ vật phù hợp.
+                </p>
+              )}
               <ReportButton
                 targetType="CLAIM"
                 targetId={claim.id}

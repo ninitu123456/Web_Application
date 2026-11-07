@@ -8,7 +8,8 @@ import {
 import { api, ApiError, errorText, invalidate } from "../lib/api";
 import { useResource } from "../lib/hooks";
 import { useAuth } from "../lib/auth";
-import { validDate } from "../lib/validation";
+import { itemFieldErrors, type ItemFields as Fields } from "../lib/item-form";
+import { Icon } from "../components/Icon";
 import type { Item, ItemType, Lookup } from "../lib/types";
 import {
   Button,
@@ -22,15 +23,6 @@ import {
   useToast,
 } from "../components/ui";
 
-interface Fields {
-  title: string;
-  type: ItemType;
-  categoryId: string;
-  locationId: string;
-  eventDate: string;
-  description: string;
-  color: string;
-}
 const empty: Fields = {
   title: "",
   type: "LOST",
@@ -93,6 +85,11 @@ function ItemForm({
         }
       : { ...empty, type: initialType },
   );
+  const [step, setStep] = useState(1);
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<keyof Fields, string>>
+  >({});
+  const stepTitle = useRef<HTMLHeadingElement>(null);
   const [saved, setSaved] = useState<Item | undefined>(original);
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -106,6 +103,23 @@ function ItemForm({
   const categories = useResource<Lookup[]>("/categories");
   const locations = useResource<Lookup[]>("/locations");
   const created = !original && Boolean(saved);
+  const wizard = !original && !created;
+  useEffect(() => {
+    stepTitle.current?.focus();
+  }, [step]);
+  function validateFields(form: HTMLFormElement) {
+    const errors = itemFieldErrors(fields);
+    setFieldErrors(errors);
+    const first = Object.keys(errors)[0];
+    if (first) {
+      if (wizard) setStep(2);
+      requestAnimationFrame(() =>
+        form.querySelector<HTMLElement>(`[name="${first}"]`)?.focus(),
+      );
+      return false;
+    }
+    return true;
+  }
   useEffect(() => {
     const urls = files.map((file) => URL.createObjectURL(file));
     setPreviews(urls);
@@ -143,33 +157,18 @@ function ItemForm({
     setSaved(response.data);
     return response.data;
   }
-  async function submit(event: FormEvent) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (lock.current || uncertain) return;
-    if (
-      !validDate(fields.eventDate) ||
-      !Number.isSafeInteger(Number(fields.categoryId)) ||
-      Number(fields.categoryId) <= 0 ||
-      !Number.isSafeInteger(Number(fields.locationId)) ||
-      Number(fields.locationId) <= 0
-    ) {
-      setError("Chọn danh mục, địa điểm và ngày hợp lệ.");
+    if (wizard && step === 1) {
+      setError("");
+      setStep(2);
       return;
     }
-    if (!fields.title.trim() || Array.from(fields.title.trim()).length > 200) {
-      setError("Vui lòng nhập tiêu đề, tối đa 200 ký tự.");
-      return;
-    }
-    if (!fields.description.trim()) {
-      setError("Vui lòng nhập mô tả đồ vật.");
-      return;
-    }
-    if (new TextEncoder().encode(fields.description.trim()).length > 65535) {
-      setError("Mô tả quá dài. Vui lòng rút ngắn.");
-      return;
-    }
-    if (Array.from(fields.color.trim()).length > 80) {
-      setError("Màu sắc quá dài. Vui lòng nhập tối đa 80 ký tự.");
+    if (!validateFields(event.currentTarget)) return;
+    if (wizard && step === 2) {
+      setError("");
+      setStep(3);
       return;
     }
     lock.current = true;
@@ -291,6 +290,8 @@ function ItemForm({
     return (
       <Select
         label={label}
+        name={kind}
+        error={fieldErrors[kind]}
         value={fields[kind]}
         onChange={(event) => set(kind, event.target.value)}
         required
@@ -320,7 +321,7 @@ function ItemForm({
         ← Quay lại
       </Link>
       <span className="eyebrow">CHIA SẺ ĐỂ KẾT NỐI</span>
-      <h1>{original ? "Chỉnh sửa bài đăng" : "Đăng bài"}</h1>
+      <h1>{original ? "Chỉnh sửa bài đăng" : "Chia sẻ một món đồ"}</h1>
       <p className="muted">
         Mô tả rõ ràng sẽ giúp mọi người tìm thấy nhau nhanh hơn.
       </p>
@@ -331,18 +332,68 @@ function ItemForm({
           <Link to={`/do-vat/${saved?.id}`}>Xem bài đăng ↗</Link>
         </div>
       )}
-      <form className="panel item-form" onSubmit={submit}>
-        <fieldset disabled={busy || created}>
+      <form className="panel item-form" onSubmit={submit} noValidate>
+        {wizard && (
+          <>
+            <div className="wizard-heading">
+              <h2 ref={stepTitle} tabIndex={-1}>
+                {
+                  [
+                    "Bạn muốn đăng gì?",
+                    "Thông tin đồ vật",
+                    "Kiểm tra trước khi đăng",
+                  ][step - 1]
+                }
+              </h2>
+              <span>{step} / 3</span>
+            </div>
+            <ol className="wizard-progress" aria-label="Tiến trình đăng bài">
+              {["Loại bài & ảnh", "Thông tin", "Xem trước"].map(
+                (label, index) => (
+                  <li
+                    key={label}
+                    className={index < step ? "complete" : ""}
+                    aria-current={index + 1 === step ? "step" : undefined}
+                  >
+                    <span>{index + 1}</span>
+                    {label}
+                  </li>
+                ),
+              )}
+            </ol>
+          </>
+        )}
+        <div hidden={wizard && step !== 1}>
+          {!original && (
+            <fieldset className="type-choices" disabled={busy || created}>
+              <legend>Loại bài đăng</legend>
+              {(["LOST", "FOUND"] as const).map((type) => (
+                <label
+                  key={type}
+                  className={fields.type === type ? "selected" : ""}
+                >
+                  <input
+                    type="radio"
+                    name="type"
+                    value={type}
+                    checked={fields.type === type}
+                    onChange={() => set("type", type)}
+                  />
+                  <Icon
+                    name={type === "LOST" ? "search" : "box"}
+                    width="40"
+                    height="40"
+                  />
+                  <strong>
+                    {type === "LOST" ? "Tôi bị mất đồ" : "Tôi nhặt được đồ"}
+                  </strong>
+                </label>
+              ))}
+            </fieldset>
+          )}
+        </div>
+        <fieldset hidden={wizard && step !== 2} disabled={busy || created}>
           <legend>Thông tin đồ vật</legend>
-          <Select
-            label="Loại bài đăng"
-            value={fields.type}
-            disabled={Boolean(original) || busy || created}
-            onChange={(e) => set("type", e.target.value)}
-          >
-            <option value="LOST">Tôi bị mất đồ</option>
-            <option value="FOUND">Tôi nhặt được đồ</option>
-          </Select>
           {original && (
             <small className="muted">
               Loại bài đăng được giữ nguyên sau khi tạo.
@@ -350,6 +401,8 @@ function ItemForm({
           )}
           <Input
             label="Tiêu đề"
+            name="title"
+            error={fieldErrors.title}
             value={fields.title}
             onChange={(e) => set("title", e.target.value)}
             placeholder="Ví dụ: Nhặt được bình nước màu xanh ở thư viện"
@@ -357,7 +410,13 @@ function ItemForm({
           />
           <div className="form-row">
             {lookupSelect("categoryId", "Danh mục", categories.data?.data)}
-            {lookupSelect("locationId", "Địa điểm", locations.data?.data)}
+            {lookupSelect(
+              "locationId",
+              fields.type === "FOUND"
+                ? "Địa điểm nhặt được"
+                : "Địa điểm bị mất",
+              locations.data?.data,
+            )}
           </div>
           {Boolean(categories.error || locations.error) && (
             <ErrorState
@@ -367,8 +426,10 @@ function ItemForm({
           )}
           <div className="form-row">
             <Input
-              label="Ngày xảy ra sự việc"
+              label={fields.type === "FOUND" ? "Ngày nhặt được" : "Ngày bị mất"}
               type="date"
+              name="eventDate"
+              error={fieldErrors.eventDate}
               value={fields.eventDate}
               onChange={(e) => set("eventDate", e.target.value)}
               min="1000-01-01"
@@ -377,12 +438,16 @@ function ItemForm({
             />
             <Input
               label="Màu sắc (tùy chọn)"
+              name="color"
+              error={fieldErrors.color}
               value={fields.color}
               onChange={(e) => set("color", e.target.value)}
             />
           </div>
           <Textarea
             label="Mô tả đồ vật"
+            name="description"
+            error={fieldErrors.description}
             value={fields.description}
             onChange={(e) => set("description", e.target.value)}
             rows={5}
@@ -393,7 +458,7 @@ function ItemForm({
             nhận đồ.
           </small>
         </fieldset>
-        <section className="image-editor">
+        <section className="image-editor" hidden={wizard && step !== 1}>
           <h2>
             Hình ảnh <span className="muted">(tùy chọn)</span>
           </h2>
@@ -446,6 +511,51 @@ function ItemForm({
             }}
           />
         </section>
+        {wizard && step === 3 && (
+          <section className="post-preview" aria-label="Xem trước bài đăng">
+            {previews.length > 0 && (
+              <div className="preview-images">
+                {previews.map((url, index) => (
+                  <img key={url} src={url} alt={`Ảnh đồ vật ${index + 1}`} />
+                ))}
+              </div>
+            )}
+            <span className={`badge status-${fields.type.toLowerCase()}`}>
+              {fields.type === "FOUND" ? "Nhặt được" : "Bị mất"}
+            </span>
+            <h2>{fields.title}</h2>
+            <p className="preview-meta">
+              <Icon name="pin" />{" "}
+              {
+                locations.data?.data.find(
+                  (row) => row.id === Number(fields.locationId),
+                )?.name
+              }{" "}
+              · {fields.eventDate.split("-").reverse().join("/")}
+            </p>
+            <p className="muted">
+              {
+                categories.data?.data.find(
+                  (row) => row.id === Number(fields.categoryId),
+                )?.name
+              }
+              {fields.color && ` · ${fields.color}`}
+            </p>
+            <p className="description">{fields.description}</p>
+            <p className="notice">
+              <Icon name="shield" /> Nội dung này sẽ hiển thị công khai. Giữ lại
+              đặc điểm bí mật để xác minh sở hữu.
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => setStep(2)}
+            >
+              Chỉnh sửa thông tin
+            </Button>
+          </section>
+        )}
         {error && (
           <p className="inline-error" role="alert">
             {error}
@@ -469,17 +579,33 @@ function ItemForm({
           </div>
         )}
         <div className="actions">
-          <Link
-            className="button secondary"
-            to={saved ? `/do-vat/${saved.id}` : "/"}
-          >
-            Quay lại
-          </Link>
+          {wizard && step > 1 ? (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => {
+                setError("");
+                setStep(step - 1);
+              }}
+            >
+              ← Quay lại
+            </Button>
+          ) : (
+            <Link
+              className="button secondary"
+              to={saved ? `/do-vat/${saved.id}` : "/"}
+            >
+              Quay lại
+            </Link>
+          )}
           <Button
             disabled={
               busy ||
               uncertain ||
-              (!created && (!categories.data || !locations.data))
+              (!created &&
+                (!wizard || step !== 1) &&
+                (!categories.data || !locations.data))
             }
           >
             {busy
@@ -490,7 +616,11 @@ function ItemForm({
                   : "Xem bài đã tạo →"
                 : original
                   ? "Lưu thay đổi →"
-                  : "Đăng bài →"}
+                  : step === 1
+                    ? "Tiếp tục →"
+                    : step === 2
+                      ? "Xem trước →"
+                      : "Đăng bài →"}
           </Button>
         </div>
       </form>
