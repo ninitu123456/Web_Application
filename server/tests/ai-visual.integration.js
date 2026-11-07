@@ -2,6 +2,8 @@ import { assertIsolatedInstance } from '../../database/scripts/assert-isolated.j
 await assertIsolatedInstance();
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
 import { resolve } from 'node:path';
 import { configFromEnv } from '../../database/scripts/config.js';
@@ -14,6 +16,8 @@ import { createItemRepository } from '../repositories/item.repository.js';
 import { createAiVisualRepository } from '../ai-visual/repository.js';
 import { createAiVisualWorker } from '../ai-visual/worker.js';
 import { encodeEmbedding } from '../ai-visual/embeddings.js';
+import { createVisualSuggestionsRepository } from '../repositories/visual-suggestions.repository.js';
+import { createVisualSuggestionsService } from '../services/visual-suggestions.service.js';
 import { createItemService } from '../services/item.service.js';
 import { createImageOperations } from '../services/image-operations.js';
 
@@ -237,6 +241,131 @@ test('AI Visual Matching jobs and shadow candidates use only the isolated MySQL 
       const [[row]] = await query(pool, 'SELECT status, lease_token FROM ai_visual_jobs WHERE image_id=?', [photo.id]);
       assert.equal(row.status, 'COMPLETED');
       assert.equal(row.lease_token, null);
+    });
+
+    await t.test('candidate written before failed completion remains visible during retry and terminal job states', async () => {
+      const partialLost = await item('LOST', 'AI partial result visibility fixture');
+      const partialFound = await item('FOUND', 'AI partial result target fixture');
+      const [lostPhoto] = await service.uploadImages(identity, partialLost.id, [{ mimetype: 'image/png', buffer: png }]);
+      const [foundPhoto] = await service.uploadImages(identity, partialFound.id, [{ mimetype: 'image/png', buffer: png }]);
+      await query(pool, `INSERT INTO item_image_embeddings (image_id, model_id, model_revision, dimensions, embedding_data, created_at)
+        VALUES (?, ?, ?, 512, ?, UTC_TIMESTAMP())`, [foundPhoto.id, 'Xenova/clip-vit-base-patch32', '4c1807b705b1d015fb032789cc4d221b23025a6f', direction]);
+      const interruptedRepository = { ...aiRepository, async finish() { throw new Error('injected interruption before job completion'); } };
+      const interruptedWorker = createAiVisualWorker({ repository: interruptedRepository, config: { enabled: true, maxAttempts: 3, pollMs: 250 },
+        imageSource: { async download() { return { filePath: 'local-interruption.png', async cleanup() {} }; } },
+        encoder: { async embedFile() { return { vector: Float32Array.from([1, ...Array(511).fill(0)]), inferenceMs: 1 }; } }
+      });
+      await interruptedWorker.processNext();
+
+      const [[job]] = await query(pool, 'SELECT job_id, status, attempts, lease_token FROM ai_visual_jobs WHERE image_id=?', [lostPhoto.id]);
+      assert.equal(job.status, 'QUEUED');
+      assert.equal(Number(job.attempts), 1);
+      assert.equal(job.lease_token, null);
+      const [[persisted]] = await query(pool, `SELECT COUNT(*) AS embeddings, MIN(OCTET_LENGTH(embedding_data)) AS min_bytes,
+        MAX(OCTET_LENGTH(embedding_data)) AS max_bytes FROM item_image_embeddings WHERE image_id=?`, [lostPhoto.id]);
+      assert.deepEqual(Object.values(persisted).map(Number), [1, 2048, 2048]);
+      const [[candidateCount]] = await query(pool, 'SELECT COUNT(*) AS count FROM ai_visual_candidates WHERE lost_item_id=? AND found_item_id=?', [partialLost.id, partialFound.id]);
+      assert.equal(Number(candidateCount.count), 1);
+
+      const suggestions = createVisualSuggestionsService(createVisualSuggestionsRepository(pool), { enabled: true });
+      const visible = await suggestions.forOwner(identity, partialLost.id);
+      assert.ok(visible.some((candidate) => candidate.itemId === Number(partialFound.id)), 'candidate is visible while retry is pending');
+
+      for (const status of ['PROCESSING', 'FAILED', 'COMPLETED']) {
+        await query(pool, 'UPDATE ai_visual_jobs SET status=?, lease_token=NULL, locked_until=NULL WHERE job_id=?', [status, job.job_id]);
+        assert.ok((await suggestions.forOwner(identity, partialLost.id)).some((candidate) => candidate.itemId === Number(partialFound.id)), `candidate remains visible for ${status}`);
+      }
+
+      await query(pool, "UPDATE ai_visual_jobs SET status='QUEUED', available_at=UTC_TIMESTAMP() WHERE job_id=?", [job.job_id]);
+      assert.equal(await worker.processNext(), true);
+      const [[completed]] = await query(pool, 'SELECT status, attempts, lease_token FROM ai_visual_jobs WHERE job_id=?', [job.job_id]);
+      assert.equal(completed.status, 'COMPLETED');
+      assert.equal(Number(completed.attempts), 2);
+      assert.equal(completed.lease_token, null);
+      const [[deduplicated]] = await query(pool, `SELECT COUNT(*) AS embeddings FROM item_image_embeddings
+        WHERE image_id=? AND model_id='Xenova/clip-vit-base-patch32' AND model_revision='4c1807b705b1d015fb032789cc4d221b23025a6f'`, [lostPhoto.id]);
+      assert.equal(Number(deduplicated.embeddings), 1);
+      assert.ok((await suggestions.forOwner(identity, partialLost.id)).some((candidate) => candidate.itemId === Number(partialFound.id)));
+    });
+
+    await t.test('retrieval, pre-persistence, post-persistence, and heartbeat failures leave retryable consistent rows', async () => {
+      for (const stage of ['retrieval', 'persistence', 'candidate_page', 'heartbeat']) {
+        const fixture = await item('LOST', `AI ${stage} interruption fixture`);
+        const [photo] = await service.uploadImages(identity, fixture.id, [{ mimetype: 'image/png', buffer: png }]);
+        await query(pool, "UPDATE ai_visual_jobs SET status='CANCELLED', locked_until=NULL, lease_token=NULL WHERE status='QUEUED' AND image_id<>?", [photo.id]);
+        const faultRepository = { ...aiRepository };
+        if (stage === 'persistence') faultRepository.saveEmbedding = async () => { throw new Error('injected before embedding persistence'); };
+        if (stage === 'candidate_page') faultRepository.oppositeEmbeddingPage = async () => { throw new Error('injected after embedding persistence'); };
+        if (stage === 'heartbeat') faultRepository.renewLease = async () => false;
+        const faultWorker = createAiVisualWorker({ repository: faultRepository,
+          config: { enabled: true, maxAttempts: 3, pollMs: 250, ...(stage === 'heartbeat' ? { leaseRenewMs: 1 } : {}) },
+          imageSource: { async download() {
+            if (stage === 'retrieval') throw new Error('injected retrieval interruption');
+            return { filePath: `local-${stage}.png`, async cleanup() {} };
+          } },
+          encoder: { async embedFile() {
+            if (stage === 'heartbeat') await new Promise((resolve) => setTimeout(resolve, 15));
+            return { vector: Float32Array.from([1, ...Array(511).fill(0)]), inferenceMs: 1 };
+          } }
+        });
+        await faultWorker.processNext();
+        const [[job]] = await query(pool, 'SELECT status, attempts, lease_token FROM ai_visual_jobs WHERE image_id=?', [photo.id]);
+        assert.equal(job.status, 'QUEUED', `${stage}: failed attempt stays retryable`);
+        assert.equal(Number(job.attempts), 1);
+        assert.equal(job.lease_token, null);
+        const [[counts]] = await query(pool, `SELECT
+          (SELECT COUNT(*) FROM item_image_embeddings WHERE image_id=?) AS embeddings,
+          (SELECT COUNT(*) FROM ai_visual_candidates WHERE lost_item_id=? OR found_item_id=?) AS candidates`, [photo.id, fixture.id, fixture.id]);
+        assert.deepEqual(Object.values(counts).map(Number), [stage === 'candidate_page' ? 1 : 0, 0], stage);
+      }
+    });
+
+    await t.test('an owned worker process killed after claim is recovered and fenced from the replacement worker', async () => {
+      const crashLost = await item('LOST', 'AI process termination fixture');
+      const crashFound = await item('FOUND', 'AI process takeover target');
+      const [lostPhoto] = await service.uploadImages(identity, crashLost.id, [{ mimetype: 'image/png', buffer: png }]);
+      await service.uploadImages(identity, crashFound.id, [{ mimetype: 'image/png', buffer: png }]);
+      await query(pool, "UPDATE ai_visual_jobs SET status='CANCELLED', locked_until=NULL, lease_token=NULL WHERE status='QUEUED' AND image_id<>?", [lostPhoto.id]);
+
+      const child = spawn(process.execPath, [fileURLToPath(new URL('./ai-visual-claim-hold.js', import.meta.url)), name],
+        { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+      let stderr = '';
+      child.stderr.on('data', (chunk) => { stderr += chunk; });
+      const claimed = await new Promise((resolve, reject) => {
+        let output = '';
+        child.stdout.on('data', (chunk) => {
+          output += chunk.toString();
+          const end = output.indexOf('\n');
+          if (end !== -1) {
+            try { resolve(JSON.parse(output.slice(0, end))); }
+            catch (error) { reject(error); }
+          }
+        });
+        child.once('error', reject);
+        child.once('exit', (code) => reject(new Error(`claim child exited before reporting a lease (${code}): ${stderr}`)));
+      });
+      assert.equal(String(claimed.image_id), String(lostPhoto.id));
+      const exited = new Promise((resolve) => child.once('exit', (code, signal) => resolve({ code, signal })));
+      child.kill();
+      const termination = await exited;
+      assert.notEqual(termination.code, 0, 'child termination must not look like a clean worker completion');
+
+      await query(pool, 'UPDATE ai_visual_jobs SET locked_until=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 SECOND) WHERE job_id=?', [claimed.job_id]);
+      const replacement = await aiRepository.claimNext(3);
+      assert.ok(replacement);
+      assert.notEqual(replacement.lease_token, claimed.lease_token);
+      assert.equal(Number(replacement.attempts), 2);
+      assert.equal(await aiRepository.saveEmbedding(claimed, direction), undefined);
+      assert.equal(await aiRepository.upsertCandidates(claimed, crashLost.id, 'LOST', replacement.model_id, replacement.model_revision,
+        [{ itemId: crashFound.id, score: 0.99 }]), false);
+      const [[stillOwned]] = await query(pool, 'SELECT status, attempts, lease_token FROM ai_visual_jobs WHERE job_id=?', [claimed.job_id]);
+      assert.equal(stillOwned.status, 'PROCESSING');
+      assert.equal(Number(stillOwned.attempts), 2);
+      assert.equal(stillOwned.lease_token, replacement.lease_token);
+      assert.equal(await aiRepository.saveEmbedding(replacement, direction) !== undefined, true);
+      assert.equal(await aiRepository.upsertCandidates(replacement, crashLost.id, 'LOST', replacement.model_id, replacement.model_revision,
+        [{ itemId: crashFound.id, score: 1 }]), true);
+      assert.equal(await aiRepository.finish(replacement, crashLost.id), true);
     });
   } finally {
     if (pool) await pool.end();
