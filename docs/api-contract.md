@@ -289,6 +289,37 @@ Hệ thống phải trả về danh sách rỗng thay vì thông báo lỗi.
 - 401 Unauthorized: Chưa xác thực hoặc JWT không hợp lệ.
 - 404 Not Found: Không tìm thấy tài nguyên được yêu cầu.
 
+### 4.2. Gợi ý tương đồng hình ảnh (AI Visual Suggestions)
+
+**Endpoint:** `GET /api/items/:id/visual-suggestions`
+
+**Xác thực và quyền:** Bắt buộc JWT hợp lệ của người dùng `ACTIVE`. Chỉ chủ sở hữu bài LOST đang hoạt động (`OPEN`, `CLAIM_PENDING`, `CLAIMED`) được đọc gợi ý; bài không tồn tại, không thuộc người gọi, sai loại hoặc không hoạt động đều trả `404` chung để tránh tiết lộ bản ghi.
+
+**Feature flags:** Backend `AI_VISUAL_SUGGESTIONS_ENABLED=true` và frontend `VITE_AI_VISUAL_SUGGESTIONS_ENABLED=true`; cả hai mặc định tắt. Backend chỉ cho bật với `NODE_ENV=development|test`, `DB_HOST=127.0.0.1`, cổng khác `3306`/`3311` và `FINDIT_ISOLATED_DATADIR` dưới `%TEMP%\findit-mysql-*\data`. Ứng dụng xác minh `@@datadir` và `@@port` khi khởi động. Không tự chạy migration. Chỉ bật preview trên cơ sở dữ liệu cô lập đã có migrations 014–016 và dữ liệu gợi ý. Tuỳ chọn `VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE=true` chỉ hiện nhãn điểm mẫu trong preview, mặc định tắt và không thay đổi API.
+
+**Phản hồi:** `200 OK`, tối đa ba FOUND đang hoạt động và đã có embedding mới nhất cho mọi ảnh. Ứng viên thiếu embedding hiện hành, sai model/revision, sai trạng thái hoặc không còn truy cập được sẽ bị loại. Khi các bảng AI chưa được cài, trả mảng rỗng; các lỗi database khác vẫn theo xử lý lỗi chung.
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "itemId": 28,
+      "title": "Túi màu xanh",
+      "description": "Nhặt được gần thư viện",
+      "color": "Xanh",
+      "eventDate": "2026-11-01",
+      "category": "Đồ dùng cá nhân",
+      "location": "Thư viện",
+      "thumbnailUrl": "https://res.cloudinary.com/example/image/upload/item.jpg",
+      "cosineScore": 0.734
+    }
+  ]
+}
+```
+
+`cosineScore` là điểm xếp hạng tương đồng hình ảnh, không phải xác suất hay mức độ chắc chắn. API chỉ đọc `ai_visual_candidates`; không gọi CLIP, không ghi Match/Notification/Claim, không tự khởi động worker.
+
 ### 5. API thông báo (Notification API)
 
 Tất cả API thông báo đều yêu cầu người dùng phải xác thực.

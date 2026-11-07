@@ -725,6 +725,73 @@ img {
 .page-section {
   padding-top: 48px;
 }
+.visual-suggestions {
+  margin: 42px 0;
+  padding: 28px;
+  border: 1px solid #dbeafe;
+  border-radius: 22px;
+  background: #f8fbff;
+}
+.visual-suggestions .section-heading { margin-bottom: 14px; }
+.visual-suggestions .section-heading h2 { color: #1e3a8a; }
+.visual-suggestions-preview-note { margin: 0 0 18px; color: #92400e; font-size: 13px; font-weight: 600; }
+.visual-suggestion-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+.visual-suggestion-card {
+  overflow: hidden;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+}
+.visual-suggestion-image {
+  display: block;
+  height: 180px;
+  overflow: hidden;
+  background: #eff6ff;
+}
+.visual-suggestion-image img { width: 100%; height: 100%; object-fit: cover; }
+.visual-suggestion-content { padding: 17px; }
+.visual-suggestion-label {
+  color: #2563eb;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.visual-suggestion-content h3 { margin: 8px 0; font-size: 15px; line-height: 1.45; }
+.visual-suggestion-content h3 a:hover,
+.visual-suggestion-link:hover { color: #2563eb; }
+.visual-suggestion-meta,
+.visual-suggestion-description { color: var(--muted); font-size: 11px; line-height: 1.6; }
+.visual-suggestion-description {
+  display: -webkit-box;
+  overflow: hidden;
+  min-height: 3.2em;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.visual-suggestion-score {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #eff2f7;
+  color: var(--muted);
+  font-size: 10px;
+}
+.visual-suggestion-score strong { color: #2563eb; font-variant-numeric: tabular-nums; }
+.visual-suggestion-link { color: #2563eb; font-size: 11px; font-weight: 600; }
+@media (max-width: 760px) {
+  .visual-suggestions { margin: 28px 0; padding: 20px 15px; }
+  .visual-suggestion-grid { grid-template-columns: 1fr; }
+  .visual-suggestion-card { display: grid; grid-template-columns: minmax(100px, 32%) minmax(0, 1fr); }
+  .visual-suggestion-image { height: 100%; min-height: 190px; }
+  .visual-suggestion-content { padding: 14px; }
+}
 .narrow {
   max-width: 850px;
   margin: auto;
