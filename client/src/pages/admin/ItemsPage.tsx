@@ -145,6 +145,11 @@ export function RecusalNotice({
       Chưa kiểm tra được bạn có liên quan đến bài đăng này hay không. Hệ thống
       sẽ kiểm tra quyền của bạn khi xử lý quyết định.
     </p>
+  ) : related === false ? (
+    <p className="notice admin-checked">
+      Đã kiểm tra: bạn không là chủ bài và chưa gửi yêu cầu nhận đồ cho bài này.
+      Backend sẽ kiểm tra lại khi xử lý.
+    </p>
   ) : null;
 }
 export function AdminItemDetailPage() {

@@ -23,6 +23,8 @@ try {
   await execute([process.env.npm_execpath, "run", "build"], client, {
     ...process.env,
     VITE_API_BASE_URL: "/api",
+    VITE_AI_VISUAL_SUGGESTIONS_ENABLED: "true",
+    VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE: "true",
   });
   await execute(
     [

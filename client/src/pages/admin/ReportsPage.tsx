@@ -1,9 +1,10 @@
 import { statusLabel } from "../../lib/display-labels";
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useResource } from "../../lib/hooks";
 import { invalidate } from "../../lib/api";
-import type { Report, ReportStatus } from "../../lib/extended-types";
+import type { Dashboard, Report, ReportStatus } from "../../lib/extended-types";
+import type { Item } from "../../lib/types";
 import {
   Button,
   ConfirmDialog,
@@ -11,6 +12,7 @@ import {
   EmptyState,
   ErrorState,
   Loading,
+  ItemImage,
   Pagination,
   Select,
   StatusBadge,
@@ -24,74 +26,144 @@ import {
   useMutation,
 } from "./shared";
 export function AdminReportsPage() {
+  const { id } = useParams();
+  const list = useRef<HTMLElement>(null);
+  const previousSelection = useRef(id);
+  useEffect(() => {
+    if (!id && previousSelection.current) list.current?.focus();
+    previousSelection.current = id;
+  }, [id]);
   const filters = useAdminQuery(["status"]);
   const result = useResource<Report[]>("/admin/reports", filters.query);
+  const summary = useResource<Dashboard>("/admin/dashboard");
+  const totals = summary.data?.data.reports;
   return (
     <>
       <AdminTitle title="Báo cáo vi phạm" />
-      <div className="admin-filters">
-        <Select
-          label="Trạng thái báo cáo"
-          value={filters.params.get("status") || ""}
-          onChange={(e) => filters.change("status", e.target.value)}
-        >
-          <option value="">Tất cả trạng thái</option>
-          {["PENDING", "REVIEWING", "RESOLVED", "DISMISSED"].map((status) => (
-            <option key={status} value={status}>
-              {statusLabel(status, "report")}
-            </option>
+      <p className="admin-page-intro">
+        Xem ngữ cảnh trước khi quyết định. Xử lý báo cáo độc lập với quyết định
+        về bài đăng và tài khoản.
+      </p>
+      {totals && (
+        <div className="stat-grid admin-report-stats">
+          {[
+            ["Chờ xem xét", totals.byStatus.PENDING],
+            ["Đang xem xét", totals.byStatus.REVIEWING],
+            [
+              "Đã kết thúc",
+              totals.byStatus.RESOLVED + totals.byStatus.DISMISSED,
+            ],
+          ].map(([label, count]) => (
+            <article className="panel stat-card" key={label}>
+              <span>{label} · toàn hệ thống</span>
+              <strong>{Number(count).toLocaleString("vi-VN")}</strong>
+            </article>
           ))}
-        </Select>
-      </div>
-      {result.loading ? (
-        <Loading />
-      ) : result.error ? (
-        <ErrorState error={result.error} retry={invalidate} />
-      ) : result.data?.data.length ? (
-        <Table
-          columns={[
-            "Báo cáo",
-            "Đối tượng bị báo cáo",
-            "Trạng thái",
-            "Thao tác",
-          ]}
-        >
-          {result.data.data.map((report) => (
-            <tr key={report.id}>
-              <td>
-                <strong>
-                  #{report.id} · {report.reason}
-                </strong>
-                <small>
-                  Người gửi #{report.reporterId} · {dateLabel(report.createdAt)}
-                </small>
-              </td>
-              <td>
-                <TargetReference
-                  type={report.targetType}
-                  id={report.targetId}
-                  admin
-                />
-              </td>
-              <td>
-                <StatusBadge status={report.status} group="report" />
-              </td>
-              <td>
-                <Link to={`/quan-tri/bao-cao/${report.id}`}>Xem xét ↗</Link>
-              </td>
-            </tr>
-          ))}
-        </Table>
-      ) : (
-        <EmptyState title="Không có báo cáo phù hợp" />
+        </div>
       )}
-      <Pagination data={result.data?.pagination} change={filters.page} />
+      {summary.error && (
+        <p className="notice">
+          Chưa tải được số liệu tổng báo cáo.{" "}
+          <button onClick={invalidate}>Thử lại</button>
+        </p>
+      )}
+      <div className={`admin-reports ${id ? "with-selection" : ""}`}>
+        <section
+          ref={list}
+          tabIndex={-1}
+          className="panel admin-report-list"
+          aria-label="Danh sách báo cáo"
+        >
+          <Select
+            label="Trạng thái báo cáo"
+            value={filters.params.get("status") || ""}
+            onChange={(e) => filters.change("status", e.target.value)}
+          >
+            <option value="">Tất cả trạng thái</option>
+            {["PENDING", "REVIEWING", "RESOLVED", "DISMISSED"].map((status) => (
+              <option key={status} value={status}>
+                {statusLabel(status, "report")}
+              </option>
+            ))}
+          </Select>
+          <p className="muted">
+            {result.data
+              ? `${result.data.pagination?.total ?? 0} báo cáo phù hợp`
+              : "Đang tải danh sách…"}
+          </p>
+          {result.loading ? (
+            <Loading />
+          ) : result.error ? (
+            <ErrorState error={result.error} retry={invalidate} />
+          ) : result.data?.data.length ? (
+            <Table columns={["Báo cáo / Đối tượng", "Trạng thái"]}>
+              {result.data.data.map((report) => (
+                <tr
+                  key={report.id}
+                  className={
+                    String(report.id) === id ? "admin-selected-row" : ""
+                  }
+                >
+                  <td>
+                    <Link
+                      className="admin-record-link"
+                      aria-current={
+                        String(report.id) === id ? "page" : undefined
+                      }
+                      to={`/quan-tri/bao-cao/${report.id}${filters.params.size ? `?${filters.params}` : ""}`}
+                    >
+                      <strong>
+                        #{report.id} · {report.reason}
+                      </strong>
+                      <span>Xem xét →</span>
+                    </Link>
+                    <small>
+                      Người gửi #{report.reporterId} ·{" "}
+                      {dateLabel(report.createdAt)}
+                    </small>
+                    <TargetReference
+                      type={report.targetType}
+                      id={report.targetId}
+                      admin
+                    />
+                  </td>
+                  <td>
+                    <StatusBadge status={report.status} group="report" />
+                  </td>
+                </tr>
+              ))}
+            </Table>
+          ) : (
+            <EmptyState title="Không có báo cáo phù hợp" />
+          )}
+          <Pagination data={result.data?.pagination} change={filters.page} />
+        </section>
+        <section className="admin-report-detail" aria-label="Chi tiết báo cáo">
+          {id ? (
+            <ReportDetail key={id} id={id} />
+          ) : (
+            <div className="panel">
+              <EmptyState title="Chọn báo cáo để xem xét">
+                <p>
+                  Thông tin, đối tượng liên quan và thao tác xử lý sẽ xuất hiện
+                  tại đây.
+                </p>
+              </EmptyState>
+            </div>
+          )}
+        </section>
+      </div>
     </>
   );
 }
-export function AdminReportDetailPage() {
-  const { id } = useParams();
+export const AdminReportDetailPage = AdminReportsPage;
+function ReportDetail({ id }: { id: string }) {
+  const [params] = useSearchParams();
   const result = useResource<Report>(`/admin/reports/${id}`);
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (result.data) heading.current?.focus();
+  }, [id, Boolean(result.data)]);
   const mutation = useMutation();
   const [next, setNext] = useState<ReportStatus | null>(null);
   if (result.loading) return <Loading />;
@@ -101,15 +173,23 @@ export function AdminReportDetailPage() {
   if (!report) return null;
   return (
     <>
-      <Link className="back-link" to="/quan-tri/bao-cao">
+      <Link
+        className="back-link"
+        to={`/quan-tri/bao-cao${params.size ? `?${params}` : ""}`}
+      >
         ← Báo cáo vi phạm
       </Link>
-      <AdminTitle title={`Báo cáo #${report.id}`} />
+
       <section className="panel">
         <div className="section-heading">
-          <h2>{report.reason}</h2>
+          <h2 ref={heading} tabIndex={-1}>
+            Báo cáo #{report.id}
+          </h2>
           <StatusBadge status={report.status} group="report" />
         </div>
+        <p>
+          <strong>Lý do:</strong> {report.reason}
+        </p>
         <p>
           Đối tượng:{" "}
           <TargetReference
@@ -121,6 +201,9 @@ export function AdminReportDetailPage() {
         <p className="pre-wrap">
           {report.description || "Không có mô tả thêm."}
         </p>
+        {report.targetType === "ITEM" && (
+          <ReportItemPreview itemId={report.targetId} />
+        )}
         <dl className="summary-list">
           <div>
             <dt>Người gửi</dt>
@@ -158,6 +241,12 @@ export function AdminReportDetailPage() {
             <Link to="/quan-tri/claims">Mở danh sách yêu cầu nhận đồ ↗</Link>
           </p>
         )}
+        <Link
+          className="text-link"
+          to={`/quan-tri/nhat-ky?entityType=REPORT&entityId=${report.id}`}
+        >
+          Xem nhật ký liên quan →
+        </Link>
         <MutationError error={mutation.error} />
         <div className="actions">
           {report.status === "PENDING" && (
@@ -206,4 +295,30 @@ export function AdminReportDetailPage() {
       )}
     </>
   );
+}
+function ReportItemPreview({ itemId }: { itemId: number }) {
+  const item = useResource<Item>(`/admin/items/${itemId}`);
+  if (item.loading) return <Loading />;
+  if (item.error) return <ErrorState error={item.error} retry={invalidate} />;
+  const data = item.data?.data;
+  return data ? (
+    <section className="admin-related-object">
+      <h3>Đối tượng liên quan</h3>
+      <div>
+        <div className="admin-related-image">
+          <ItemImage src={data.images[0]?.url} title={data.title} />
+        </div>
+        <div>
+          <h3>{data.title}</h3>
+          <div className="badge-row">
+            <StatusBadge status={data.type} group="itemType" />
+            <StatusBadge status={data.status} group="item" />
+          </div>
+          <Link className="text-link" to={`/quan-tri/bai-dang/${data.id}`}>
+            Xem bài đăng #{data.id} →
+          </Link>
+        </div>
+      </div>
+    </section>
+  ) : null;
 }

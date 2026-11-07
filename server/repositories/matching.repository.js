@@ -22,6 +22,18 @@ export function createMatchingRepository(pool, execute = (sql, values = []) => q
       } else {
         const [[existing]] = await execute('SELECT match_id FROM matches WHERE lost_item_id=? AND found_item_id=? FOR UPDATE', [lostId, foundId]);
         await execute(`INSERT INTO matches (match_score, reasons, lost_item_id, found_item_id, status, created_at) VALUES (?, ?, ?, ?, 'POTENTIAL', UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE match_score = VALUES(match_score), reasons = VALUES(reasons)`, values);
+        const [[match]] = await execute('SELECT match_id FROM matches WHERE lost_item_id=? AND found_item_id=?', [lostId, foundId]);
+        const [owners] = await execute('SELECT i.item_id, i.user_id, i.title FROM items i WHERE i.item_id IN (?,?) ORDER BY i.item_id', [lostId, foundId]);
+        const recipients = new Set();
+        for (const owner of owners) {
+          if (recipients.has(String(owner.user_id))) continue;
+          recipients.add(String(owner.user_id));
+          const related = owners.find(other => String(other.item_id) !== String(owner.item_id));
+          const payload = { ownTitle: owner.title, title: related.title, itemId: String(related.item_id), score: result.score };
+          await execute(`INSERT INTO email_outbox (user_id,event_key,payload,status,next_attempt_at,created_at)
+            VALUES (?,?,?,'PENDING',UTC_TIMESTAMP(),UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE job_id=job_id`,
+            [owner.user_id, `MATCH:${match.match_id}`, JSON.stringify(payload)]);
+        }
         if (!existing) {
           const [[created]] = await execute('SELECT match_id FROM matches WHERE lost_item_id=? AND found_item_id=?', [lostId, foundId]);
           return { created: true, matchId: created.match_id };

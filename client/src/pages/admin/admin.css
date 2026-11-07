@@ -1,0 +1,912 @@
+.admin-shell {
+  display: grid;
+  grid-template-columns: 238px minmax(0, 1fr);
+  min-height: 100vh;
+  background: #f7f8f3;
+  color: #26352e;
+}
+.admin-shell .admin-rail {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 14px 18px;
+  background: linear-gradient(155deg, #184c3b, #103f32);
+  color: #edf5e8;
+  overflow-y: auto;
+}
+.admin-shell .admin-brand {
+  color: white;
+  font-size: 31px;
+  padding: 0 12px;
+}
+.admin-shell .admin-brand span {
+  color: #d6e89d;
+}
+.admin-shell .admin-label {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  margin: 7px 12px 28px;
+  font-weight: 600;
+}
+.admin-rail nav,
+.admin-nav-dialog nav {
+  display: grid;
+  gap: 7px;
+}
+.admin-rail nav a,
+.admin-nav-dialog nav a {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 48px;
+  padding: 12px;
+  border-radius: 9px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.admin-rail nav a.active {
+  background: #317354;
+  color: white;
+  font-weight: 600;
+}
+.admin-rail nav a:hover {
+  background: #ffffff16;
+}
+.admin-shell .admin-rail-bottom {
+  margin-top: auto;
+  padding-top: 30px;
+}
+.admin-shell .admin-rail-bottom > a {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-block: 1px solid #ffffff30;
+  min-height: 52px;
+  padding: 12px 8px;
+  font-size: 14px;
+}
+.admin-shell .admin-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 8px 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.admin-shell .admin-identity small {
+  display: block;
+  opacity: 0.8;
+  font-size: 12px;
+  padding-top: 5px;
+}
+.admin-shell .avatar {
+  color: #184c3b;
+  flex-shrink: 0;
+}
+.admin-shell .admin-workspace {
+  min-width: 0;
+}
+.admin-shell .admin-topbar {
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 28px;
+  border-bottom: 1px solid #dfe4da;
+  background: #fcfcf8;
+}
+.admin-shell .admin-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: #54685d;
+}
+.admin-shell .admin-breadcrumb a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.admin-shell .admin-breadcrumb strong {
+  color: #294d3d;
+  font-weight: 600;
+}
+.admin-shell .admin-topbar-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.admin-shell .admin-account-name {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.admin-shell .admin-menu-toggle {
+  display: none;
+}
+.admin-shell > .admin-workspace > .admin-content {
+  padding: 28px;
+  max-width: 1680px;
+  margin: auto;
+}
+.admin-shell h1 {
+  font-size: clamp(27px, 2.6vw, 36px);
+  color: #184c3b;
+  margin-bottom: 0;
+}
+.admin-shell h2 {
+  font-size: 19px;
+  color: #184c3b;
+  line-height: 1.4;
+}
+.admin-shell h3 {
+  font-size: 17px;
+}
+.admin-shell .admin-content > .section-heading {
+  margin-bottom: 10px;
+  align-items: center;
+}
+.admin-shell .admin-content > .section-heading .eyebrow {
+  display: none;
+}
+.admin-shell .admin-page-intro {
+  font-size: 14px;
+  color: #647367;
+  margin: 0 0 22px;
+}
+.admin-shell .panel {
+  padding: 22px;
+  border-radius: 16px;
+  background: #fff;
+}
+.admin-shell .admin-queue {
+  display: flex;
+  align-items: center;
+  gap: 12px 20px;
+  flex-wrap: wrap;
+  border: 1px solid #efdbac;
+  background: #fff2d5;
+  padding: 12px 18px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+.admin-shell .admin-queue strong {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  color: #7a5012;
+}
+.admin-shell .admin-queue a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: #184c3b;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.admin-shell .admin-primary-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0 0 20px;
+}
+.admin-shell .admin-primary-stats .stat-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 20px 16px;
+}
+.admin-shell .stat-card span {
+  font-size: 13px;
+  color: #526158;
+}
+.admin-shell .stat-card strong {
+  color: #184c3b;
+  font-weight: 700;
+  font-size: 31px;
+  margin-top: 6px;
+}
+.admin-shell .admin-stat-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: #e9f3e8;
+  color: #206448;
+}
+.admin-shell .admin-stat-icon svg {
+  width: 25px;
+  height: 25px;
+}
+.admin-shell .admin-dashboard-charts {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 18px;
+}
+.admin-shell .admin-dashboard-charts > * {
+  min-width: 0;
+}
+.admin-shell .admin-dashboard-charts p.muted {
+  font-size: 13px;
+}
+.admin-shell .admin-column-chart {
+  height: 218px;
+  display: flex;
+  gap: 10px;
+  padding-top: 26px;
+  margin-top: 20px;
+}
+.admin-shell .admin-chart-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-bottom: 30px;
+  font-size: 12px;
+  color: #6c786e;
+  min-width: 26px;
+  text-align: right;
+}
+.admin-shell .admin-columns {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 30px;
+  background: repeating-linear-gradient(
+    to top,
+    #dfe4da 0,
+    #dfe4da 1px,
+    transparent 1px,
+    transparent 25%
+  );
+  background-clip: content-box;
+}
+.admin-shell .admin-column {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.admin-shell .admin-chart-point {
+  width: 100%;
+  max-width: 38px;
+  min-height: 3px;
+  background: linear-gradient(#397e5e, #184c3b);
+  border-radius: 3px 3px 0 0;
+  padding: 0;
+  position: relative;
+}
+.admin-shell .admin-column > span {
+  position: absolute;
+  top: calc(100% + 9px);
+  font-size: 11px;
+  color: #637065;
+  white-space: nowrap;
+}
+.admin-shell [data-tooltip] {
+  position: relative;
+}
+.admin-shell [data-tooltip]:is(:hover, :focus-visible)::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #203e2e;
+  color: white;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 5;
+  pointer-events: none;
+}
+.admin-shell .admin-chart-note {
+  font-size: 12px;
+  color: #627165;
+  margin: 12px 0;
+}
+.admin-shell .admin-data-table summary {
+  cursor: pointer;
+  padding: 12px 0;
+  min-height: 44px;
+  font-size: 13px;
+  color: #184c3b;
+}
+.admin-shell .admin-distribution {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  padding-top: 12px;
+  flex-wrap: wrap;
+}
+.admin-shell .admin-donut {
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.admin-shell .admin-donut > div {
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.admin-shell .admin-donut span {
+  font-size: 12px;
+  color: #596a5b;
+}
+.admin-shell .admin-donut strong {
+  font-size: 30px;
+  color: #184c3b;
+}
+.admin-shell .admin-chart-legend {
+  flex: 1;
+  min-width: 150px;
+  margin: 0;
+}
+.admin-shell .admin-chart-legend > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 9px;
+  font-size: 13px;
+}
+.admin-shell .admin-chart-legend dt {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.admin-shell .admin-chart-legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.admin-shell .admin-chart-legend dd {
+  margin: 0;
+  font-weight: 600;
+}
+.admin-shell .admin-horizontal-bars {
+  display: grid;
+  gap: 18px;
+  margin: 26px 0 10px;
+}
+.admin-shell .admin-horizontal-bars > div {
+  display: grid;
+  grid-template-columns: minmax(70px, 32%) minmax(0, 1fr) 35px;
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+}
+.admin-shell .admin-horizontal-bars > div > div {
+  height: 20px;
+  background: #f1f4ec;
+  border-radius: 3px;
+}
+.admin-shell .admin-horizontal-bars > div > div > span {
+  display: block;
+  background: #286a4c;
+  height: 100%;
+  min-width: 0;
+  border-radius: 3px;
+}
+.admin-shell .admin-report-preview {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.admin-shell .admin-report-preview li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #e5e9e1;
+  padding: 13px 0;
+  font-size: 13px;
+}
+.admin-shell .admin-report-preview li > div {
+  flex: 1;
+  min-width: 0;
+}
+.admin-shell .admin-report-preview p {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+.admin-shell .admin-report-preview a {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  text-decoration: underline;
+  white-space: nowrap;
+  color: #184c3b;
+}
+.admin-shell .admin-secondary-stats {
+  display: flex;
+  gap: 14px 25px;
+  flex-wrap: wrap;
+  padding: 22px 2px;
+  font-size: 13px;
+  color: #5b6c5d;
+}
+.admin-shell .admin-secondary-stats strong {
+  margin-left: 8px;
+  color: #184c3b;
+}
+.admin-shell .dashboard-grid {
+  margin-top: 0;
+  gap: 18px;
+}
+.admin-shell .admin-filters {
+  background: white;
+  border: 1px solid #dfe4da;
+  padding: 18px 18px 0;
+  border-radius: 14px;
+  margin: 20px 0;
+}
+.admin-shell .admin-filters label {
+  font-size: 13px;
+}
+.admin-shell .admin-filters input,
+.admin-shell .admin-filters select {
+  font-size: 14px;
+}
+.admin-shell .table-scroll {
+  border-radius: 12px;
+}
+.admin-shell .table-scroll th {
+  background: #f0f3ec;
+  color: #58685b;
+  font-size: 13px;
+  padding: 14px;
+}
+.admin-shell .table-scroll td {
+  padding: 16px 14px;
+  font-size: 14px;
+}
+.admin-shell .table-scroll td small {
+  font-size: 12px;
+  margin-top: 7px;
+}
+.admin-shell .table-actions .button {
+  min-height: 44px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.admin-shell .table-scroll tbody tr:hover {
+  background: #f7faf2;
+}
+.admin-shell .status-pending,
+.admin-shell .status-claim_pending,
+.claim-inspector .status-pending {
+  background: #fff0c9;
+  color: #86500a;
+}
+.admin-shell .admin-item-state {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  align-items: center;
+  font-size: 12px;
+}
+.admin-shell .admin-report-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.admin-shell .admin-reports {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.admin-shell .admin-reports > * {
+  min-width: 0;
+}
+.admin-shell .admin-report-list .table-scroll table {
+  min-width: 0;
+  table-layout: fixed;
+}
+.admin-shell .admin-report-list th:last-child {
+  width: 125px;
+}
+.admin-shell .admin-record-link {
+  display: block;
+  min-height: 44px;
+}
+.admin-shell .admin-record-link strong {
+  color: #184c3b;
+  line-height: 1.5;
+}
+.admin-shell .admin-record-link span {
+  display: inline-block;
+  font-size: 12px;
+  margin-top: 6px;
+}
+.admin-shell .admin-selected-row {
+  background: #eaf3e5;
+  box-shadow: inset 3px 0 #347451;
+}
+.admin-shell .admin-report-detail {
+  scroll-margin-top: 20px;
+}
+.admin-shell .admin-report-detail h2 {
+  font-size: 24px;
+}
+.admin-shell .admin-report-detail p,
+.admin-shell .admin-report-detail .summary-list {
+  font-size: 14px;
+}
+.admin-shell .admin-report-detail .back-link {
+  margin-bottom: 10px;
+}
+.admin-shell .admin-report-detail .actions {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+.admin-shell .admin-related-object {
+  border-block: 1px solid #e2e7dd;
+  padding-block: 18px;
+  margin: 20px 0;
+}
+.admin-shell .admin-related-object > div {
+  display: flex;
+  align-items: start;
+  gap: 14px;
+}
+.admin-shell .admin-related-object > div > div:last-child {
+  min-width: 0;
+}
+.admin-shell .admin-related-object h3 {
+  font-size: 16px;
+}
+.admin-shell .admin-related-object .badge-row {
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+.admin-shell .admin-related-image {
+  width: 88px;
+  height: 105px;
+  flex-shrink: 0;
+}
+.admin-shell .admin-related-image > img,
+.admin-shell .admin-related-image .image-fallback {
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  border-radius: 9px;
+}
+.admin-shell .admin-related-image small {
+  display: none;
+}
+.admin-shell .admin-report-list .pagination {
+  gap: 10px;
+  margin: 20px 0 0;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.admin-shell .admin-report-list .pagination .button {
+  padding: 10px 12px;
+  min-height: 44px;
+  font-size: 13px;
+}
+.claim-inspector {
+  width: min(1120px, calc(100vw - 32px));
+  max-width: 1120px;
+}
+.claim-inspector .modal-inner {
+  padding: 28px;
+}
+.claim-inspector .modal-inner > .section-heading h2 {
+  font-size: 23px;
+  color: #184c3b;
+}
+.claim-inspector .admin-verification-guide {
+  background: #f1f5e9;
+  border: 1px solid #dfe6d5;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 14px;
+  color: #2c583e;
+}
+.claim-inspector .admin-claim-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-block: 20px;
+}
+.claim-inspector .admin-claim-comparison > section {
+  border: 1px solid #dfe4da;
+  border-radius: 12px;
+  padding: 20px;
+  min-width: 0;
+}
+.claim-inspector .admin-claim-comparison h3 {
+  color: #184c3b;
+  font-size: 18px;
+}
+.claim-inspector .admin-claim-comparison h4 {
+  font-size: 14px;
+  margin: 18px 0 8px;
+}
+.claim-inspector .admin-claim-comparison p {
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.claim-inspector .admin-claim-summary {
+  display: flex;
+  align-items: start;
+  gap: 16px;
+}
+.claim-inspector .admin-claim-summary > div:last-child {
+  min-width: 0;
+}
+.claim-inspector .admin-claim-summary .badge-row {
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.claim-inspector .admin-claim-summary p {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.claim-inspector .admin-claim-image {
+  width: 108px;
+  height: 130px;
+  flex-shrink: 0;
+}
+.claim-inspector .admin-claim-image > img,
+.claim-inspector .admin-claim-image .image-fallback {
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  border-radius: 10px;
+}
+.claim-inspector .admin-claim-image small {
+  font-size: 11px;
+  text-align: center;
+}
+.claim-inspector .admin-claim-sender {
+  background: #f1f4ec;
+  border-radius: 8px;
+  padding: 10px;
+}
+.claim-inspector a {
+  color: #184c3b;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.claim-inspector .admin-private-proof > .badge {
+  margin-bottom: 16px;
+}
+.claim-inspector .admin-private-proof .proof {
+  background: #f5f6f2;
+  padding: 16px;
+  border-radius: 9px;
+  min-height: 110px;
+  margin-top: 0;
+  white-space: pre-wrap;
+}
+.claim-inspector .notice,
+.claim-inspector .fine-print {
+  font-size: 14px;
+}
+.claim-inspector form > .actions {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  border-top: 1px solid #dfe4da;
+  padding: 14px 0 20px;
+  z-index: 2;
+}
+.admin-nav-dialog {
+  max-width: 420px;
+  width: calc(100vw - 32px);
+}
+.admin-nav-dialog nav {
+  margin-bottom: 20px;
+}
+.admin-nav-dialog nav a.active {
+  background: #e9f3e0;
+  color: #184c3b;
+  font-weight: 600;
+}
+@media (max-width: 1200px) {
+  .admin-shell {
+    grid-template-columns: 215px minmax(0, 1fr);
+  }
+  .admin-shell .admin-primary-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .admin-shell .admin-dashboard-charts {
+    grid-template-columns: 1fr;
+  }
+  .admin-shell .admin-reports {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .admin-shell > .admin-workspace > .admin-content {
+    padding: 22px;
+  }
+}
+@media (max-width: 960px) {
+  .admin-shell {
+    display: block;
+  }
+  .admin-shell .admin-rail {
+    display: none;
+  }
+  .admin-shell .admin-menu-toggle {
+    display: grid;
+  }
+  .admin-shell .admin-topbar {
+    padding: 10px 18px;
+  }
+  .admin-shell .admin-account-name,
+  .admin-shell .admin-breadcrumb a:first-child span {
+    display: none;
+  }
+  .admin-shell .admin-dashboard-charts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-shell .admin-reports {
+    grid-template-columns: 1fr;
+  }
+  .admin-shell .admin-reports.with-selection .admin-report-list {
+    display: none;
+  }
+  .admin-shell .admin-reports:not(.with-selection) .admin-report-detail {
+    display: none;
+  }
+  .claim-inspector .admin-claim-comparison {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 650px) {
+  .admin-shell > .admin-workspace > .admin-content {
+    padding: 20px 14px;
+  }
+  .admin-shell .admin-topbar {
+    padding: 8px 10px;
+    gap: 5px;
+  }
+  .admin-shell .admin-topbar-actions {
+    gap: 3px;
+  }
+  .admin-shell .admin-breadcrumb {
+    font-size: 12px;
+    gap: 6px;
+    flex: 1;
+  }
+  .admin-shell .admin-breadcrumb > a:first-child {
+    display: none;
+  }
+  .admin-shell .admin-breadcrumb > span:first-of-type {
+    display: none;
+  }
+  .admin-shell .account summary {
+    gap: 0;
+    min-width: 44px;
+    justify-content: center;
+  }
+  .admin-shell .account summary > span:last-child {
+    display: none;
+  }
+  .admin-shell .account-menu {
+    right: 0;
+  }
+  .admin-shell .admin-content > .section-heading {
+    flex-wrap: wrap;
+  }
+  .admin-shell .admin-content > .section-heading .button {
+    min-height: 44px;
+    font-size: 14px;
+    padding-inline: 12px;
+  }
+  .admin-shell .panel {
+    padding: 18px;
+  }
+  .admin-shell .admin-primary-stats {
+    gap: 10px;
+  }
+  .admin-shell .admin-primary-stats .stat-card {
+    flex-direction: column;
+    align-items: start;
+    gap: 10px;
+    padding: 16px;
+  }
+  .admin-shell .stat-card strong {
+    font-size: 28px;
+  }
+  .admin-shell .admin-queue {
+    padding: 12px 14px;
+    gap: 2px;
+    display: grid;
+  }
+  .admin-shell .admin-queue strong {
+    padding-block: 5px;
+  }
+  .admin-shell .admin-queue a {
+    padding-block: 8px;
+  }
+  .admin-shell .admin-dashboard-charts,
+  .admin-shell .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  .admin-shell .admin-report-stats {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .admin-shell .admin-report-stats .stat-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .admin-shell .admin-distribution {
+    justify-content: center;
+    gap: 16px;
+  }
+  .admin-shell .admin-report-preview li {
+    flex-wrap: wrap;
+  }
+  .admin-shell .admin-report-preview .badge {
+    display: none;
+  }
+  .admin-shell .admin-report-list th:last-child {
+    width: 100px;
+  }
+  .admin-shell .admin-report-list td {
+    padding: 12px 9px;
+    font-size: 13px;
+  }
+  .admin-shell .admin-report-list .text-link {
+    font-size: 13px;
+  }
+  .admin-shell .admin-reports {
+    gap: 12px;
+  }
+  .admin-shell .admin-column > span {
+    font-size: 10px;
+  }
+  .claim-inspector .modal-inner {
+    padding: 18px;
+  }
+  .claim-inspector form > .actions {
+    bottom: 0;
+  }
+  .claim-inspector .admin-claim-comparison > section {
+    padding: 14px;
+  }
+  .claim-inspector .admin-claim-summary {
+    flex-direction: column;
+  }
+  .claim-inspector .admin-claim-image {
+    width: 100%;
+    height: 160px;
+  }
+  .claim-inspector .modal-inner > .section-heading h2 {
+    font-size: 20px;
+  }
+}

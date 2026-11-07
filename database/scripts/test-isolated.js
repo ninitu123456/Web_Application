@@ -66,6 +66,7 @@ try {
     NODE_ENV: 'test', RATE_LIMIT_API_MAX: '300', RATE_LIMIT_LOGIN_MAX: '30', RATE_LIMIT_REGISTER_MAX: '10', RATE_LIMIT_UPLOAD_MAX: '10', RATE_LIMIT_HEALTH_MAX: '60', HEALTH_PROBE_TIMEOUT_MS: '1000',
     JWT_SECRET: randomBytes(32).toString('hex'), JWT_EXPIRES_IN: '3600',
     CLOUDINARY_CLOUD_NAME: '', CLOUDINARY_API_KEY: '', CLOUDINARY_API_SECRET: '', CLOUDINARY_URL: '',
+    RESEND_API_KEY: '', EMAIL_FROM: '', FRONTEND_URL: 'http://localhost:5173',
     SEED_ADMIN_EMAIL: 'admin@isolated.example.test', SEED_USER_EMAIL: 'user@isolated.example.test',
     SEED_ADMIN_PASSWORD: randomBytes(24).toString('hex'), SEED_USER_PASSWORD: randomBytes(24).toString('hex'),
     FINDIT_ISOLATED_DATADIR: data

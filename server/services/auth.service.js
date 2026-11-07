@@ -24,13 +24,13 @@ export function createAuthService(repository, tokens) {
       const user = await repository.findByEmail(email);
       if (!user || !await bcrypt.compare(password, user.password_hash) || user.account_status !== 'ACTIVE') throw invalidCredentials();
       const dto = userDto(user);
-      return { token: tokens.sign(user.user_id), user: dto };
+      return { token: tokens.sign(user.user_id, user.session_version ?? 0), user: dto };
     },
     async authenticate(token) {
       const id = tokens.verify(token);
       // Deliberately outside JWT error handling: DB failures are not 401s.
       const user = await repository.findById(id);
-      if (!user) throw unauthorized();
+      if (!user || (tokens.version && tokens.version(token) !== Number(user.session_version ?? 0))) throw unauthorized();
       if (user.account_status !== 'ACTIVE' || !['USER', 'ADMIN'].includes(user.role)) {
         throw new HttpError(403, 'Tài khoản không được phép truy cập');
       }

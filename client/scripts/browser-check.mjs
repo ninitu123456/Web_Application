@@ -105,13 +105,39 @@ export async function browserCheck({
       await expect(page).toHaveURL(url + next);
     }
     await pageA.goto(url);
+    assert.notEqual(
+      await pageA
+        .locator(".skip-link")
+        .evaluate((element) => getComputedStyle(element).clipPath),
+      "none",
+    );
+    await pageA.keyboard.press("Tab");
+    await expect(pageA.locator(".skip-link")).toBeFocused();
+    assert.equal(
+      await pageA
+        .locator(".skip-link")
+        .evaluate((element) => getComputedStyle(element).clipPath),
+      "none",
+    );
+    await pageA.keyboard.press("Tab");
     await expect(
-      pageA.getByRole("heading", { name: "Có thể, đồ của bạn ở đây." }),
+      pageA.getByRole("heading", { name: "Đồ vật gần đây" }),
     ).toBeVisible();
     await pageA.screenshot({
       path: resolve(artifacts, "desktop-explore.png"),
       fullPage: true,
     });
+    for (const width of [360, 520, 768, 1024, 1440]) {
+      await pageA.setViewportSize({ width, height: 1000 });
+      assert.ok(
+        await pageA.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        `Explore fits ${width}px`,
+      );
+    }
+    await pageA.setViewportSize({ width: 1440, height: 1000 });
+
     await pageB.goto(url);
     await pageB.screenshot({
       path: resolve(artifacts, "mobile-explore.png"),
@@ -130,6 +156,9 @@ export async function browserCheck({
     );
     await pageB.getByLabel("Họ và tên").fill("Người dùng kiểm thử");
     await pageB.getByLabel("Email", { exact: true }).fill(registrationEmail);
+    await pageB
+      .getByLabel("Nhập lại mật khẩu", { exact: true })
+      .fill("placeholder123");
     await expect(
       pageB.getByText("Sử dụng ít nhất 8 ký tự.", { exact: true }),
     ).toBeVisible();
@@ -157,6 +186,9 @@ export async function browserCheck({
     );
     await pageB.getByLabel("Mật khẩu", { exact: true }).fill("ắ".repeat(24));
     await pageB
+      .getByLabel("Nhập lại mật khẩu", { exact: true })
+      .fill("ắ".repeat(24));
+    await pageB
       .getByRole("button", { name: "Tạo tài khoản →", exact: true })
       .click();
     await expect(pageB).toHaveURL(/dang-nhap\?next=/);
@@ -168,23 +200,52 @@ export async function browserCheck({
     const title = `Browser Found ${Date.now()}`;
     const proof = "PRIVATE_BROWSER_PROOF_unique_mark_inside";
     const htmlText = `<img src=x onerror="document.documentElement.dataset.finditXss='executed'">`;
-    await pageA.getByLabel("Loại bài đăng").selectOption("FOUND");
+    await pageA.getByRole("radio", { name: "Tôi nhặt được đồ" }).check();
+    let createPosts = 0;
+    pageA.on("request", (request) => {
+      if (
+        request.method() === "POST" &&
+        new URL(request.url()).pathname === "/api/items"
+      )
+        createPosts++;
+    });
+    await pageA.screenshot({
+      path: resolve(artifacts, "desktop-wizard-1.png"),
+      fullPage: true,
+    });
+    await pageA
+      .getByRole("button", { name: "Tiếp tục →", exact: true })
+      .click();
+    await pageA
+      .getByRole("button", { name: "Xem trước →", exact: true })
+      .click();
+    await expect(pageA.getByLabel("Tiêu đề", { exact: true })).toBeFocused();
+    assert.equal(
+      createPosts,
+      0,
+      "Navigation and invalid fields never create an Item",
+    );
     await pageA.getByLabel("Tiêu đề", { exact: true }).fill(title);
     await pageA
       .getByLabel("Danh mục", { exact: true })
       .selectOption(String(categoryId));
     await pageA
-      .getByLabel("Địa điểm", { exact: true })
+      .getByLabel("Địa điểm nhặt được", { exact: true })
       .selectOption(String(locationId));
-    await pageA.getByLabel("Ngày xảy ra sự việc").fill("2026-10-15");
+    await pageA.getByLabel("Ngày nhặt được").fill("2026-10-15");
     for (const value of ["ắ".repeat(21846), "😀".repeat(16384)]) {
       await pageA.getByLabel("Mô tả đồ vật").fill(value);
       await pageA
-        .getByRole("button", { name: "Đăng bài →", exact: true })
+        .getByRole("button", { name: "Xem trước →", exact: true })
         .click();
-      await expect(pageA.getByRole("alert")).toHaveText(
-        "Mô tả quá dài. Vui lòng rút ngắn.",
-      );
+      await expect(
+        pageA.locator(
+          "#" +
+            (await pageA
+              .getByLabel("Mô tả đồ vật")
+              .getAttribute("aria-describedby")),
+        ),
+      ).toHaveText("Mô tả quá dài. Vui lòng rút ngắn.");
       await expect(pageA).toHaveURL(`${url}/dang-bai`);
     }
     await pageA
@@ -194,9 +255,34 @@ export async function browserCheck({
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1cAAAAASUVORK5CYII=",
       "base64",
     );
+    await pageA.screenshot({
+      path: resolve(artifacts, "desktop-wizard-2.png"),
+      fullPage: true,
+    });
+    await pageA
+      .getByRole("button", { name: "← Quay lại", exact: true })
+      .click();
     await pageA
       .getByLabel("Thêm ảnh")
       .setInputFiles({ name: "item.png", mimeType: "image/png", buffer: png });
+    await pageA
+      .getByRole("button", { name: "Tiếp tục →", exact: true })
+      .click();
+    await expect(pageA.getByLabel("Tiêu đề", { exact: true })).toHaveValue(
+      title,
+    );
+    await pageA
+      .getByRole("button", { name: "Xem trước →", exact: true })
+      .click();
+    await expect(
+      pageA.getByRole("region", { name: "Xem trước bài đăng" }),
+    ).toContainText(title);
+    await expect(pageA.getByAltText("Ảnh đồ vật 1")).toBeVisible();
+    assert.equal(createPosts, 0, "Preview must not create an Item");
+    await pageA.screenshot({
+      path: resolve(artifacts, "desktop-wizard-3.png"),
+      fullPage: true,
+    });
     // Fail the first upload before the request reaches the backend; the Item must survive.
     let blocked = false;
     await pageA.route("**/api/items/*/images", async (route) => {
@@ -284,9 +370,9 @@ export async function browserCheck({
     await expect(pageA.getByLabel("Danh mục", { exact: true })).toHaveValue(
       String(categoryId),
     );
-    await expect(pageA.getByLabel("Địa điểm", { exact: true })).toHaveValue(
-      String(locationId),
-    );
+    await expect(
+      pageA.getByLabel("Địa điểm nhặt được", { exact: true }),
+    ).toHaveValue(String(locationId));
     await pageA.getByLabel("Tiêu đề", { exact: true }).fill(title + " updated");
     await pageA.getByRole("button", { name: "Lưu thay đổi →" }).click();
     await expect(pageA).toHaveURL(`${url}/do-vat/${itemId}`);
@@ -300,7 +386,81 @@ export async function browserCheck({
       "UPDATE locations SET is_active=TRUE WHERE location_id=?",
       [locationId],
     );
-    await login(pageB, otherEmail, "/");
+    await pageB.setViewportSize({ width: 360, height: 800 });
+    await login(pageB, otherEmail, "/dang-bai?type=LOST");
+    await expect(
+      pageB.getByRole("radio", { name: "Tôi bị mất đồ" }),
+    ).toBeChecked();
+    await pageB.screenshot({
+      path: resolve(artifacts, "mobile-wizard-1.png"),
+      fullPage: true,
+    });
+    await pageB
+      .getByRole("button", { name: "Tiếp tục →", exact: true })
+      .click();
+    await expect(pageB.getByLabel("Ngày bị mất")).toBeVisible();
+    await pageB
+      .getByLabel("Tiêu đề", { exact: true })
+      .fill("Tìm bình nước xanh");
+    await pageB
+      .getByLabel("Danh mục", { exact: true })
+      .selectOption(String(categoryId));
+    await pageB
+      .getByLabel("Địa điểm bị mất", { exact: true })
+      .selectOption(String(locationId));
+    await pageB.getByLabel("Ngày bị mất").fill("2026-11-07");
+    await pageB
+      .getByLabel("Mô tả đồ vật")
+      .fill("Để quên bình nước ở thư viện.");
+
+    await pageB.screenshot({
+      path: resolve(artifacts, "mobile-wizard-2.png"),
+      fullPage: true,
+    });
+    assert.ok(
+      await pageB.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+      "No wizard overflow at 360px",
+    );
+    await pageB
+      .getByRole("button", { name: "Xem trước →", exact: true })
+      .click();
+    await expect(
+      pageB.getByRole("region", { name: "Xem trước bài đăng" }),
+    ).toContainText("Tìm bình nước xanh");
+    await pageB.screenshot({
+      path: resolve(artifacts, "mobile-wizard-3.png"),
+      fullPage: true,
+    });
+    let ambiguousPosts = 0;
+    await pageB.route("**/api/items", async (route) => {
+      if (route.request().method() === "POST") {
+        ambiguousPosts++;
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ success: false }),
+        });
+      } else await route.continue();
+    });
+    await pageB
+      .getByRole("button", { name: "Đăng bài →", exact: true })
+      .click();
+    await expect(
+      pageB.getByRole("button", { name: "Đăng bài →", exact: true }),
+    ).toBeDisabled();
+    await expect(
+      pageB.getByText("Chưa xác định kết quả lưu.", { exact: false }),
+    ).toBeVisible();
+    assert.equal(
+      ambiguousPosts,
+      1,
+      "Never automatically repeat an ambiguous Item POST",
+    );
+    await pageB.unroute("**/api/items");
+    await pageB.goto(url);
+
     const lostTitle = title + " counterpart";
     const otherToken = await pageB.evaluate(() =>
       sessionStorage.getItem("findit.session"),
@@ -328,9 +488,7 @@ export async function browserCheck({
     await pageB
       .getByRole("searchbox", { name: "Bạn đang tìm gì?" })
       .fill(title);
-    await pageB
-      .getByRole("button", { name: "Tìm kiếm ↗", exact: true })
-      .click();
+    await pageB.getByRole("button", { name: "Tìm kiếm", exact: true }).click();
     await expect(
       pageB.getByRole("heading", { name: title + " updated", exact: true }),
     ).toBeVisible();
@@ -341,6 +499,14 @@ export async function browserCheck({
     await expect(
       pageB.getByRole("button", { name: "Đây có thể là đồ của tôi →" }),
     ).toBeVisible();
+    await pageB
+      .getByRole("link", { name: "← Khám phá đồ vật", exact: true })
+      .click();
+    assert.equal(
+      new URL(pageB.url()).searchParams.get("keyword"),
+      title,
+      "Detail return preserves search URL",
+    );
     await pageB.goto(`${url}/do-vat/${itemId}/sua`);
     await expect(pageB.getByRole("alert")).toContainText(
       "Bạn chỉ có thể sửa bài của mình",
@@ -410,7 +576,7 @@ export async function browserCheck({
     );
     assert.equal(claimRow.status, "PENDING");
     await expect(
-      pageB.getByText("Chờ xác minh", { exact: true }),
+      pageB.locator(".detail-info .badge.status-claim_pending"),
     ).toBeVisible();
     // Duplicate is rejected and produces a useful error in the modal.
     await pageB
@@ -447,6 +613,14 @@ export async function browserCheck({
     assert.ok(!(await publicResponse.text()).includes(proof));
     await pageA.goto(`${url}/do-vat/${itemId}?tab=claims`);
     await expect(pageA.getByText(proof, { exact: true })).toBeVisible();
+    const pendingGuidance = "Đang chờ chủ bài kiểm tra bằng chứng.";
+    await expect(
+      pageA.getByText(pendingGuidance, { exact: false }),
+    ).toHaveCount(0);
+    await pageB.goto(`${url}/yeu-cau-cua-toi`);
+    await expect(
+      pageB.getByText(pendingGuidance, { exact: false }),
+    ).toBeVisible();
     await pageA
       .getByRole("button", { name: "Chấp thuận →", exact: true })
       .click();
@@ -560,6 +734,8 @@ export async function browserCheck({
     console.log(
       "Browser: desktop/mobile, registration, upload recovery, inactive lookup edit, matching, search, modal keyboard, claim duplicate/privacy, handover, nested refresh, logout and invalid JWT cleanup verified.",
     );
+    const { aiUiBrowserCheck } = await import("./ai-ui-browser-check.mjs");
+    await aiUiBrowserCheck({ browser, url, categoryId, locationId, pool, query, artifacts });
   } finally {
     await browser?.close();
     await new Promise((done) => {

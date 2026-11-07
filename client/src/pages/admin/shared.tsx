@@ -118,6 +118,8 @@ export function ReasonDialog({
   error,
   blocked = false,
   note,
+  wide = false,
+  confirmVariant = "primary",
 }: {
   title: string;
   children: ReactNode;
@@ -127,6 +129,8 @@ export function ReasonDialog({
   error: string;
   blocked?: boolean;
   note?: ReactNode;
+  wide?: boolean;
+  confirmVariant?: "primary" | "danger";
 }) {
   const [reason, setReason] = useState("");
   const [validation, setValidation] = useState("");
@@ -148,10 +152,15 @@ export function ReasonDialog({
     void submit(reason.trim());
   }
   return (
-    <Modal title={title} close={close} busy={busy}>
-      <p>{children}</p>
-      {note}
+    <Modal
+      title={title}
+      close={close}
+      busy={busy}
+      className={wide ? "claim-inspector" : undefined}
+    >
       <form onSubmit={save}>
+        <div className="decision-context">{children}</div>
+        {note}
         <Textarea
           label="Lý do xử lý"
           value={reason}
@@ -170,7 +179,7 @@ export function ReasonDialog({
           >
             Hủy
           </Button>
-          <Button disabled={busy || blocked}>
+          <Button variant={confirmVariant} disabled={busy || blocked}>
             {busy ? "Đang xử lý…" : "Xác nhận quyết định"}
           </Button>
         </div>

@@ -1,3 +1,4 @@
+import { Icon } from "../components/Icon";
 import { statusLabel } from "../lib/display-labels";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -10,7 +11,6 @@ import {
   ErrorState,
   Input,
   ItemCard,
-  Loading,
   Pagination,
   Select,
 } from "../components/ui";
@@ -44,60 +44,48 @@ export function ExplorePage() {
   return (
     <>
       <section className="hero">
-        <span className="pill">MỘT KHUÔN VIÊN · NHIỀU KẾT NỐI</span>
-        <h1>
-          Tìm lại đồ thất lạc.
-          <br />
-          <span>Trao lại niềm vui.</span>
-        </h1>
-        <p>
-          Nơi những món đồ đi lạc tìm được đường về.
-          <br />
-          Tìm kiếm, chia sẻ và kết nối ngay trong trường.
-        </p>
-        <div className="hero-actions">
-          <a className="button primary" href="#explore">
-            Tìm đồ của bạn ↓
-          </a>
-          <Link className="text-link" to="/dang-bai?type=FOUND">
-            Tôi nhặt được đồ ↗
-          </Link>
+        <div className="hero-copy">
+          <span className="eyebrow">KẾT NỐI TRONG KHUÔN VIÊN TRƯỜNG</span>
+          <h1>
+            Tìm lại đồ thất lạc<span className="brand-dot">.</span>
+          </h1>
+          <p>
+            Kết nối những món đồ với chủ nhân. Một chia sẻ nhỏ, một niềm vui trở
+            về.
+          </p>
         </div>
-        <div className="hero-note">
-          <span className="note-mark" aria-hidden="true">
-            ↗
-          </span>
+        <div className="hero-symbol" aria-hidden="true">
+          <Icon name="search" />
           <span>
-            Một chút quan tâm.
-            <br />
-            <strong>Một kết nối ý nghĩa.</strong>
+            <Icon name="box" />
           </span>
         </div>
       </section>
       <section id="explore" className="explore">
-        <div className="section-heading">
-          <div>
-            <span className="eyebrow">TÌM KIẾM & KẾT NỐI</span>
-            <h2>Có thể, đồ của bạn ở đây.</h2>
+        <div className="discovery-actions">
+          <form className="search-bar" onSubmit={search}>
+            <Input
+              label="Bạn đang tìm gì?"
+              error={searchError}
+              type="search"
+              placeholder="Tai nghe, thẻ sinh viên, bình nước…"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              maxLength={400}
+            />
+            <Button>Tìm kiếm</Button>
+          </form>
+          <div className="post-shortcuts">
+            <Link to="/dang-bai?type=LOST">
+              <Icon name="search" />
+              Tôi bị mất đồ
+            </Link>
+            <Link to="/dang-bai?type=FOUND">
+              <Icon name="box" />
+              Tôi nhặt được đồ
+            </Link>
           </div>
-          <span className="result-count">
-            {items.data
-              ? `${items.data.pagination?.total ?? 0} bài đăng`
-              : "Khám phá đồ vật"}
-          </span>
         </div>
-        <form className="search-bar" onSubmit={search}>
-          <Input
-            label="Bạn đang tìm gì?"
-            error={searchError}
-            type="search"
-            placeholder="Tai nghe, thẻ sinh viên, bình nước…"
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            maxLength={400}
-          />
-          <Button>Tìm kiếm ↗</Button>
-        </form>
         <div className="filter-top">
           <div className="tabs" aria-label="Loại bài đăng">
             {[
@@ -108,6 +96,7 @@ export function ExplorePage() {
               <button
                 key={value}
                 className={(params.get("type") || "") === value ? "active" : ""}
+                aria-pressed={(params.get("type") || "") === value}
                 onClick={() => change("type", value)}
               >
                 {label}
@@ -116,13 +105,28 @@ export function ExplorePage() {
           </div>
           <button
             className="filter-toggle"
+            aria-controls="explore-filters"
             aria-expanded={expanded}
             onClick={() => setExpanded(!expanded)}
           >
-            Bộ lọc {expanded ? "−" : "＋"}
+            Bộ lọc (
+            {
+              [
+                "category",
+                "location",
+                "status",
+                "dateFrom",
+                "dateTo",
+                "sort",
+              ].filter((key) => params.get(key)).length
+            }
+            ) {expanded ? "−" : "＋"}
           </button>
         </div>
-        <div className={`filters ${expanded ? "expanded" : ""}`}>
+        <div
+          id="explore-filters"
+          className={`filters ${expanded ? "expanded" : ""}`}
+        >
           <Select
             label="Danh mục"
             value={params.get("category") || ""}
@@ -206,8 +210,27 @@ export function ExplorePage() {
             Xóa các bộ lọc ×
           </button>
         )}
+        <div className="section-heading results-heading">
+          <h2>Đồ vật gần đây</h2>
+          <span className="result-count" aria-live="polite">
+            {items.data
+              ? `${items.data.pagination?.total ?? 0} bài đăng`
+              : "Đang tìm đồ vật…"}
+          </span>
+        </div>
         {items.loading ? (
-          <Loading />
+          <div className="item-grid" role="status" aria-label="Đang tải đồ vật">
+            {Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="card-skeleton">
+                <span />
+                <div>
+                  <i />
+                  <i />
+                  <i />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : items.error ? (
           <ErrorState error={items.error} retry={invalidate} />
         ) : items.data?.data.length ? (

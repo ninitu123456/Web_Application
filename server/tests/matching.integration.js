@@ -108,7 +108,7 @@ test('Matching integration: real HTTP/JWT, MySQL consistency, concurrency and fa
       assert.equal((await get('bad')).status, 400);
       assert.equal((await get('9007199254740991')).status, 404);
       assert.equal((await get(lost.id, adminToken)).status, 200);
-      const other = await request(http, '/api/auth/register', { method: 'POST', body: { fullName: 'Other User', email: 'other@matching.test', password } }); assert.equal(other.status, 201);
+      const other = await request(http, '/api/auth/register', { method: 'POST', body: { fullName: 'Other User', email: 'other@matching.test', password, confirmPassword: password } }); assert.equal(other.status, 201);
       const login = await request(http, '/api/auth/login', { method: 'POST', body: { email: 'other@matching.test', password } });
       const before = await pair(lost, found);
       await query(pool, 'UPDATE items SET private_identifiers=? WHERE item_id=?', ['private-serial', lost.id]);

@@ -1,5 +1,12 @@
+import { Icon } from "../components/Icon";
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { api, errorText, invalidate, itemDetail } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useResource } from "../lib/hooks";
@@ -29,7 +36,14 @@ export function ItemDetailPage() {
   return item.data ? <Detail key={id} item={item.data.data} /> : null;
 }
 function Detail({ item }: { item: Item }) {
+  const location = useLocation();
+  const from = location.state?.exploreFrom;
+  const exploreFrom =
+    typeof from === "string" && (from === "/" || from.startsWith("/?"))
+      ? from
+      : "/";
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const toast = useToast();
   const [selected, setSelected] = useState(0);
@@ -42,6 +56,24 @@ function Detail({ item }: { item: Item }) {
   const canInspect = item.type === "FOUND" && (owner || user?.role === "ADMIN");
   const tab =
     params.get("tab") === "claims" && canInspect ? "claims" : "matches";
+  async function startChat() {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api<{ id: string }>("/conversations", {
+        method: "POST",
+        body: { userId: item.userId },
+      });
+      navigate(`/tin-nhan?hoi-thoai=${result.data.id}`);
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
   async function closeItem() {
     if (lock.current) return;
     lock.current = true;
@@ -63,7 +95,7 @@ function Detail({ item }: { item: Item }) {
   }
   return (
     <section className="page-section">
-      <Link className="back-link" to="/">
+      <Link className="back-link" to={exploreFrom}>
         ← Khám phá đồ vật
       </Link>
       <div className="detail-grid">
@@ -124,38 +156,10 @@ function Detail({ item }: { item: Item }) {
           </dl>
           <h2>Mô tả đồ vật</h2>
           <p className="description">{item.description}</p>
-          {user && (
-            <div className="report-actions">
-              <ReportButton
-                targetType="ITEM"
-                targetId={item.id}
-                label="Báo cáo bài đăng"
-              />
-              <ReportButton
-                targetType="USER"
-                targetId={item.userId}
-                label="Báo cáo chủ bài"
-              />
-            </div>
-          )}
           {error && (
             <p className="inline-error" role="alert">
               {error}
             </p>
-          )}
-          {owner && item.status === "OPEN" && (
-            <div className="actions">
-              <Link className="button primary" to={`/do-vat/${item.id}/sua`}>
-                Chỉnh sửa bài ↗
-              </Link>
-              <Button
-                variant="secondary"
-                disabled={busy}
-                onClick={() => setConfirmClose(true)}
-              >
-                Đóng bài
-              </Button>
-            </div>
           )}
           {!owner &&
             item.type === "FOUND" &&
@@ -172,6 +176,27 @@ function Detail({ item }: { item: Item }) {
                 Đăng nhập để nhận đồ →
               </Link>
             ))}
+          {user && !owner && (
+            <div className="actions">
+              <Button variant="secondary" disabled={busy} onClick={startChat}>
+                Nhắn tin
+              </Button>
+            </div>
+          )}
+          {owner && item.status === "OPEN" && (
+            <div className="actions">
+              <Link className="button primary" to={`/do-vat/${item.id}/sua`}>
+                Chỉnh sửa bài ↗
+              </Link>
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={() => setConfirmClose(true)}
+              >
+                Đóng bài
+              </Button>
+            </div>
+          )}
           {["CLAIMED", "RETURNED", "CLOSED"].includes(item.status) && (
             <p className="notice">
               {item.status === "CLAIMED"
@@ -181,10 +206,56 @@ function Detail({ item }: { item: Item }) {
                   : "Bài đăng đã đóng và không tiếp nhận yêu cầu mới."}
             </p>
           )}
+          {item.type === "FOUND" && (
+            <section className="recovery-guide" aria-label="Cách nhận lại đồ">
+              <h2>Nhận lại đồ như thế nào?</h2>
+              <ol>
+                {[
+                  [
+                    "Gửi bằng chứng",
+                    "Gửi yêu cầu nhận đồ với đặc điểm chỉ bạn biết.",
+                  ],
+                  [
+                    "Chờ xác minh",
+                    "Chủ bài kiểm tra bằng chứng và xác nhận với bạn.",
+                  ],
+                  [
+                    "Nhận lại đồ",
+                    "Thống nhất thời gian, địa điểm và xác nhận bàn giao.",
+                  ],
+                ].map(([title, text], index) => (
+                  <li key={title}>
+                    <span>{index + 1}</span>
+                    <strong>{title}</strong>
+                    <p>{text}</p>
+                  </li>
+                ))}
+              </ol>
+              <p className="fine-print">
+                <Icon name="shield" /> Bằng chứng sở hữu được gửi riêng tư. Nhắn
+                tin để trao đổi; gửi yêu cầu nhận đồ để được xác minh chính
+                thức.
+              </p>
+            </section>
+          )}
           <p className="fine-print">
             Xác minh thông tin trước khi bàn giao. Không chia sẻ bằng chứng sở
             hữu trong mô tả công khai.
           </p>
+          {user && (
+            <div className="report-actions">
+              <ReportButton
+                targetType="ITEM"
+                targetId={item.id}
+                label="Báo cáo bài đăng"
+              />
+              <ReportButton
+                targetType="USER"
+                targetId={item.userId}
+                label="Báo cáo chủ bài"
+              />
+            </div>
+          )}
         </div>
       </div>
       {canShowVisualSuggestions({
@@ -192,10 +263,15 @@ function Detail({ item }: { item: Item }) {
         owner,
         type: item.type,
         status: item.status,
-      }) && <VisualSuggestions
-        itemId={item.id}
-        previewFixture={import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE === "true"}
-      />}
+      }) && (
+        <VisualSuggestions
+          itemId={item.id}
+          previewFixture={
+            import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE ===
+            "true"
+          }
+        />
+      )}
       <div className="detail-tabs">
         <div className="tabs" role="tablist" aria-label="Thông tin liên quan">
           <button
@@ -294,8 +370,8 @@ function Matches({ itemId }: { itemId: number }) {
         <div>
           <h2>Những kết nối có thể phù hợp</h2>
           <p className="muted">
-            Điểm càng cao, hai bài đăng càng giống nhau. Hãy kiểm tra thông tin
-            để xác định đúng đồ vật.
+            Điểm tương đồng chỉ phản ánh mức giống nhau giữa hai bài đăng, không
+            xác nhận quyền sở hữu. Hãy kiểm tra thông tin và bằng chứng.
           </p>
         </div>
       </div>

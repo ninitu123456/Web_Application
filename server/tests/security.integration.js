@@ -81,7 +81,7 @@ test('Phase 7 real HTTP/JWT/MySQL: authorization, injection, upload, rollback an
       security: { apiMax: 10000, uploadMax: 100 }, logger: () => {} }));
     const accounts = {};
     for (const label of ['owner', 'admin', 'claimant', 'other']) {
-      if (['claimant', 'other'].includes(label)) assert.equal((await request(http, '/api/auth/register', { method: 'POST', body: { fullName: label, email: `${label}@security.test`, password } })).status, 201);
+      if (['claimant', 'other'].includes(label)) assert.equal((await request(http, '/api/auth/register', { method: 'POST', body: { fullName: label, email: `${label}@security.test`, password, confirmPassword: password } })).status, 201);
       const login = await request(http, '/api/auth/login', { method: 'POST', body: { email: `${label}@security.test`, password } });
       assert.equal(login.status, 200);
       accounts[label] = { id: String(login.json.data.user.id), role: login.json.data.user.role, token: login.json.data.token };
