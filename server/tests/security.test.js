@@ -180,5 +180,8 @@ test('Unicode boundaries, profile disappearance and security config fail safely'
   for (const value of ['0', '-1', '1.5', 'NaN']) assert.throws(() => readSecurityConfig({ RATE_LIMIT_API_MAX: value }));
   assert.equal(readSecurityConfig({}).apiMax, 300);
   assert.equal(readSecurityConfig({ NODE_ENV: 'production' }).production, true);
+  assert.equal(readConfig({ DB_USER: 'test', DB_PASSWORD: '', JWT_SECRET: secret, NODE_ENV: 'development' }).aiVisual.enabled, false);
+  assert.throws(() => readConfig({ DB_USER: 'test', DB_PASSWORD: '', JWT_SECRET: secret, NODE_ENV: 'production', AI_VISUAL_MATCHING_ENABLED: 'true' }),
+    (e) => e.code === 'INVALID_CONFIG' && /development or test/.test(e.message));
   assert.throws(() => readConfig({ DB_USER: 'test', DB_PASSWORD: '', JWT_SECRET: secret, RATE_LIMIT_API_MAX: '0' }), (e) => e.code === 'INVALID_CONFIG' && /RATE_LIMIT_API_MAX/.test(e.message));
 });

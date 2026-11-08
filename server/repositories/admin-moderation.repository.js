@@ -5,6 +5,7 @@ import { createItemRepository } from './item.repository.js';
 import { createNotificationRepository } from './notification.repository.js';
 import { createNotificationService } from '../services/notification.service.js';
 import { businessActions, businessEntities } from '../utils/admin-dto.js';
+import { bumpAiVisualCatalogRevision } from '../ai-visual/catalog-revision.js';
 import { hiddenItemSql } from '../utils/item-visibility.js';
 import { createMatchingService } from '../services/matching.service.js';
 import { createMatchingRepository } from './matching.repository.js';
@@ -24,6 +25,7 @@ export function createAdminModerationRepository(pool) {
         if (!role || !actor || String(actor.role_id) !== String(role.role_id) || actor.account_status !== 'ACTIVE') throw new HttpError(403, 'Quyền quản trị không còn hiệu lực');
         return operation({
           run, items: createItemRepository(pool, run),
+          bumpVisualCatalog() { return bumpAiVisualCatalogRevision(run); },
           async lockItem(id) {
             const [[item]] = await run('SELECT item_id,user_id,type,status FROM items WHERE item_id=? FOR UPDATE', [id]);
             if (!item) return undefined;
@@ -33,6 +35,12 @@ export function createAdminModerationRepository(pool) {
             return { ...item, ...state };
           },
           synchronize(id) { return createMatchingService(createMatchingRepository(pool, run)).synchronize(id); },
+          async requeueVisualJobs(id) {
+            const [tables] = await run("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='ai_visual_jobs'");
+            if (tables.length) await run(`UPDATE ai_visual_jobs j JOIN item_images im ON im.image_id=j.image_id
+              SET j.status='QUEUED',j.attempts=0,j.available_at=UTC_TIMESTAMP(),j.locked_until=NULL,j.lease_token=NULL,j.updated_at=UTC_TIMESTAMP()
+              WHERE im.item_id=? AND j.status IN ('COMPLETED','CANCELLED','FAILED')`, [id]);
+          },
           async lockClaims(id) { const [rows] = await run(`SELECT ${summaryColumns} FROM claims c WHERE c.item_id=? ORDER BY c.claim_id FOR UPDATE`, [id]); return rows; },
           async audit(action, entityType, entityId, details) {
             const [result] = await run('INSERT INTO activity_logs(user_id,action,entity_type,entity_id,details,created_at) VALUES(?,?,?,?,?,UTC_TIMESTAMP())', [identity.id, action, entityType, entityId, JSON.stringify(details)]);

@@ -9,10 +9,14 @@ import { phase5Additions, phase5Alter } from '../phase5-schema.js';
 export async function migrationFiles() {
   const directory = new URL('../migrations/', import.meta.url);
   const files = (await readdir(directory)).filter((name) => name.endsWith('.sql')).sort();
-  const tableMigrations = tables.map((table, index) => `${String(index + 1).padStart(3, '0')}_${table.name}.sql`);
+  const legacyTables = tables.slice(0, 11);
+  const visualTables = tables.slice(11);
+  const tableMigrations = legacyTables.map((table, index) => `${String(index + 1).padStart(3, '0')}_${table.name}.sql`);
   const additiveMigrations = ['012_item_search_indexes.sql', '013_notification_report_support.sql'];
+  const visualMigrations = visualTables.map((table, index) => `${String(index + 14).padStart(3, '0')}_${table.name}.sql`);
+  const visualCatalogSeed = '025_ai_visual_catalog_state_seed.sql';
   const featureVersions = ['014_session_version.sql', ...featureTables.map((t, i) => `${String(15 + i).padStart(3, '0')}_${t.name}.sql`)];
-  const expected = [...tableMigrations, ...additiveMigrations, ...featureVersions];
+  const expected = [...tableMigrations, ...additiveMigrations, ...visualMigrations, visualCatalogSeed, ...featureVersions].sort();
   if (JSON.stringify(files) !== JSON.stringify(expected)) throw new Error('Unexpected migration file list');
   const initial = await Promise.all(tableMigrations.map(async (version, index) => {
     const sql = await readFile(new URL(version, directory), 'utf8');
@@ -28,20 +32,35 @@ export async function migrationFiles() {
   if (indexSql.replace(/\r\n/g, '\n').trim() !== indexes.map((index) => `${index.sql};`).join('\n')) throw new Error(`Migration differs from index definition: ${indexVersion}`);
   const phase5Version = additiveMigrations[1], phase5Sql = await readFile(new URL(phase5Version, directory), 'utf8');
   if (phase5Sql.replace(/\r\n/g, '\n').trim() !== Object.keys(phase5Additions).map(phase5Alter).join('\n')) throw new Error(`Migration differs from Phase 5 definition: ${phase5Version}`);
+  const visual = await Promise.all(visualTables.map(async (table, index) => {
+    const version = visualMigrations[index];
+    const sql = await readFile(new URL(version, directory), 'utf8');
+    if (sql.replace(/\r\n/g, '\n') !== createTable(table)) throw new Error(`Migration differs from schema definition: ${version}`);
+    return { version, sql, table, kind: 'table', checksum: createHash('sha256').update(sql).digest('hex') };
+  }));
+  const seedSql = await readFile(new URL(visualCatalogSeed, directory), 'utf8');
+  const expectedSeed = "INSERT IGNORE INTO `ai_visual_catalog_state` (`state_id`, `revision`, `updated_at`) VALUES (1, 0, UTC_TIMESTAMP());\n";
+  if (seedSql.replace(/\r\n/g, '\n') !== expectedSeed) throw new Error(`Migration differs from seed definition: ${visualCatalogSeed}`);
   const features = await Promise.all(featureVersions.map(async (version, i) => {
     const sql = await readFile(new URL(version, directory), 'utf8');
     if (sql.replace(/\r\n/g, '\n').trim() !== (i === 0 ? sessionAlter : createTable(featureTables[i - 1])).trim()) throw new Error(`Feature migration mismatch: ${version}`);
     return { version, sql, table: i === 0 ? undefined : featureTables[i - 1], kind: i === 0 ? 'session' : 'table', checksum: createHash('sha256').update(sql).digest('hex') };
   }));
-  return [...initial, ...features, { version: indexVersion, sql: indexSql, table: tables.find((table) => table.name === 'items'), kind: 'index', indexes,
+  return [...initial, ...visual, ...features, { version: indexVersion, sql: indexSql, table: tables.find((table) => table.name === 'items'), kind: 'index', indexes,
     checksum: createHash('sha256').update(indexSql).digest('hex') },
-  { version: phase5Version, sql: phase5Sql, kind: 'phase5', checksum: createHash('sha256').update(phase5Sql).digest('hex') }].sort((a, b) => a.version.localeCompare(b.version));
+  { version: phase5Version, sql: phase5Sql, kind: 'phase5', checksum: createHash('sha256').update(phase5Sql).digest('hex') },
+  { version: visualCatalogSeed, sql: seedSql, kind: 'seed', checksum: createHash('sha256').update(seedSql).digest('hex') }].sort((a, b) => a.version.localeCompare(b.version));
 }
 async function history(connection, files) {
   const [rows] = await connection.query('SELECT version, checksum, status FROM _schema_migrations ORDER BY version');
-  for (const [index, row] of rows.entries()) {
-    if (row.version !== files[index]?.version || row.checksum !== files[index]?.checksum ||
-        !['running', 'applied'].includes(row.status) || (row.status === 'running' && index !== rows.length - 1)) {
+  // Both predecessor branches published additive migrations in 014–018.
+  // Preserve their filenames/checksums: a verified branch history is a subset
+  // of this combined manifest, rather than necessarily its lexical prefix.
+  const known = new Map(files.map(file => [file.version, file]));
+  let running = 0;
+  for (const row of rows) {
+    if (!known.has(row.version) || row.checksum !== known.get(row.version).checksum ||
+        !['running', 'applied'].includes(row.status) || (row.status === 'running' && ++running > 1)) {
       throw new Error('Migration history/checksum mismatch; manual review required');
     }
   }
@@ -80,6 +99,8 @@ export async function migrate(connection, database) {
       // only after comparing every column, index, FK and CHECK to the manifest.
       if (file.kind === 'table') {
         if (!existing.includes(file.table.name)) await connection.query(file.sql);
+      } else if (file.kind === 'seed') {
+        await connection.query(file.sql);
       } else if (file.kind === 'session') {
         const [columns] = await connection.query("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME='users' AND COLUMN_NAME='session_version'", [database]);
         if (!columns.length) await connection.query(file.sql);

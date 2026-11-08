@@ -25,7 +25,8 @@ export const featureTables = [
     message_id: 'BIGINT UNSIGNED NOT NULL AUTO_INCREMENT', conversation_id: ref, sender_id: ref,
     client_id: 'CHAR(36) NOT NULL', content: 'VARCHAR(2000) NOT NULL', created_at: 'DATETIME NOT NULL'
   }, unique: { uq_message_retry: ['sender_id', 'client_id'] },
-  indexes: { idx_message_history: ['conversation_id', 'message_id'], idx_message_unread: ['conversation_id', 'sender_id', 'message_id'] },
+  // Retain the published 018 migration's explicit FK index and index order.
+  indexes: { idx_messages_conversation_id: ['conversation_id'], idx_message_history: ['conversation_id', 'message_id'], idx_message_unread: ['conversation_id', 'sender_id', 'message_id'] },
   foreign: { fk_message_chat: fk('conversation_id', 'conversations', 'conversation_id'), fk_message_sender: fk('sender_id', 'users', 'user_id') } }
 ];
 export const sessionAlter = 'ALTER TABLE `users` ADD COLUMN `session_version` INT UNSIGNED NOT NULL DEFAULT 0;';

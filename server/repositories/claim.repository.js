@@ -3,6 +3,8 @@ import { createNotificationRepository } from './notification.repository.js';
 import { createNotificationService } from '../services/notification.service.js';
 
 import { readSnapshot } from '../config/read-snapshot.js';
+import { deleteAiVisualCandidatesIfPresent } from '../ai-visual/invalidation.js';
+import { bumpAiVisualCatalogRevision } from '../ai-visual/catalog-revision.js';
 import { hiddenItemSql } from '../utils/item-visibility.js';
 
 const claimColumns = 'c.claim_id, c.claimant_id, c.item_id, c.proof_description, c.status, c.submitted_at, c.reviewed_at, c.completed_at';
@@ -74,6 +76,7 @@ export function createClaimRepository(pool) {
           },
           async returnItem() {
             const [result] = await run("UPDATE items SET status = 'RETURNED', updated_at = UTC_TIMESTAMP() WHERE item_id = ? AND status = 'CLAIMED'", [itemId]);
+            if (result.affectedRows) await deleteAiVisualCandidatesIfPresent(run, itemId);
             return result.affectedRows;
           },
           async audit(actorId, action, claimId, details) {
@@ -81,7 +84,9 @@ export function createClaimRepository(pool) {
           }
         };
         if (!lockedItem) return operation(undefined);
-        return operation(source);
+        const result = await operation(source);
+        if (!snapshot) await bumpAiVisualCatalogRevision(run);
+        return result;
       });
     },
     async findClaimItemId(claimId) {

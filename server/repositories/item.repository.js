@@ -2,6 +2,8 @@ import { query, transaction, inTransaction, databaseTimeout } from '../config/db
 import { matchingTransaction } from '../services/matching-transaction.js';
 import { createMatchingService } from '../services/matching.service.js';
 import { createMatchingRepository } from './matching.repository.js';
+import { deleteAiVisualCandidatesIfPresent } from '../ai-visual/invalidation.js';
+import { bumpAiVisualCatalogRevision } from '../ai-visual/catalog-revision.js';
 import { hiddenItemSql } from '../utils/item-visibility.js';
 
 const columns = `i.item_id, i.user_id, i.category_id, i.location_id, i.title, i.description, i.type, i.color, i.event_date, i.status, i.created_at, i.updated_at, c.name AS category_name, l.name AS location_name, ${hiddenItemSql()} AS is_hidden`;
@@ -36,6 +38,7 @@ export function createItemRepository(pool, execute = (sql, values = []) => query
           await run("INSERT INTO activity_logs (action, entity_type, entity_id, details, created_at) VALUES ('IMAGE_OPERATION_COMMITTED', 'ITEM', ?, ?, UTC_TIMESTAMP())", [id, JSON.stringify({ operationId })]);
         };
         const result = await operation(scoped);
+        await bumpAiVisualCatalogRevision(run);
         if (matching) await createMatchingService(createMatchingRepository(pool, run)).synchronize(id);
         return result;
       });
@@ -51,6 +54,7 @@ export function createItemRepository(pool, execute = (sql, values = []) => query
         await connection.query({ sql: 'INSERT INTO items (user_id, category_id, location_id, title, description, type, color, event_date, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, \'OPEN\', UTC_TIMESTAMP(), UTC_TIMESTAMP())', timeout: databaseTimeout }, [userId, item.categoryId, item.locationId, item.title, item.description, item.type, item.color, item.eventDate]);
         const [[created]] = await connection.query({ sql: `SELECT ${columns} ${joins} WHERE i.item_id = LAST_INSERT_ID()`, timeout: databaseTimeout });
         const run = (sql, values = []) => connection.query({ sql, timeout: databaseTimeout }, values);
+        await bumpAiVisualCatalogRevision(run);
         await createMatchingService(createMatchingRepository(pool, run)).synchronize(created.item_id);
         return { ...created, images: [] };
       });
@@ -90,11 +94,42 @@ export function createItemRepository(pool, execute = (sql, values = []) => query
     },
     async close(id) {
       const [result] = await execute("UPDATE items SET status = 'CLOSED', updated_at = UTC_TIMESTAMP() WHERE item_id = ? AND status = 'OPEN'", [id]);
+      if (result.affectedRows) await deleteAiVisualCandidatesIfPresent(execute, id);
       return result.affectedRows;
     },
     async addImage(id, url, publicId) {
       const [result] = await execute('INSERT INTO item_images (item_id, image_url, cloudinary_public_id, created_at) VALUES (?, ?, ?, UTC_TIMESTAMP())', [id, url, publicId]);
       return { image_id: String(result.insertId), image_url: url, cloudinary_public_id: publicId };
+    },
+    async enqueueAiVisualJob(imageId, modelId, modelRevision) {
+      await execute(`INSERT IGNORE INTO ai_visual_jobs
+        (image_id, model_id, model_revision, status, attempts, available_at, created_at, updated_at)
+        VALUES (?, ?, ?, 'QUEUED', 0, UTC_TIMESTAMP(), UTC_TIMESTAMP(), UTC_TIMESTAMP())`, [imageId, modelId, modelRevision]);
+    },
+    async deleteAiVisualData(itemId) {
+      await execute('DELETE FROM ai_visual_candidates WHERE lost_item_id=? OR found_item_id=?', [itemId, itemId]);
+      await execute('DELETE j FROM ai_visual_jobs j JOIN item_images im ON im.image_id=j.image_id WHERE im.item_id=?', [itemId]);
+      await execute('DELETE e FROM item_image_embeddings e JOIN item_images im ON im.image_id=e.image_id WHERE im.item_id=?', [itemId]);
+    },
+    async deleteAiVisualDataIfPresent(itemId, imageId) {
+      const [rows] = await execute(`SELECT TABLE_NAME AS table_name FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('ai_visual_candidates','ai_visual_jobs','item_image_embeddings')`);
+      const tables = new Set(rows.map((row) => row.table_name));
+      if (tables.has('ai_visual_candidates')) {
+        await execute('DELETE FROM ai_visual_candidates WHERE lost_item_id=? OR found_item_id=?', [itemId, itemId]);
+      }
+      if (tables.has('ai_visual_jobs')) {
+        if (imageId === undefined) await execute('DELETE j FROM ai_visual_jobs j JOIN item_images im ON im.image_id=j.image_id WHERE im.item_id=?', [itemId]);
+        else await execute('DELETE FROM ai_visual_jobs WHERE image_id=?', [imageId]);
+      }
+      if (tables.has('item_image_embeddings')) {
+        if (imageId === undefined) await execute('DELETE e FROM item_image_embeddings e JOIN item_images im ON im.image_id=e.image_id WHERE im.item_id=?', [itemId]);
+        else await execute('DELETE FROM item_image_embeddings WHERE image_id=?', [imageId]);
+      }
+    },
+    async remainingImageIds(itemId) {
+      const [rows] = await execute('SELECT image_id FROM item_images WHERE item_id=? ORDER BY image_id', [itemId]);
+      return rows.map((row) => String(row.image_id));
     },
     async countImages(id) {
       const [[row]] = await execute('SELECT COUNT(*) AS total FROM item_images WHERE item_id = ?', [id]);

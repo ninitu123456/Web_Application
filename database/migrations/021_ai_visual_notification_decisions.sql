@@ -1,0 +1,22 @@
+CREATE TABLE `ai_visual_notification_decisions` (
+  `decision_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `snapshot_id` BIGINT UNSIGNED NOT NULL,
+  `recipient_id` BIGINT UNSIGNED NOT NULL,
+  `lost_item_id` BIGINT UNSIGNED NOT NULL,
+  `found_item_id` BIGINT UNSIGNED NOT NULL,
+  `policy_version` VARCHAR(80) NOT NULL,
+  `disposition` ENUM('ABSTAIN','SHADOW_CANDIDATE','DEMO_ELIGIBLE','SUPPRESSED') NOT NULL,
+  `reason_code` VARCHAR(80) NOT NULL,
+  `event_key` VARCHAR(160) NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`decision_id`),
+  UNIQUE KEY `uq_ai_visual_decision_snapshot_pair` (`snapshot_id`, `recipient_id`, `found_item_id`),
+  KEY `idx_ai_visual_decision_delivery` (`disposition`, `created_at`),
+  KEY `idx_ai_visual_notification_decisions_recipient_id` (`recipient_id`),
+  KEY `idx_ai_visual_notification_decisions_lost_item_id` (`lost_item_id`),
+  KEY `idx_ai_visual_notification_decisions_found_item_id` (`found_item_id`),
+  CONSTRAINT `fk_ai_visual_decision_snapshot` FOREIGN KEY (`snapshot_id`) REFERENCES `ai_visual_snapshots` (`snapshot_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_ai_visual_decision_recipient` FOREIGN KEY (`recipient_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_ai_visual_decision_lost` FOREIGN KEY (`lost_item_id`) REFERENCES `items` (`item_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_ai_visual_decision_found` FOREIGN KEY (`found_item_id`) REFERENCES `items` (`item_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

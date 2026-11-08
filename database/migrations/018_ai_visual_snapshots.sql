@@ -1,0 +1,21 @@
+CREATE TABLE `ai_visual_snapshots` (
+  `snapshot_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `lost_item_id` BIGINT UNSIGNED NOT NULL,
+  `generation` BIGINT UNSIGNED NOT NULL,
+  `state` ENUM('PENDING','PROCESSING','COMPLETE','INVALIDATED','FAILED') NOT NULL DEFAULT 'PENDING',
+  `model_id` VARCHAR(120) NOT NULL,
+  `model_revision` VARCHAR(80) NOT NULL,
+  `policy_version` VARCHAR(80) NOT NULL,
+  `input_hash` CHAR(64) NOT NULL,
+  `manifest` JSON NOT NULL,
+  `lease_token` CHAR(36) NULL,
+  `locked_until` DATETIME NULL,
+  `failure_code` VARCHAR(80) NULL,
+  `created_at` DATETIME NOT NULL,
+  `updated_at` DATETIME NOT NULL,
+  `completed_at` DATETIME NULL,
+  PRIMARY KEY (`snapshot_id`),
+  UNIQUE KEY `uq_ai_visual_snapshot_generation` (`lost_item_id`, `generation`),
+  KEY `idx_ai_visual_snapshot_work` (`state`, `updated_at`, `snapshot_id`),
+  CONSTRAINT `fk_ai_visual_snapshot_lost` FOREIGN KEY (`lost_item_id`) REFERENCES `items` (`item_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

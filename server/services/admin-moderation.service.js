@@ -1,4 +1,5 @@
 import { HttpError } from '../utils/http-error.js';
+import { deleteAiVisualCandidatesIfPresent } from '../ai-visual/invalidation.js';
 import { adminClaimDto, adminClaimSummary, activityLogDto } from '../utils/admin-dto.js';
 import { paged } from '../utils/workflow-dto.js';
 import { itemDto } from '../utils/item-dto.js';
@@ -39,7 +40,14 @@ export function createAdminModerationService(repository) {
         const action = visibility === 'HIDDEN' ? 'ITEM_HIDDEN' : 'ITEM_RESTORED';
         const decisionLogId = await source.audit(action, 'ITEM', id, { previousVisibility, visibility, reason, source: 'ADMIN_VISIBILITY' });
         await source.run('UPDATE items SET updated_at=UTC_TIMESTAMP() WHERE item_id=?', [id]);
-        if (visibility === 'PUBLIC') await source.synchronize(id);
+        // The audit event changes visibility even when status/images stay the same.
+        // Invalidate before restore can publish fresh candidates; keep all writes atomic.
+        await source.bumpVisualCatalog();
+        await deleteAiVisualCandidatesIfPresent(source.run, id);
+        if (visibility === 'PUBLIC') {
+          await source.requeueVisualJobs(id);
+          await source.synchronize(id);
+        }
         await source.notify([{ userId: item.user_id, type: action, id, eventId: `${id}:${decisionLogId}` }]);
         return { item: itemDto(await source.items.findById(id)) };
       });
@@ -51,6 +59,8 @@ export function createAdminModerationService(repository) {
         const { item, pending } = await context(source, identity, id);
         for (const claim of pending) await transition(source, claim, 'REJECTED');
         await itemStatus(source, item, 'CLOSED');
+        await source.bumpVisualCatalog();
+        await deleteAiVisualCandidatesIfPresent(source.run, id);
         const decisionLogId = await source.audit('ITEM_MODERATED_CLOSED', 'ITEM', id, { previousStatus: item.status, status: 'CLOSED', reason, source: 'ADMIN_MODERATION', rejectedClaimCount: pending.length });
         for (const claim of pending) await source.audit('CLAIM_REJECTED', 'CLAIM', claim.claim_id, { previousStatus: 'PENDING', status: 'REJECTED', itemId: String(id), automatic: true, source: 'ADMIN_MODERATION', decisionLogId });
         await source.notify([{ userId: item.user_id, type: 'ITEM_MODERATED_CLOSED', id }, ...pending.map((claim) => ({ userId: claim.claimant_id, type: 'CLAIM_REJECTED', id: claim.claim_id }))]);
@@ -69,6 +79,7 @@ export function createAdminModerationService(repository) {
         for (const other of rejected) await transition(source, other, 'REJECTED');
         const nextStatus = approved ? 'CLAIMED' : pending.length === 1 ? 'OPEN' : 'CLAIM_PENDING';
         await itemStatus(source, item, nextStatus);
+        await source.bumpVisualCatalog();
         const decisionLogId = await source.audit('CLAIM_ADMIN_RESOLVED', 'CLAIM', id, { previousStatus: claim.status, status, itemId: String(itemId), decision, reason, source: 'ADMIN_RESOLVE', autoRejectedClaimCount: rejected.length });
         await source.audit(approved ? 'CLAIM_APPROVED' : 'CLAIM_REJECTED', 'CLAIM', id, { previousStatus: claim.status, status, itemId: String(itemId), source: 'ADMIN_RESOLVE', decisionLogId });
         for (const other of rejected) await source.audit('CLAIM_REJECTED', 'CLAIM', other.claim_id, { previousStatus: 'PENDING', status: 'REJECTED', itemId: String(itemId), automatic: true, source: 'ADMIN_RESOLVE', decisionLogId });

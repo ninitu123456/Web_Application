@@ -10,6 +10,8 @@ import { migrate } from '../../database/scripts/migrate.js';
 import { seed } from '../../database/seeds/sample.js';
 import { quote } from '../../database/schema.js';
 import { createDbPool, query } from '../config/db.js';
+import { createVisualSuggestionsRepository } from '../repositories/visual-suggestions.repository.js';
+import { createVisualSuggestionsService } from '../services/visual-suggestions.service.js';
 import { createItemRepository } from '../repositories/item.repository.js';
 import { createUserRepository } from '../repositories/user.repository.js';
 import { createItemService } from '../services/item.service.js';
@@ -82,7 +84,7 @@ test('Item integration: HTTP/JWT, transactions, concurrent uploads and durable c
     const users = createUserRepository(pool);
     const tokens = createTokenService({ secret: randomBytes(32).toString('hex'), expiresIn: 3600 });
     const auth = createAuthService(users, tokens);
-    http = await serveApp(createApp({ healthService: { async check() { return {}; } }, authService: auth, userService: createUserService(users), itemService: service, lookupService: createLookupService(createLookupRepository(pool)), claimService: createClaimService(createClaimRepository(pool)), matchingService: createMatchingService(createMatchingRepository(pool)), security: process.env.FINDIT_FRONTEND_BROWSER === '1' ? { apiMax: 3000 } : undefined, notificationService: createNotificationService(createNotificationRepository(pool)), reportService: createReportService(createReportRepository(pool)), adminService: createAdminService(createAdminRepository(pool), service), logger: () => {} }));
+    http = await serveApp(createApp({ healthService: { async check() { return {}; } }, authService: auth, userService: createUserService(users), itemService: service, lookupService: createLookupService(createLookupRepository(pool)), claimService: createClaimService(createClaimRepository(pool)), matchingService: createMatchingService(createMatchingRepository(pool)), security: process.env.FINDIT_FRONTEND_BROWSER === '1' ? { apiMax: 3000 } : undefined, notificationService: createNotificationService(createNotificationRepository(pool)), reportService: createReportService(createReportRepository(pool)), adminService: createAdminService(createAdminRepository(pool), service), visualSuggestionsService: createVisualSuggestionsService(createVisualSuggestionsRepository(pool), { enabled: process.env.FINDIT_FRONTEND_BROWSER === '1' }), logger: () => {} }));
     let token, adminToken, itemId;
     const create = async (overrides = {}) => service.create(owner, { ...input, ...overrides });
     const images = async (id) => (await query(pool, 'SELECT image_id, cloudinary_public_id FROM item_images WHERE item_id=? ORDER BY image_id', [id]))[0];

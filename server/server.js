@@ -31,10 +31,15 @@ import { createReportRepository } from './repositories/report.repository.js';
 import { createReportService } from './services/report.service.js';
 import { createAdminRepository } from './repositories/admin.repository.js';
 import { createAdminService } from './services/admin.service.js';
+import { createVisualSuggestionsRepository } from './repositories/visual-suggestions.repository.js';
+import { createVisualSuggestionsService } from './services/visual-suggestions.service.js';
 import { createImageStorage } from './config/cloudinary.js';
 import { createImageOperations, startImageCleanup } from './services/image-operations.js';
+import { assertIsolatedInstance } from '../database/scripts/assert-isolated.js';
+import { assertAiVisualSchema } from './ai-visual/schema-check.js';
 
 export async function startServer(config = readConfig()) {
+  if ((config.aiVisual?.enabled || config.aiVisualSuggestions?.enabled) && !config.aiVisual?.production) await assertIsolatedInstance();
   const authConfig = readAuthConfig({ JWT_SECRET: config.auth?.secret, JWT_EXPIRES_IN: config.auth?.expiresIn });
   const imageStorage = createImageStorage();
   const pool = createDbPool(config.database);
@@ -46,11 +51,14 @@ export async function startServer(config = readConfig()) {
   const itemRepository = createItemRepository(pool);
   const lookupService = createLookupService(createLookupRepository(pool));
   const imageOperations = createImageOperations(pool, imageStorage);
-  const itemService = createItemService(itemRepository, imageStorage, imageOperations);
+  const itemService = createItemService(itemRepository, imageStorage, imageOperations, config.aiVisual);
   const claimService = createClaimService(createClaimRepository(pool));
   const notificationService = createNotificationService(createNotificationRepository(pool));
   const reportService = createReportService(createReportRepository(pool));
   const adminService = createAdminService(createAdminRepository(pool), itemService);
+  const visualSuggestionsService = createVisualSuggestionsService(
+    createVisualSuggestionsRepository(pool), { ...config.aiVisualSuggestions, production: config.aiVisual?.production }
+  );
   const mailer = createMailer();
   const chatService = createChatService(createChatRepository(pool));
   let io;
@@ -59,9 +67,10 @@ export async function startServer(config = readConfig()) {
   });
   let server;
   try {
+    if (config.aiVisual?.enabled || config.aiVisualSuggestions?.enabled) await assertAiVisualSchema(pool);
     await healthService.check({ fresh: true });
     console.log('MySQL connection verified: findit_db');
-    server = createServer(createApp({ healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, lookupService, chatService, passwordResetService, corsOrigins: config.corsOrigins, security: config.security }));
+    server = createServer(createApp({ healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, lookupService, visualSuggestionsService, chatService, passwordResetService, corsOrigins: config.corsOrigins, security: config.security }));
     io = attachChatSocket(server, { authService, chatService, corsOrigins: config.corsOrigins });
     await new Promise((resolve, reject) => {
       server.once('error', reject);

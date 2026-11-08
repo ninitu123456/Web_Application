@@ -1,5 +1,9 @@
 // This existing module loads the root .env once and validates DB settings.
 import { configFromEnv } from '../../database/scripts/config.js';
+import { readAiVisualConfig } from '../ai-visual/config.js';
+import { relative, resolve, sep } from 'node:path';
+import { tmpdir } from 'node:os';
+import { validateAiMode, validateProductionAi } from '../ai-visual/production-config.js';
 
 export const defaultCorsOrigins = ['http://localhost:5173', 'http://localhost:3000'];
 export function readSecurityConfig(env = process.env) {
@@ -15,6 +19,23 @@ export function readHealthConfig(env = process.env) {
   const timeoutMs = Number(env.HEALTH_PROBE_TIMEOUT_MS ?? 1000);
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 2147483647) throw new Error('Invalid HEALTH_PROBE_TIMEOUT_MS');
   return { timeoutMs };
+}
+export function readAiVisualSuggestionsConfig(env = process.env) {
+  validateAiMode(env);
+  const raw = env.AI_VISUAL_SUGGESTIONS_ENABLED ?? 'false';
+  if (!['true', 'false'].includes(raw)) throw new Error('AI_VISUAL_SUGGESTIONS_ENABLED must be true or false');
+  const enabled = raw === 'true';
+  if (enabled && !validateProductionAi(env, 'api')) {
+    const isolated = env.FINDIT_ISOLATED_DATADIR ? resolve(env.FINDIT_ISOLATED_DATADIR) : '';
+    const parts = isolated ? relative(resolve(tmpdir()), isolated).split(sep) : [];
+    const port = Number(env.DB_PORT);
+    if (!['development', 'test'].includes(env.NODE_ENV) || env.DB_HOST !== '127.0.0.1' ||
+        !env.DB_PORT || !Number.isInteger(port) || port < 1 || port > 65535 || [3306, 3311].includes(port) ||
+        parts.length !== 2 || !/^findit-mysql-[a-zA-Z0-9_-]+$/.test(parts[0]) || parts[1] !== 'data') {
+      throw new Error('AI Visual Suggestions require development/test and an explicitly isolated local MySQL datadir and non-service port');
+    }
+  }
+  return { enabled };
 }
 export function readAppConfig(env = process.env) {
   const port = Number(env.PORT ?? 3001);
@@ -32,7 +53,7 @@ export function readAppConfig(env = process.env) {
   return { host, port, corsOrigins: [...new Set(origins)] };
 }
 export function readConfig(env = process.env) {
-  try { return { ...readAppConfig(env), database: configFromEnv(env), auth: readAuthConfig(env), security: readSecurityConfig(env), health: readHealthConfig(env) }; }
+  try { return { ...readAppConfig(env), database: configFromEnv(env), auth: readAuthConfig(env), security: readSecurityConfig(env), health: readHealthConfig(env), aiVisual: readAiVisualConfig(env), aiVisualSuggestions: readAiVisualSuggestionsConfig(env) }; }
   catch (error) { error.code = 'INVALID_CONFIG'; throw error; }
 }
 

@@ -689,7 +689,7 @@ export async function extendedBrowserCheck({
       adminPage
         .getByRole("dialog")
         .getByText(
-          /Chưa kiểm tra được bạn có liên quan đến bài đăng này hay không/,
+          "Chưa xác định được quyền xử lý. Vui lòng thử lại.",
         ),
     ).toBeVisible();
     await adminPage

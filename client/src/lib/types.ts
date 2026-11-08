@@ -58,6 +58,17 @@ export interface Match {
   score: number;
   reasons: string[];
 }
+export interface VisualSuggestion {
+  itemId: number;
+  title: string;
+  description: string;
+  color: string | null;
+  eventDate: string;
+  category: string;
+  location: string;
+  thumbnailUrl: string | null;
+  cosineScore: number;
+}
 export interface PaginationData {
   page: number;
   limit: number;
@@ -65,6 +76,7 @@ export interface PaginationData {
   totalPages: number;
 }
 export interface Envelope<T> {
+  visualState?: 'processing' | 'error' | 'ready';
   success: boolean;
   message?: string;
   data: T;

@@ -25,7 +25,7 @@ export async function adminRefreshCheck({ page, url, artifacts, reportId }) {
     /thao tác/,
   );
   await page
-    .getByText("Xem số liệu hoạt động bằng bảng", { exact: true })
+    .getByText("Xem bảng số liệu", { exact: true })
     .click();
   await expect(page.locator(".admin-data-table table")).toBeVisible();
   await page.screenshot({
