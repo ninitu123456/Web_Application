@@ -76,6 +76,7 @@ export interface PaginationData {
   totalPages: number;
 }
 export interface Envelope<T> {
+  visualState?: 'processing' | 'error' | 'ready';
   success: boolean;
   message?: string;
   data: T;

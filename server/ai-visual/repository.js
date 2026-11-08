@@ -2,6 +2,7 @@ import { transaction, query, databaseTimeout } from '../config/db.js';
 import { randomUUID } from 'node:crypto';
 import { cosineSimilarity, decodeEmbedding } from './embeddings.js';
 import { hiddenItemSql } from '../utils/item-visibility.js';
+import { CLIP_MODEL_ID, CLIP_MODEL_REVISION } from './config.js';
 
 const ACTIVE = "('OPEN','CLAIM_PENDING','CLAIMED')";
 
@@ -16,7 +17,8 @@ export function createAiVisualRepository(pool) {
         const [rows] = await connection.query({ sql: `SELECT j.job_id, j.image_id, j.model_id, j.model_revision, j.attempts
           FROM ai_visual_jobs j
           WHERE j.status = 'QUEUED' AND j.available_at <= UTC_TIMESTAMP()
-          ORDER BY j.available_at, j.job_id LIMIT 1 FOR UPDATE SKIP LOCKED`, timeout: databaseTimeout });
+          AND j.model_id=? AND j.model_revision=?
+          ORDER BY j.available_at, j.job_id LIMIT 1 FOR UPDATE SKIP LOCKED`, timeout: databaseTimeout }, [CLIP_MODEL_ID, CLIP_MODEL_REVISION]);
         if (!rows.length) return undefined;
         const job = rows[0];
         const [[image]] = await connection.query({ sql: `SELECT im.item_id, im.cloudinary_public_id, i.type, i.status AS item_status, ${hiddenItemSql()} AS is_hidden

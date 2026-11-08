@@ -1,4 +1,12 @@
-# AI Visual Matching (development shadow mode)
+# AI Visual Matching
+
+Production suggestions now have a separate explicit configuration mode. Follow
+[the production runbook](../docs/AI-PRODUCTION-DEPLOYMENT.md) for the exact API,
+worker and Vercel variables, migration/backfill order and incident shutdown.
+The development-only commands and isolation guards below still apply in the
+default `AI_VISUAL_MODE=isolated`. Notifications/shadow/demo remain forbidden in
+production. Historical references below to a future production worker are
+superseded by that runbook; Linux resource and provider E2E validation remain open.
 
 The worker stores image embeddings and shadow candidates only. A separate read-only suggestions API may expose current candidates to the owner of an eligible LOST item when its own feature flag is explicitly enabled. It never alters `matches`, creates notifications, or changes Claim state.
 

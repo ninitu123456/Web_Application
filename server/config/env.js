@@ -3,6 +3,7 @@ import { configFromEnv } from '../../database/scripts/config.js';
 import { readAiVisualConfig } from '../ai-visual/config.js';
 import { relative, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
+import { validateAiMode, validateProductionAi } from '../ai-visual/production-config.js';
 
 export const defaultCorsOrigins = ['http://localhost:5173', 'http://localhost:3000'];
 export function readSecurityConfig(env = process.env) {
@@ -20,10 +21,11 @@ export function readHealthConfig(env = process.env) {
   return { timeoutMs };
 }
 export function readAiVisualSuggestionsConfig(env = process.env) {
+  validateAiMode(env);
   const raw = env.AI_VISUAL_SUGGESTIONS_ENABLED ?? 'false';
   if (!['true', 'false'].includes(raw)) throw new Error('AI_VISUAL_SUGGESTIONS_ENABLED must be true or false');
   const enabled = raw === 'true';
-  if (enabled) {
+  if (enabled && !validateProductionAi(env, 'api')) {
     const isolated = env.FINDIT_ISOLATED_DATADIR ? resolve(env.FINDIT_ISOLATED_DATADIR) : '';
     const parts = isolated ? relative(resolve(tmpdir()), isolated).split(sep) : [];
     const port = Number(env.DB_PORT);

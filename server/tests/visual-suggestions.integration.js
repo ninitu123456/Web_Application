@@ -46,6 +46,9 @@ test('visual suggestion API data query is owner scoped, read only, current, boun
         [itemId, `https://images.example/${itemId}.jpg`, `fixture/${itemId}`]);
       if (embed) await query(pool, `INSERT INTO item_image_embeddings (image_id,model_id,model_revision,dimensions,embedding_data,created_at)
         VALUES (?,?,?,512,?,UTC_TIMESTAMP())`, [image.insertId, 'Xenova/clip-vit-base-patch32', '4c1807b705b1d015fb032789cc4d221b23025a6f', encodeEmbedding([1, ...Array(511).fill(0)])]);
+      if (embed) await query(pool, `INSERT INTO ai_visual_jobs(image_id,model_id,model_revision,status,attempts,available_at,created_at,updated_at)
+        VALUES(?,?,?,'COMPLETED',1,UTC_TIMESTAMP(),UTC_TIMESTAMP(),UTC_TIMESTAMP())`,
+      [image.insertId, 'Xenova/clip-vit-base-patch32', '4c1807b705b1d015fb032789cc4d221b23025a6f']);
       return image.insertId;
     };
     const lostId = await createItem('LOST', 'Private owner LOST item');

@@ -244,13 +244,14 @@ test('AI Visual Matching jobs and shadow candidates use only the isolated MySQL 
       assert.equal(row.lease_token, null);
     });
 
-    await t.test('candidate written before failed completion remains visible during retry and terminal job states', async () => {
+    await t.test('candidate written before failed completion is hidden until every current image job completes', async () => {
       const partialLost = await item('LOST', 'AI partial result visibility fixture');
       const partialFound = await item('FOUND', 'AI partial result target fixture');
       const [lostPhoto] = await service.uploadImages(identity, partialLost.id, [{ mimetype: 'image/png', buffer: png }]);
       const [foundPhoto] = await service.uploadImages(identity, partialFound.id, [{ mimetype: 'image/png', buffer: png }]);
       await query(pool, `INSERT INTO item_image_embeddings (image_id, model_id, model_revision, dimensions, embedding_data, created_at)
         VALUES (?, ?, ?, 512, ?, UTC_TIMESTAMP())`, [foundPhoto.id, 'Xenova/clip-vit-base-patch32', '4c1807b705b1d015fb032789cc4d221b23025a6f', direction]);
+      await query(pool, "UPDATE ai_visual_jobs SET status='COMPLETED' WHERE image_id=?", [foundPhoto.id]);
       const interruptedRepository = { ...aiRepository, async finish() { throw new Error('injected interruption before job completion'); } };
       const interruptedWorker = createAiVisualWorker({ repository: interruptedRepository, config: { enabled: true, maxAttempts: 3, pollMs: 250 },
         imageSource: { async download() { return { filePath: 'local-interruption.png', async cleanup() {} }; } },
@@ -270,11 +271,11 @@ test('AI Visual Matching jobs and shadow candidates use only the isolated MySQL 
 
       const suggestions = createVisualSuggestionsService(createVisualSuggestionsRepository(pool), { enabled: true });
       const visible = await suggestions.forOwner(identity, partialLost.id);
-      assert.ok(visible.some((candidate) => candidate.itemId === Number(partialFound.id)), 'candidate is visible while retry is pending');
+      assert.ok(!visible.some((candidate) => candidate.itemId === Number(partialFound.id)), 'partial score is hidden while retry is pending');
 
-      for (const status of ['PROCESSING', 'FAILED', 'COMPLETED']) {
+      for (const status of ['PROCESSING', 'FAILED', 'CANCELLED', 'COMPLETED']) {
         await query(pool, 'UPDATE ai_visual_jobs SET status=?, lease_token=NULL, locked_until=NULL WHERE job_id=?', [status, job.job_id]);
-        assert.ok((await suggestions.forOwner(identity, partialLost.id)).some((candidate) => candidate.itemId === Number(partialFound.id)), `candidate remains visible for ${status}`);
+        assert.equal((await suggestions.forOwner(identity, partialLost.id)).some((candidate) => candidate.itemId === Number(partialFound.id)), status === 'COMPLETED', `candidate visibility for ${status}`);
       }
 
       await query(pool, "UPDATE ai_visual_jobs SET status='QUEUED', available_at=UTC_TIMESTAMP() WHERE job_id=?", [job.job_id]);

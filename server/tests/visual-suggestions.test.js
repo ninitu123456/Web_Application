@@ -7,6 +7,7 @@ import { createVisualSuggestionsService } from '../services/visual-suggestions.s
 import { createVisualSuggestionsRepository, isMissingAiVisualTable } from '../repositories/visual-suggestions.repository.js';
 import { readAiVisualSuggestionsConfig, readConfig } from '../config/env.js';
 import { serve } from './helpers.js';
+import { validateAiMode, validateProductionAi } from '../ai-visual/production-config.js';
 
 const owner = { id: '12', role: 'USER' };
 const publicRow = {
@@ -30,7 +31,7 @@ test('isolated suggestion fixture paths pass the actual guard on both Ubuntu and
     // Evaluate the real pure validator with each platform's path semantics.
     // This reproduces the old Windows-only fixture failure on a Windows host too.
     const validate = runInNewContext(`(${readAiVisualSuggestionsConfig.toString()})`, {
-      resolve: paths.resolve, relative: paths.relative, sep: paths.sep, tmpdir: () => temporary
+      resolve: paths.resolve, relative: paths.relative, sep: paths.sep, tmpdir: () => temporary, validateAiMode, validateProductionAi
     });
     const input = { AI_VISUAL_SUGGESTIONS_ENABLED: 'true', NODE_ENV: 'test', DB_HOST: '127.0.0.1', DB_PORT: '62123' };
     assert.equal(validate({ ...input, FINDIT_ISOLATED_DATADIR: paths.join(temporary, 'findit-mysql-test', 'data') }).enabled, true);

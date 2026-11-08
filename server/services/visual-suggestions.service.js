@@ -8,16 +8,24 @@ function publicId(value) {
   return id;
 }
 
-export function createVisualSuggestionsService(repository, { enabled = false } = {}) {
+export function createVisualSuggestionsService(repository, { enabled = false, production = false } = {}) {
   return {
-    async forOwner(identity, itemId) {
+    async forOwner(identity, itemId, { withState = false } = {}) {
       if (!enabled) throw notFound();
       if (!identity || !['USER', 'ADMIN'].includes(identity.role)) throw new HttpError(401, 'Chưa xác thực hoặc token không hợp lệ');
       if (!await repository.isEligibleOwnedLostItem(itemId, identity.id)) throw notFound();
-      let rows;
-      try { rows = await repository.listForLostItem(itemId, 3); }
-      catch (error) { if (isMissingAiVisualTable(error)) rows = []; else throw error; }
-      return rows.map((row) => ({
+      let rows, state = 'ready';
+      try {
+        state = await repository.processingState?.(itemId) ?? 'ready';
+        rows = await repository.listForLostItem(itemId, 3, identity.id);
+      }
+      catch (error) {
+        if (isMissingAiVisualTable(error) && !production) rows = [];
+        else throw error;
+      }
+      // Revalidate after the reads; never disclose a source that became hidden.
+      if (!await repository.isEligibleOwnedLostItem(itemId, identity.id)) throw notFound();
+      const data = rows.map((row) => ({
         itemId: publicId(row.item_id),
         title: row.title,
         description: row.description,
@@ -28,6 +36,7 @@ export function createVisualSuggestionsService(repository, { enabled = false } =
         thumbnailUrl: row.thumbnail_url ?? null,
         cosineScore: Number(row.cosine_score)
       }));
+      return withState ? { data, visualState: state } : data;
     }
   };
 }

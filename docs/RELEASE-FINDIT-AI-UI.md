@@ -1,5 +1,13 @@
 # FindIt — candidate release UI + AI
 
+> Follow-up on `feature/ai-production`: the code restriction that rejected all
+> production suggestions has been replaced by explicit production configuration,
+> separate API/worker validation and resumable backfill. See
+> [AI production deployment](AI-PRODUCTION-DEPLOYMENT.md). The historical release
+> verdict below is retained as evidence of c48e6d1, not current enablement guidance.
+> Backup/restore, provider checks and Linux resource/E2E evidence remain blockers;
+> this change grants no permission to deploy. AI notifications remain prohibited.
+
 ## Nguồn tích hợp
 
 Nhánh local `release/findit-ai-ui` giữ cả `integration/ai-ui` (`f379011056951048129f03b06fed2d447a4a1ebd`) và main đã fetch (`a7cceb3`, bao gồm `f9fa62a3` moderation hide/restore và bản rút gọn UI copy). Lượt chuẩn bị không sửa main, push, deploy, truy cập DB Railway hoặc đổi biến production.

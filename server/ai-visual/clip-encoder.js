@@ -59,6 +59,7 @@ export async function createClipEncoder({ cacheDir = processEnv.AI_VISUAL_MATCHI
   const initializationMs = performance.now() - started;
   return {
     initializationMs,
+    async dispose() { await extractor.dispose(); },
     async embedFile(filePath) {
       const { data, info } = await decodeLocalImage(filePath);
       const image = new RawImage(data, info.width, info.height, info.channels);

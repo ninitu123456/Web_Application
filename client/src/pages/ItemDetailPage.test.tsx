@@ -90,7 +90,7 @@ describe("redesigned item detail with AI integration", () => {
     expect(html).toContain('href="/do-vat/6"');
     expect(html).toContain('href="/?type=LOST"');
     expect(html).toContain("Gợi ý đồ vật");
-    expect(mocks.resource).toHaveBeenCalledWith("/items/5/visual-suggestions");
+    expect(mocks.resource).toHaveBeenCalledWith("/items/5/visual-suggestions", {}, 0);
   });
   it("keeps the feature flag and owner/privacy gate after the redesign", () => {
     vi.stubEnv("VITE_AI_VISUAL_SUGGESTIONS_ENABLED", "false");

@@ -29,6 +29,15 @@ describe('visual suggestion panel states', () => {
     resource.mockReturnValue({ loading: false, data: { success: true, data: [] } });
     expect(render()).toContain('Chưa có gợi ý hình ảnh phù hợp');
   });
+  it('distinguishes processing and analysis failure from empty results', () => {
+    resource.mockReturnValue({ loading: false, data: { data: [], visualState: 'processing' } });
+    expect(render()).toContain('Ảnh đang được phân tích');
+    expect(render()).toContain('role="status"');
+    expect(render()).not.toContain('Chưa có gợi ý hình ảnh phù hợp');
+    resource.mockReturnValue({ loading: false, data: { data: [], visualState: 'error' } });
+    expect(render()).toContain('role="alert"');
+    expect(render()).toContain('Thử tải lại');
+  });
   it('renders an error and retry action', () => {
     resource.mockReturnValue({ loading: false, error: new Error('network') });
     expect(render()).toContain('role="alert"');

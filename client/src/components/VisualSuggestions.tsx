@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { invalidate } from "../lib/api";
 import { useResource } from "../lib/hooks";
 import type { VisualSuggestion } from "../lib/types";
@@ -12,9 +13,19 @@ export function VisualSuggestions({
   itemId: number;
   previewFixture?: boolean;
 }) {
+  const [refresh, setRefresh] = useState(0);
   const result = useResource<VisualSuggestion[]>(
     `/items/${itemId}/visual-suggestions`,
+    {}, refresh,
   );
+  const processing = result.data?.visualState === 'processing';
+  useEffect(() => {
+    if (!result.data || result.error) return;
+    // FOUND jobs may finish after this LOST job. Refresh ready/empty results
+    // too, so a panel opened during backfill eventually receives those pairs.
+    const timer = setTimeout(() => setRefresh(value => value + 1), processing ? 10000 : 30000);
+    return () => clearTimeout(timer);
+  }, [processing, refresh, result.data, result.error]);
   const suggestions = result.data?.data;
   return (
     <section
@@ -43,6 +54,10 @@ export function VisualSuggestions({
         <Loading />
       ) : result.error ? (
         <ErrorState error={result.error} retry={invalidate} />
+      ) : result.data?.visualState === 'error' ? (
+        <div role="alert"><p>Chưa thể phân tích ảnh. Vui lòng thử kiểm tra lại sau.</p><button onClick={invalidate}>Thử tải lại</button></div>
+      ) : processing ? (
+        <div role="status"><p>Ảnh đang được phân tích. Gợi ý sẽ cập nhật khi xử lý hoàn tất.</p><button onClick={invalidate}>Kiểm tra lại</button></div>
       ) : suggestions?.length ? (
         <div className="visual-suggestion-grid">
           {suggestions.slice(0, 3).map((suggestion) => (

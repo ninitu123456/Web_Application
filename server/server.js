@@ -36,9 +36,10 @@ import { createVisualSuggestionsService } from './services/visual-suggestions.se
 import { createImageStorage } from './config/cloudinary.js';
 import { createImageOperations, startImageCleanup } from './services/image-operations.js';
 import { assertIsolatedInstance } from '../database/scripts/assert-isolated.js';
+import { assertAiVisualSchema } from './ai-visual/schema-check.js';
 
 export async function startServer(config = readConfig()) {
-  if (config.aiVisual?.enabled || config.aiVisualSuggestions?.enabled) await assertIsolatedInstance();
+  if ((config.aiVisual?.enabled || config.aiVisualSuggestions?.enabled) && !config.aiVisual?.production) await assertIsolatedInstance();
   const authConfig = readAuthConfig({ JWT_SECRET: config.auth?.secret, JWT_EXPIRES_IN: config.auth?.expiresIn });
   const imageStorage = createImageStorage();
   const pool = createDbPool(config.database);
@@ -56,7 +57,7 @@ export async function startServer(config = readConfig()) {
   const reportService = createReportService(createReportRepository(pool));
   const adminService = createAdminService(createAdminRepository(pool), itemService);
   const visualSuggestionsService = createVisualSuggestionsService(
-    createVisualSuggestionsRepository(pool), config.aiVisualSuggestions ?? { enabled: false }
+    createVisualSuggestionsRepository(pool), { ...config.aiVisualSuggestions, production: config.aiVisual?.production }
   );
   const mailer = createMailer();
   const chatService = createChatService(createChatRepository(pool));
@@ -66,6 +67,7 @@ export async function startServer(config = readConfig()) {
   });
   let server;
   try {
+    if (config.aiVisual?.enabled || config.aiVisualSuggestions?.enabled) await assertAiVisualSchema(pool);
     await healthService.check({ fresh: true });
     console.log('MySQL connection verified: findit_db');
     server = createServer(createApp({ healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, lookupService, visualSuggestionsService, chatService, passwordResetService, corsOrigins: config.corsOrigins, security: config.security }));
