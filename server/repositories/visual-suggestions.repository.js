@@ -30,6 +30,10 @@ export function createVisualSuggestionsRepository(pool, execute = (sql, values =
     },
     async listForLostItem(itemId, limit = 3, ownerId) {
       if (!Number.isSafeInteger(limit) || limit < 1 || limit > 3) throw new Error('Visual suggestion limit must be between 1 and 3');
+      // Check nonempty embeddings with scalar subqueries: MySQL 8.0.46's
+      // DuplicateWeedout plan for positive EXISTS can repeat one FOUND per photo.
+      // Only nullness matters, so any matching embedding ID is sufficient.
+      // The NOT EXISTS checks still require freshness for every current image.
       const [rows] = await execute(`SELECT f.item_id AS item_id, f.title, f.description, f.color, f.event_date,
           c.name AS category_name, l.name AS location_name,
           (SELECT image_url FROM item_images thumb WHERE thumb.item_id = f.item_id ORDER BY thumb.image_id LIMIT 1) AS thumbnail_url,
@@ -50,10 +54,10 @@ export function createVisualSuggestionsRepository(pool, execute = (sql, values =
           AND NOT EXISTS (SELECT 1 FROM item_images im LEFT JOIN ai_visual_jobs j
             ON j.image_id=im.image_id AND j.model_id=candidate.model_id AND j.model_revision=candidate.model_revision
             WHERE im.item_id IN (lost.item_id,f.item_id) AND (j.job_id IS NULL OR j.status<>'COMPLETED'))
-          AND EXISTS (SELECT 1 FROM item_images li JOIN item_image_embeddings le ON le.image_id = li.image_id
-            WHERE li.item_id = lost.item_id AND le.model_id = candidate.model_id AND le.model_revision = candidate.model_revision)
-          AND EXISTS (SELECT 1 FROM item_images fi JOIN item_image_embeddings fe ON fe.image_id = fi.image_id
-            WHERE fi.item_id = f.item_id AND fe.model_id = candidate.model_id AND fe.model_revision = candidate.model_revision)
+          AND (SELECT le.embedding_id FROM item_images li JOIN item_image_embeddings le ON le.image_id = li.image_id
+            WHERE li.item_id = lost.item_id AND le.model_id = candidate.model_id AND le.model_revision = candidate.model_revision LIMIT 1) IS NOT NULL
+          AND (SELECT fe.embedding_id FROM item_images fi JOIN item_image_embeddings fe ON fe.image_id = fi.image_id
+            WHERE fi.item_id = f.item_id AND fe.model_id = candidate.model_id AND fe.model_revision = candidate.model_revision LIMIT 1) IS NOT NULL
           AND NOT EXISTS (SELECT 1 FROM item_images li LEFT JOIN item_image_embeddings le
             ON le.image_id = li.image_id AND le.model_id = candidate.model_id AND le.model_revision = candidate.model_revision
             WHERE li.item_id = lost.item_id AND le.embedding_id IS NULL)

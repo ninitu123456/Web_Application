@@ -110,18 +110,47 @@ test('production suggestion pipeline: resumable backfill, lease, owner, freshnes
       await drain();
       const [[count]] = await query(pool, 'SELECT COUNT(*) n FROM ai_visual_candidates'); assert.equal(Number(count.n), 1);
     });
-    await t.test('adding a current image hides the old pair until backfill completes; AI-off removal can rebuild it', async () => {
+    await t.test('adding a current image hides the old pair until backfill completes; AI-off removal can rebuild it', async subtest => {
       const [extra] = await query(pool, `INSERT INTO item_images(item_id,image_url,cloudinary_public_id,created_at)
         VALUES(?,'https://fixture.invalid/new-image.jpg',?,UTC_TIMESTAMP())`, [found.id, 'findit/items/' + randomUUID()]);
+      const removeExtra = () => createItemRepository(pool).withLockedItem(found.id, async scoped => {
+        await scoped.deleteAiVisualDataIfPresent(found.id, extra.insertId);
+        await scoped.deleteImage(extra.insertId);
+      });
+      // A failed assertion must not leave this photo/job for later subtests.
+      subtest.after(async () => {
+        if (await createItemRepository(pool).findImage(extra.insertId)) {
+          await removeExtra();
+          await backfillAiVisual(pool, { rebuild: true });
+          await drain();
+        }
+      });
       assert.deepEqual(await suggestions.forOwner(identity, lost.id), []);
       assert.equal((await backfillAiVisual(pool)).changedJobs, 1);
       assert.deepEqual(await suggestions.forOwner(identity, lost.id), []);
       await drain();
-      assert.equal((await suggestions.forOwner(identity, lost.id)).length, 1);
-      await createItemRepository(pool).withLockedItem(found.id, async scoped => {
-        await scoped.deleteAiVisualDataIfPresent(found.id, extra.insertId);
-        await scoped.deleteImage(extra.insertId);
-      });
+      const [[pairs]] = await query(pool, 'SELECT COUNT(*) n FROM ai_visual_candidates');
+      assert.equal(Number(pairs.n), 1, 'the fixture has one stored pair, not one pair per photo');
+      const [jobs] = await query(pool, 'SELECT image_id,status FROM ai_visual_jobs ORDER BY image_id');
+      assert.deepEqual(jobs.map(row => [String(row.image_id), row.status]),
+        [lost.image, found.image, String(extra.insertId)].sort((a, b) => Number(a) - Number(b)).map(id => [id, 'COMPLETED']));
+      assert.deepEqual((await suggestions.forOwner(identity, lost.id)).map(row => row.itemId), [Number(found.id)]);
+      // MySQL 8.0.46 can choose DuplicateWeedout and repeat the same FOUND
+      // for its two images. Exercise that valid plan without relying on stats,
+      // platform defaults, timing, or the order of the backfilled image jobs.
+      const connection = await pool.getConnection();
+      const [[settings]] = await connection.query('SELECT @@optimizer_switch AS optimizer_switch');
+      try {
+        await connection.query('SET SESSION optimizer_switch=?',
+          ['firstmatch=off,loosescan=off,duplicateweedout=on,block_nested_loop=off,subquery_to_derived=off']);
+        const planned = createVisualSuggestionsService(createVisualSuggestionsRepository(pool,
+          (sql, values = []) => connection.query(sql, values)), { enabled: true, production: true });
+        assert.deepEqual((await planned.forOwner(identity, lost.id)).map(row => row.itemId), [Number(found.id)]);
+      } finally {
+        try { await connection.query('SET SESSION optimizer_switch=?', [settings.optimizer_switch]); }
+        finally { connection.release(); }
+      }
+      await removeExtra();
       assert.deepEqual(await suggestions.forOwner(identity, lost.id), []);
       assert.equal((await backfillAiVisual(pool, { rebuild: true })).changedJobs, 2);
       await drain();
