@@ -35,6 +35,22 @@ export function createAiVisualRepository(pool) {
         WHERE job_id=? AND status='PROCESSING' AND lease_token=? AND locked_until>UTC_TIMESTAMP()`, [job.job_id, job.lease_token]);
       return result.affectedRows === 1;
     },
+    async existingEmbedding(job) {
+      // Image IDs/public IDs are immutable; replacing a photo creates a new ID.
+      // A matching retry after inference must not download or infer again.
+      const [[row]] = await query(pool, `SELECT e.dimensions, e.embedding_data
+        FROM ai_visual_jobs j JOIN item_images im ON im.image_id=j.image_id
+        JOIN item_image_embeddings e ON e.image_id=j.image_id AND e.model_id=j.model_id AND e.model_revision=j.model_revision
+        WHERE j.job_id=? AND j.status='PROCESSING' AND j.lease_token=? AND j.locked_until>UTC_TIMESTAMP()
+        AND im.cloudinary_public_id=?`, [job.job_id, job.lease_token, job.cloudinary_public_id]);
+      if (!row || Number(row.dimensions) !== 512) return undefined;
+      try {
+        const vector = decodeEmbedding(row.embedding_data);
+        const norm = vector.reduce((sum, value) => sum + value * value, 0);
+        if (!Number.isFinite(norm) || Math.abs(norm - 1) > 0.001) return undefined;
+        return vector;
+      } catch { return undefined; }
+    },
     async saveEmbedding(job, embeddingData) {
       return transaction(pool, async (connection) => {
         await connection.query({ sql: 'SELECT item_id FROM items WHERE item_id=? FOR UPDATE', timeout: databaseTimeout }, [job.item_id]);

@@ -76,6 +76,28 @@ test('production suggestion pipeline: resumable backfill, lease, owner, freshnes
       const [[after]] = await query(pool, 'SELECT (SELECT COUNT(*) FROM claims) c,(SELECT COUNT(*) FROM matches) m,(SELECT COUNT(*) FROM notifications) n');
       assert.deepEqual(after, before);
     });
+    await t.test('expired worker lease resumes matching from the persisted embedding with no inference', async () => {
+      assert.equal((await backfillAiVisual(pool, { rebuild: true, itemIds: [lost.id] })).changedJobs, 1);
+      const abandoned = await ai.claimNext(3);
+      assert.equal(String(abandoned.image_id), lost.image);
+      const cached = await ai.existingEmbedding(abandoned);
+      assert.equal(cached.length, 512);
+      assert.equal(await ai.existingEmbedding({ ...abandoned, cloudinary_public_id: 'findit/items/other' }), undefined);
+      await query(pool, 'UPDATE item_image_embeddings SET embedding_data=? WHERE image_id=?', [Buffer.alloc(2048), lost.image]);
+      assert.equal(await ai.existingEmbedding(abandoned), undefined, 'invalid vector must be inferred again');
+      const bytes = Buffer.alloc(2048); cached.forEach((value, index) => bytes.writeFloatLE(value, index * 4));
+      await query(pool, 'UPDATE item_image_embeddings SET embedding_data=? WHERE image_id=?', [bytes, lost.image]);
+      await query(pool, 'UPDATE ai_visual_jobs SET locked_until=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 SECOND) WHERE job_id=?', [abandoned.job_id]);
+      const restarted = createAiVisualWorker({ repository: createAiVisualRepository(pool), config: { enabled: true, maxAttempts: 3 },
+        encoder: { async embedFile() { assert.fail('restart must reuse the saved vector'); } },
+        imageSource: { async download() { assert.fail('restart must not redownload'); } } });
+      await restarted.processNext();
+      assert.equal(await ai.renewLease(abandoned), false);
+      assert.equal((await suggestions.forOwner(identity, lost.id)).length, 1);
+      assert.equal((await backfillAiVisual(pool, { itemIds: [found.id] })).scannedItems, 1);
+      const [[state]] = await query(pool, 'SELECT status,attempts FROM ai_visual_jobs WHERE image_id=?', [lost.image]);
+      assert.equal(state.status, 'COMPLETED'); assert.equal(Number(state.attempts), 2);
+    });
     await t.test('production-configured HTTP API starts without a model and protects suggestions', async () => {
       const config = readConfig({ NODE_ENV: 'production', AI_VISUAL_MODE: 'production', AI_VISUAL_SERVICE_ROLE: 'api',
         DB_HOST: base.host, DB_PORT: String(base.port), DB_NAME: 'findit_db', DB_USER: base.user, DB_PASSWORD: base.password,

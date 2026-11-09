@@ -54,7 +54,10 @@ export async function createClipEncoder({ cacheDir = processEnv.AI_VISUAL_MATCHI
   const extractor = await pipeline('image-feature-extraction', CLIP_MODEL_ID, {
     revision: CLIP_MODEL_REVISION,
     dtype: CLIP_MODEL_DTYPE,
-    device: 'cpu'
+    device: 'cpu',
+    // Serial jobs alone do not limit ONNX's native thread pool. Avoid creating
+    // a pool for every host core on a small Railway CPU allocation.
+    session_options: { intraOpNumThreads: 1, interOpNumThreads: 1 }
   });
   const initializationMs = performance.now() - started;
   return {

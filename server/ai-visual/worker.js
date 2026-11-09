@@ -36,14 +36,20 @@ export function createAiVisualWorker({ repository, encoder, imageSource, config,
     }
     let image, heartbeat;
     try {
+      onEvent({ event: 'job_started', jobId: String(job.job_id) });
       heartbeat = startLeaseHeartbeat(job);
       if (Number(job.is_hidden) || !ACTIVE.has(job.item_status) || !['LOST', 'FOUND'].includes(job.type)) {
         await repository.cancel(job);
         onEvent({ event: 'job_cancelled', jobId: String(job.job_id), reason: 'inactive_item' });
         return true;
       }
-      image = await imageSource.download(job.cloudinary_public_id);
-      const inference = await encoder.embedFile(image.filePath);
+      const cached = await repository.existingEmbedding?.(job);
+      let inference;
+      if (cached) inference = { vector: cached, inferenceMs: 0 };
+      else {
+        image = await imageSource.download(job.cloudinary_public_id);
+        inference = await encoder.embedFile(image.filePath);
+      }
       heartbeat.assertHealthy();
       const embeddingData = encodeEmbedding(inference.vector);
       const item = await repository.saveEmbedding(job, embeddingData);
@@ -70,13 +76,14 @@ export function createAiVisualWorker({ repository, encoder, imageSource, config,
         onEvent({ event: 'job_cancelled', jobId: String(job.job_id), reason: 'inactive_item_or_lease_lost' });
         return true;
       }
-      onEvent({ event: 'job_completed', jobId: String(job.job_id), imageId: String(job.image_id), inferenceMs: inference.inferenceMs });
+      onEvent({ event: 'job_completed', jobId: String(job.job_id), imageId: String(job.image_id), inferenceMs: inference.inferenceMs, embeddingReused: Boolean(cached), rssBytes: process.memoryUsage().rss });
     } catch (error) {
       const code = await repository.fail(job, error, config.maxAttempts);
       onEvent({ event: 'job_failed', jobId: String(job.job_id), code });
     } finally {
       try { await heartbeat?.stop(); } catch { onEvent({ event: 'lease_heartbeat_stop_failed', jobId: String(job.job_id) }); }
       try { await image?.cleanup?.(); } catch { onEvent({ event: 'temporary_image_cleanup_failed', jobId: String(job.job_id) }); }
+      onEvent({ event: 'job_settled', jobId: String(job.job_id) });
     }
     return true;
   }

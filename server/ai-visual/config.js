@@ -51,5 +51,7 @@ export function readAiVisualConfig(env = process.env, role = 'api') {
   if (!Number.isSafeInteger(pollMs) || pollMs < 250 || pollMs > 60000) throw new Error('AI_VISUAL_MATCHING_POLL_MS must be an integer from 250 to 60000');
   const maxAttempts = Number(env.AI_VISUAL_MATCHING_MAX_ATTEMPTS ?? 3);
   if (!Number.isSafeInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 10) throw new Error('AI_VISUAL_MATCHING_MAX_ATTEMPTS must be an integer from 1 to 10');
-  return { enabled, production, pollMs, maxAttempts, leaseRenewMs: 30000, notificationProcessingEnabled, notificationShadowMode, demoNotificationsEnabled, demoMinCosine };
+  const jobTimeoutMs = Number(env.AI_VISUAL_MATCHING_JOB_TIMEOUT_MS ?? 120000);
+  if (!Number.isSafeInteger(jobTimeoutMs) || jobTimeoutMs < 1000 || jobTimeoutMs > 600000) throw new Error('AI_VISUAL_MATCHING_JOB_TIMEOUT_MS must be an integer from 1000 to 600000');
+  return { enabled, production, pollMs, maxAttempts, jobTimeoutMs, leaseRenewMs: 30000, notificationProcessingEnabled, notificationShadowMode, demoNotificationsEnabled, demoMinCosine };
 }

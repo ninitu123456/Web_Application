@@ -64,6 +64,7 @@ defaults. Initially deploy with all feature booleans false and the worker stoppe
 | `AI_VISUAL_MATCHING_CONCURRENCY` | absent/`1` | `1` (other values rejected) | absent |
 | `AI_VISUAL_MATCHING_POLL_MS` | default `1000` | `1000` (250–60000) | absent |
 | `AI_VISUAL_MATCHING_MAX_ATTEMPTS` | default `3` | `3` (1–10) | absent |
+| `AI_VISUAL_MATCHING_JOB_TIMEOUT_MS` | default `120000` | `120000` (1000–600000) | absent |
 | `AI_VISUAL_NOTIFICATION_PROCESSING_ENABLED` | `false` | `false` | absent |
 | `AI_VISUAL_NOTIFICATION_SHADOW_MODE` | `false` | `false` | absent |
 | `AI_VISUAL_NOTIFICATION_DEMO_ENABLED` | `false` | `false` | absent |
@@ -89,6 +90,12 @@ survive restarts through the mounted volume. Validate directory ownership, free
 space, cold downloads and warm startup in the target image. The worker requires
 only public image read access to the application cloud.
 
+ONNX intra/inter-op threads are both fixed at 1. Set build variable
+`ONNXRUNTIME_NODE_INSTALL_CUDA=skip` on the worker to avoid downloading unused
+CUDA libraries during Linux `npm ci`. No GPU/provider API is needed.
+See [automatic matching audit and measurements](AI-AUTO-MATCHING-PRODUCTION.md)
+for this branch's tests, measured cold/warm CPU/RAM and approval gates.
+
 Only `findit/items/<UUID>` public IDs are accepted. Image URLs from DB are never
 fetched; the downloader constructs Cloudinary HTTPS URLs with no redirects, a
 10-second request timeout and 5 MiB cap. JPEG/PNG/WebP decode is capped at 40MP,
@@ -101,6 +108,16 @@ Default retries: 3; backoff capped at 300 seconds; lease: 2 minutes, renewed eve
 temporary download, disposes the encoder and closes DB. A 90-second shutdown
 deadline exits if hung; an abandoned lease can be reclaimed after expiry. Configure
 provider termination grace to allow drain and measure behavior under forced kill.
+
+The whole claimed job now has a watchdog (default 120 seconds). On timeout the
+dedicated process exits 1; configure Railway restart policy `ALWAYS` so a restart
+and expired MySQL lease recover it. This does not mark the still-running native
+inference complete or start concurrent work. Successful retries reuse valid
+persisted vectors. Timeout/kill may leave a bounded temporary image until the
+container filesystem is replaced; it never writes image bytes to the model volume.
+Logs include per-job embedding reuse/RSS and a CPU/RSS heartbeat every 60 seconds.
+Alert on missing heartbeat, repeated poll failures, oldest queued age and FAILED
+counts; heartbeat alone is not evidence that a job completed.
 
 ## Migration, rollout and recovery sequence
 
@@ -133,6 +150,10 @@ provider termination grace to allow drain and measure behavior under forced kill
 7. Watch sanitized worker events, failed/expired job counts, queue age, RSS,
    decode failures, Cloudinary errors and DB contention. Backfill's summary reports
    scanned Items and changed jobs; an interrupted run can restart from the beginning.
+   To restrict a separately approved demo run, repeat `--item-id=<exact ID>` for
+   the verified 30 demo IDs, e.g. `npm run ai-visual:backfill -- --item-id=123
+   --item-id=124`. Never infer IDs from title prefixes. Unscoped backfill includes
+   all eligible users and is not the demo rollout command.
 8. Enable owner suggestions API and rebuild Vercel with the UI flag true only after
    the queue works. Test approved synthetic LOST/FOUND, unauthorized access, hide,
    delete image, Claim completion and error/retry on the actual stack. Scores are
