@@ -1,4 +1,5 @@
 import { query, transaction, databaseTimeout } from '../config/db.js';
+import { lockActiveAdmin } from './admin-actor.js';
 
 const columns = 'report_id, reporter_id, target_type, item_id, reported_user_id, claim_id, reason, description, status, reviewed_by, reviewed_at, created_at';
 export function createReportRepository(pool, execute = (sql, values = []) => query(pool, sql, values)) {
@@ -31,6 +32,7 @@ export function createReportRepository(pool, execute = (sql, values = []) => que
     async findById(id) { const [[row]] = await execute(`SELECT ${columns} FROM reports WHERE report_id=?`, [id]); return row; },
     async findForUpdate(id) { const [[row]] = await execute(`SELECT ${columns} FROM reports WHERE report_id=? FOR UPDATE`, [id]); return row; },
     async update(id, from, to, reviewerId) {
+      await lockActiveAdmin(execute, reviewerId);
       const [result] = await execute('UPDATE reports SET status=?, reviewed_by=?, reviewed_at=UTC_TIMESTAMP() WHERE report_id=? AND status=?', [to, reviewerId, id, from]); return result.affectedRows;
     },
     async audit(actorId, id, from, to) {
