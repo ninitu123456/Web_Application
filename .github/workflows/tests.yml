@@ -10,6 +10,29 @@ env:
   # major can resolve to different patch releases across hosted runners.
   COVERAGE_NODE_VERSION: '24.22.2'
 jobs:
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '${{ env.COVERAGE_NODE_VERSION }}'
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run format:check
+      - run: npm run build
+        env:
+          # Build validation only; unit tests retain their own API configuration.
+          VITE_API_BASE_URL: /api
+          VITE_AI_VISUAL_SUGGESTIONS_ENABLED: 'false'
+          VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE: 'false'
   unit:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

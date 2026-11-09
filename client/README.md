@@ -28,11 +28,19 @@ Mở `http://localhost:5173`. API mặc định `http://127.0.0.1:3001/api`; có
 npm.cmd run typecheck
 npm.cmd test
 npm.cmd run format:check
+# Example public build configuration; replace with the reviewed actual API URL.
+$env:VITE_API_BASE_URL = 'https://api.example.test/api'
+$env:VITE_AI_VISUAL_SUGGESTIONS_ENABLED = 'false'
+$env:VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE = 'false'
 npm.cmd run build
 npm.cmd run preview
 ```
 
 Chưa cấu hình ESLint; `format:check` chỉ kiểm tra định dạng, không thay thế lint. `preview` mặc định dùng port 4173, cần thêm `http://localhost:4173` vào CORS nếu gọi API trực tiếp. Host phục vụ production phải fallback các đường dẫn giao diện về `index.html`, đồng thời giữ nguyên routing `/api`. Dự án không tự publish.
+
+Build triển khai yêu cầu `VITE_API_BASE_URL` tường minh: URL HTTPS công khai kết thúc `/api`, hoặc `/api` khi đã xác minh reverse proxy cùng origin. Build từ chối thiếu URL, localhost/private IP, credentials/query/fragment trong URL, AI preview fixture và boolean flag không phải `true|false`. Ngoại lệ test local cần cả `--mode test` và `FINDIT_FRONTEND_BROWSER_BUILD=1`; không áp dụng cho production mode hay build có marker Vercel/Railway.
+
+Socket.IO gọi origin của API ở path `/socket.io/`, không phải `/api/socket.io/`. Cấu hình `/api` cùng origin chỉ hoạt động khi host có cả proxy API và Socket.IO (HTTP polling và WebSocket upgrade). `vercel.json` hiện chỉ có SPA fallback, chưa cung cấp các proxy đó; không dùng `/api` cho deployment này trước khi cấu hình host được xác minh. CI dùng `/api` chỉ để kiểm tra build, không chứng minh proxy production hoạt động. Không đổi `trust proxy` hoặc số replica nếu chưa có topology thực tế. Xem [CI và AI E2E](../docs/CI-AI-E2E-20261109.md).
 
 ## Màn hình
 
@@ -100,4 +108,4 @@ Kiểm tra có đăng ký, desktop/mobile, upload lỗi rồi thử lại, khôn
 
 Browser test chặn mạng HTTPS bên ngoài để dùng font hệ thống dự phòng và không gọi Cloudinary thật. Test app tăng riêng quota API lên 3.000/phút để đủ lượt hồi quy; runtime giữ nguyên quota hiện có. Tests limiter backend vẫn chạy với cấu hình riêng của chúng. Unit frontend còn kiểm tra gộp GET, bỏ lỗi response của phiên cũ và các nhánh tìm Claim qua trang. Log mới ở `.cache/frontend-extended-browser.txt`, `.cache/frontend-extended-regression.txt`.
 
-Sau test, `dist/` dùng API cùng origin. Chạy lại `npm.cmd run build` để build theo cấu hình API thông thường nếu cần. Chưa kiểm chứng Cloudinary qua mạng thật, Firefox/Safari, thiết bị vật lý hoặc cấu hình hosting production.
+Sau test, `dist/` là build test local dùng API cùng origin. Trước khi triển khai, build lại bằng API URL công khai đã xác minh và tắt preview fixture. Chưa kiểm chứng Cloudinary qua mạng thật, Firefox/Safari, thiết bị vật lý hoặc cấu hình hosting production.
