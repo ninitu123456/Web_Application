@@ -101,7 +101,9 @@ fetched; the downloader constructs Cloudinary HTTPS URLs with no redirects, a
 10-second request timeout and 5 MiB cap. JPEG/PNG/WebP decode is capped at 40MP,
 single frame, 1024×1024 RGB and 10 seconds libvips processing. These are not an OS
 memory sandbox. Benchmark peak RSS, CPU and backlog on Linux under the intended
-container limits; 2 GiB is a benchmark starting point, not a proven minimum.
+container limits. The approved staging proposal tests 1 vCPU / 1 GiB first;
+stop on OOM/instability and report measurements rather than increasing limits.
+See [the staging approval plan](AI-STAGING-APPROVAL.md) before creating resources.
 
 Default retries: 3; backoff capped at 300 seconds; lease: 2 minutes, renewed every
 30 seconds. SIGTERM/SIGINT stops claiming, drains the current job and deletes its

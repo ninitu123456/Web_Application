@@ -11,7 +11,16 @@ export function createAiVisualRepository(pool) {
     async claimNext(maxAttempts) {
       const leaseToken = randomUUID();
       return transaction(pool, async (connection) => {
-        await connection.query({ sql: `UPDATE ai_visual_jobs SET status = IF(attempts >= ?, 'FAILED', 'QUEUED'), locked_until = NULL, lease_token = NULL, available_at = UTC_TIMESTAMP(), updated_at = UTC_TIMESTAMP() WHERE status = 'PROCESSING' AND locked_until <= UTC_TIMESTAMP()`, timeout: databaseTimeout }, [maxAttempts]);
+        // A range UPDATE can wait for uncommitted upload inserts, even when
+        // the subsequent claim uses SKIP LOCKED. Lock a bounded expired batch
+        // without waiting, then update only those primary keys we own.
+        const [expired] = await connection.query({ sql: `SELECT job_id FROM ai_visual_jobs
+          WHERE status='PROCESSING' AND locked_until<=UTC_TIMESTAMP()
+          ORDER BY job_id LIMIT 100 FOR UPDATE SKIP LOCKED`, timeout: databaseTimeout });
+        if (expired.length) {
+          await connection.query({ sql: `UPDATE ai_visual_jobs SET status = IF(attempts >= ?, 'FAILED', 'QUEUED'), locked_until = NULL, lease_token = NULL, available_at = UTC_TIMESTAMP(), updated_at = UTC_TIMESTAMP()
+            WHERE job_id IN (${expired.map(() => '?').join(',')})`, timeout: databaseTimeout }, [maxAttempts, ...expired.map(row => row.job_id)]);
+        }
         // Claim locks jobs only. Item mutations and embedding writes lock Item
         // before Job; a claiming worker must not wait for Item while holding Job.
         const [rows] = await connection.query({ sql: `SELECT j.job_id, j.image_id, j.model_id, j.model_revision, j.attempts
