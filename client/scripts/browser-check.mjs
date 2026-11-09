@@ -735,7 +735,15 @@ export async function browserCheck({
       "Browser: desktop/mobile, registration, upload recovery, inactive lookup edit, matching, search, modal keyboard, claim duplicate/privacy, handover, nested refresh, logout and invalid JWT cleanup verified.",
     );
     const { aiUiBrowserCheck } = await import("./ai-ui-browser-check.mjs");
-    await aiUiBrowserCheck({ browser, url, categoryId, locationId, pool, query, artifacts });
+    await aiUiBrowserCheck({
+      browser,
+      url,
+      categoryId,
+      locationId,
+      pool,
+      query,
+      artifacts,
+    });
   } finally {
     await browser?.close();
     await new Promise((done) => {
