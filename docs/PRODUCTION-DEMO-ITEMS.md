@@ -1,6 +1,27 @@
 # Chuẩn bị 30 món đồ demo FindIt
 
-Trạng thái: **chưa ghi production**, chưa upload Cloudinary, chưa xác minh trực tiếp schema/ledger/quyền DB. Không gọi đây là seed thành công. Ngày mốc dự kiến: **2026-11-09** theo lịch người dùng Asia/Saigon; ngày sự việc từ 03 đến 08/11/2026. Nếu thực hiện ngày khác phải duyệt lại ngày mốc, không tự thay ngày khi chạy lại.
+Trạng thái cập nhật 2026-11-09: **chưa ghi demo vào MySQL production**. Đã upload và xác minh 10 ảnh Cloudinary theo phê duyệt riêng; manifest thật được lưu tại `database/demo-assets/cloudinary-manifest.json`. Đã kiểm tra trực tiếp schema/ledger/quyền DB trong sandbox private chỉ đọc. Backup đang được hoàn tất bằng phương án mã hóa/private bucket đã được duyệt. Không gọi đây là seed thành công. Ngày mốc **2026-11-09** theo Asia/Saigon; ngày sự việc 03–08/11/2026. Nếu thực hiện ngày khác phải duyệt lại ngày mốc, không tự thay ngày khi chạy lại.
+
+## Bằng chứng mới và các phê duyệt
+
+- Nhánh vẫn là `feature/production-demo-items`, nguồn `53626cd0ed1ef604febfa39ae61af69985381279`; fetch không có commit remote mới khi bắt đầu lượt tiếp tục. Hai tài liệu UI chưa tracked có trước được giữ nguyên.
+- Workspace Railway Hobby; đã được người dùng duyệt sandbox private 1 vCPU/1 GB, idle 5 phút, không domain/SSH key/TCP proxy và không redeploy service. Sandbox kiểm tra `0f84ad75-a770-49d9-a0b2-fb6d14b974bd` đã tự hủy do idle. API/CLI sandbox exec hoạt động không cần SSH key. Các biến DB được resolve server-side bằng reference đến service backend, không chép credentials vào source/chat/log.
+- Kết nối thực tế xác minh MySQL **8.4.13**, database **findit_db**, server UUID **77676fb2-d8c9-11f1-9f0a-a2aad3869ed2**, 30 migration/checksum/schema PASS. Ledger hash **2ce430d4ab43b5c9d3f6910c47eb0ba4dcbaa0995c2250c805e1a962e003d84f**. Các bảng InnoDB, không trigger/event cần xử lý. DB user hiện tại có quyền cần thiết; process plan/capture bị MySQL khóa ở SESSION READ ONLY.
+- Có **8 items, 3 item_images, 7 users** trước seed; không có marker demo v1. Public API vẫn trả total 0: không được coi database rỗng. Đã thu baseline SHA256/count/PK cutoff cho 27 bảng để đối chiếu dữ liệu cũ, không lưu plaintext bản ghi người dùng. PK không phải số không được xuất ra baseline.
+- Đã được duyệt upload đúng 10 ảnh. Cloudinary `n7vjm6qn` xác thực được; 10 PNG đều 1254×1254, tổng 23.452.819 byte. Public ID không tồn tại trước upload, `overwrite:false`; 10 public URL GET 200, bytes/hash delivery khớp nguồn. Manifest hash **272b62c93c033fc59f470d5efff8e5d64d7078d1f57b5b1abe589a060dc4f452**. Không ghi DB hoặc tạo AI/email/notifications khi upload.
+- Đã được duyệt một manual backup nhưng API từ chối `BAD_USER_INPUT`: manual backup/schedule chỉ dành cho Pro. Không upgrade, không tạo được snapshot và không được báo backup thành công từ lời gọi này.
+- Sau đó người dùng duyệt phương án A: backup logic mã hóa vào private S3 bucket Railway và secret khôi phục mới với `skipDeploys:true`. Đã tạo bucket **findit-demo-backups**, ID **c45cad73-6d69-4f9b-8029-62d59a2041ec**. Khóa RSA khôi phục nằm trong shared secret Railway; chỉ public key vào sandbox. Không lưu private key vào repo/file local/chat/log. File metadata backup không chứa secrets; backup chưa được coi hoàn tất nếu thiếu upload/download/decryption proof.
+- Backend deployment vẫn **a390daae-4c95-4c90-852a-8fcdcfcc6751**, không đổi sau khi tạo secret. Không bật AI/suggestions/notification/shadow/demo hoặc đổi image/PITR/volume.
+- Bộ backup dùng consistent read-only InnoDB snapshot, giữ CREATE TABLE, columns, generated-column metadata, typed rows (kể cả binary/JSON), từ chối routine/trigger/event/view ngoài phạm vi. Gzip + AES-256-GCM, data key bọc RSA-OAEP/SHA256; S3 object private, không tạo presigned URL. Kiểm thử đã restore đầy đủ dữ liệu tổng hợp và schema qua hai MySQL tạm có UUID khác nhau, kiểm tra FK và migration ledger, phát hiện ciphertext bị sửa. Đây không phải restore production.
+- Phí storage bucket theo [Railway](https://docs.railway.com/storage-buckets/billing); bucket có xác thực qua HTTPS, không phải endpoint private network. Không dựa vào máy local để giữ bản backup hoặc khóa khôi phục.
+
+## Tiếp tục tự vận hành
+
+Không yêu cầu người dùng chạy SQL/copy metadata nữa: đường truy cập private qua sandbox chính thức đã được xác minh. Tạo/tái tạo sandbox phải nằm trong phạm vi hạ tầng người dùng duyệt. `production-demo-sandbox.js` chỉ cho inspect/plan/baseline dưới scope `read-only`; apply yêu cầu scope `seed-approved`, approval file cụ thể, backup reference, manifest thật, target UUID/DB/ledger hash và baseline dữ liệu cũ không đổi. Chưa tạo approval ghi DB từ việc duyệt backup/upload.
+
+`production-demo-backup.js` cung cấp capture/encrypt/decrypt/restore; restore từ chối source UUID, target chưa duyệt hoặc database không rỗng. `production-demo-backup-capture.js` chỉ chạy trong sandbox read-only đúng project/environment/host/UUID, chỉ xuất ciphertext và metadata. Kiểm tra tải lại/giải mã bản backup production trước final plan. Restore thật là thao tác riêng cần duyệt, không gọi tự động để kiểm thử.
+
+Các mục bên dưới ghi lại kế hoạch và bằng chứng ở lượt chuẩn bị trước; các trạng thái mới ở phần đầu có ưu tiên.
 
 ## Đã xác minh chỉ đọc
 
@@ -14,7 +35,7 @@ Trạng thái: **chưa ghi production**, chưa upload Cloudinary, chưa xác min
 - Public GraphQL schema không cung cấp SQL query. Có metadata quản lý deployment/backup; không dùng các mutation quản trị để dựng đường truy cập thay thế.
 - Volume instance `760e4ed3-db89-43b6-912d-8811363244e5`: danh sách backup và lịch backup đều rỗng. PITR disabled; image/start command hiện tại không hỗ trợ bật PITR trực tiếp. Không tạo backup, bật PITR hay đổi image/start command trong lượt chuẩn bị.
 
-## Cần thao tác trên Railway Dashboard
+## Phương án Dashboard dự phòng (không yêu cầu thực hiện lúc này)
 
 1. Mở project `awake-illumination`, chọn environment **production**, chọn service **MySQL** (đúng ID phía trên).
 2. Mở **Data**. Chọn database `findit_db` nếu có bộ chọn; SQL đính kèm dùng tên database đầy đủ nên không phụ thuộc database mặc định.

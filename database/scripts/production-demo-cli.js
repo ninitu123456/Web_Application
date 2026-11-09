@@ -17,13 +17,14 @@ const digest=value=>createHash('sha256').update(JSON.stringify(value)).digest('h
 
 // This function also runs in memory over SSH. It opens no listener, starts no
 // app worker and does not install files or dependencies on the API container.
-async function databaseOperation(mode, input, dbConfig, api) {
+export async function databaseOperation(mode, input, dbConfig, api) {
   const { mysql, inspect, plan, seed, rollback, verifyMigrations, digest, randomBytes, bcrypt }=api;
   const c=await mysql.createConnection({...dbConfig,dateStrings:true,supportBigNumbers:true,bigNumberStrings:true});
   try {
     await c.query("SET SESSION time_zone='+00:00'");
     await c.query('SET SESSION innodb_lock_wait_timeout=3');
     await c.query("SET SESSION sql_mode='STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+    if(['inspect','plan'].includes(mode))await c.query('SET SESSION TRANSACTION READ ONLY');
     await verifyMigrations(c,dbConfig.database);
     if(['inspect','plan'].includes(mode)) {
       await c.query('SET TRANSACTION READ ONLY');
@@ -62,7 +63,7 @@ async function upload() {
       const {v2:cloudinary}=await import('cloudinary');
       let existing;
       try { existing=await cloudinary.api.resource(assetId(key)); }
-      catch(error) { if(error.http_code!==404)throw error; }
+      catch(error) { if((error.http_code??error.error?.http_code)!==404)throw error; }
       if(existing)throw new Error(`Unjournaled Cloudinary asset ${key}; verify ownership before resuming`);
       const asset=await storage.upload(bytes,'image/png',assetId(key));
       manifest[key]={...asset,sha256};
@@ -82,8 +83,28 @@ async function upload() {
   return {assets:Object.keys(manifest).length,itemImages:fixtures.length,manifestHash:digest(manifest)};
 }
 
+async function cloudinaryCheck() {
+  const storage=createImageStorage();
+  if(!storage)throw new Error('Cloudinary is not configured');
+  const {v2:cloudinary}=await import('cloudinary');
+  let ping;
+  try {ping=await cloudinary.api.ping({timeout:15000});}
+  catch(error){return {mode:'cloudinary-check',authenticated:false,cloudName:process.env.CLOUDINARY_CLOUD_NAME,httpCode:error.http_code??error.error?.http_code,errorCode:error.code??error.error?.code??'CLOUDINARY_API_FAILED',credentialsConfigured:['CLOUDINARY_CLOUD_NAME','CLOUDINARY_API_KEY','CLOUDINARY_API_SECRET'].every(k=>Boolean(process.env[k]))};}
+  const assets=[];
+  for(const key of Object.keys(imageSubjects)) {
+    const bytes=await readFile(new URL(`../demo-assets/${key}.png`,import.meta.url));
+    if(bytes.length<24 || bytes.subarray(0,8).toString('hex')!=='89504e470d0a1a0a' || bytes.length>5*1024*1024 || bytes.readUInt32BE(16)<1000 || bytes.readUInt32BE(20)<1000)throw new Error(`Invalid source PNG: ${key}`);
+    let existing=false;
+    try {await cloudinary.api.resource(assetId(key),{timeout:15000});existing=true;}
+    catch(error){if((error.http_code??error.error?.http_code)!==404)throw error;}
+    assets.push({key,publicId:assetId(key),bytes:bytes.length,width:bytes.readUInt32BE(16),height:bytes.readUInt32BE(20),sha256:createHash('sha256').update(bytes).digest('hex'),existing});
+  }
+  return {mode:'cloudinary-check',authenticated:ping.status==='ok',cloudName:process.env.CLOUDINARY_CLOUD_NAME,uploadPermission:'Not proven until an approved upload succeeds',assets,totalBytes:assets.reduce((sum,a)=>sum+a.bytes,0)};
+}
+
 async function main() {
   const anchor=process.env.FINDIT_DEMO_ANCHOR_DATE;
+  if(mode==='cloudinary-check')return cloudinaryCheck();
   if(mode==='upload')return upload();
   if(!anchor)throw new Error('FINDIT_DEMO_ANCHOR_DATE is required; use the approved client calendar date');
   let assets;
@@ -111,5 +132,6 @@ async function main() {
   return databaseOperation(mode,input,configFromEnv(),{mysql,bcrypt,randomBytes,digest,inspect,plan,seed,rollback,verifyMigrations});
 }
 if(process.argv[1]===fileURLToPath(import.meta.url))main().then(r=>console.log(JSON.stringify(r,null,2))).catch(e=>{
-  console.error(JSON.stringify({error:e.code||e.name,message:e.code?'Operation failed; credentials omitted':e.message}));process.exitCode=1;
+  const httpCode=e.http_code??e.error?.http_code;
+  console.error(JSON.stringify({error:e.code||e.name||'OPERATION_FAILED',httpCode,message:e.code||httpCode?'Operation failed; credentials omitted':e.message||'Operation failed; credentials omitted'}));process.exitCode=1;
 });

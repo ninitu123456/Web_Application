@@ -4,4 +4,4 @@
 
 Prompt chung và 10 subject chính xác được lưu ở `imagePrompt`/`imageSubjects` trong `../seeds/production-demo-data.js`; dùng built-in tool, không CLI fallback. Các file gốc được sao chép nguyên vẹn, không crop/edit. Cùng ảnh được dùng cho nhiều bài cùng loại và bảy cặp thử nghiệm, có thông báo trong mô tả bài.
 
-Chưa upload Cloudinary. Sau khi duyệt, uploader dùng adapter `server/config/cloudinary.js` hiện có và ghi `cloudinary-manifest.json` chứa publicId, URL công khai và SHA256, không chứa secret. File này chỉ được sinh khi upload thật; không điền URL giả hoặc URL local vào production.
+Đã upload Cloudinary production `n7vjm6qn` ngày 2026-11-09 sau phê duyệt riêng. Uploader dùng adapter `server/config/cloudinary.js` hiện có; `cloudinary-manifest.json` chứa publicId, URL thật và SHA256 nguồn/delivery, không chứa secret. Cả 10 URL đã GET thành công và hash bytes khớp nguồn. Không điền URL giả hoặc URL local vào production.

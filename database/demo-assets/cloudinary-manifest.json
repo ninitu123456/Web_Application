@@ -1,0 +1,62 @@
+{
+  "phone": {
+    "url": "https://res.cloudinary.com/n7vjm6qn/image/upload/v1794188893/findit/items/4a140afb-009f-4ff3-a8d4-85e9e72c0714.png",
+    "publicId": "findit/items/4a140afb-009f-4ff3-a8d4-85e9e72c0714",
+    "sha256": "b83d052555a2ad44fd788c7a8074b306addcaf952f56f21922f637c0774f83ad",
+    "deliverySha256": "b83d052555a2ad44fd788c7a8074b306addcaf952f56f21922f637c0774f83ad"
+  },
+  "laptop": {
+    "url": "https://res.cloudinary.com/n7vjm6qn/image/upload/v1794188899/findit/items/6ac75dfa-38fa-48f8-a185-383f12b0fc62.png",
+    "publicId": "findit/items/6ac75dfa-38fa-48f8-a185-383f12b0fc62",
+    "sha256": "44d10ea798d5625ae8f86fdc35636843adce237263dfb9ceed6dd3b5e8413993",
+    "deliverySha256": "44d10ea798d5625ae8f86fdc35636843adce237263dfb9ceed6dd3b5e8413993"
+  },
+  "headphones": {
+    "url": "https://res.cloudinary.com/n7vjm6qn/image/upload/v1794188903/findit/items/8b9b2446-537d-440c-a16e-182119c10ea4.png",
+    "publicId": "findit/items/8b9b2446-537d-440c-a16e-182119c10ea4",
+    "sha256": "0ce7a4c36188c07397f97ea69eaf3a1039e5e1d4342f409c18ba139e0c47c76f",
+    "deliverySha256": "0ce7a4c36188c07397f97ea69eaf3a1039e5e1d4342f409c18ba139e0c47c76f"
+  },
+  "bag": {
+    "url": "https://res.cloudinary.com/n7vjm6qn/image/upload/v1794188906/findit/items/7eaad27c-e788-46b0-af12-ab88d791e9ed.png",
+    "publicId": "findit/items/7eaad27c-e788-46b0-af12-ab88d791e9ed",
+    "sha256": "4d8eecbac17653ebad5335ed3216e4f630c6a2539239e3d840a2a5a72c1707df",
+    "deliverySha256": "4d8eecbac17653ebad5335ed3216e4f630c6a2539239e3d840a2a5a72c1707df"
+  },
+  "wallet": {
+    "url": "https://res.cloudinary.com/n7vjm6qn/image/upload/v1794188911/findit/items/76e5a290-d801-49b9-a05d-e954e487d7d1.png",
+    "publicId": "findit/items/76e5a290-d801-49b9-a05d-e954e487d7d1",
+    "sha256": "3ff06dbe1a6de042b18306ab9334b87550bdfbaae183bf089ab2745091a51108",
+    "deliverySha256": "3ff06dbe1a6de042b18306ab9334b87550bdfbaae183bf089ab2745091a51108"
+  },
+  "card": {
+    "url": "https://res.cloudinary.com/n7vjm6qn/image/upload/v1794188915/findit/items/1341ca4b-e53a-4ef4-a77c-4f882f323780.png",
+    "publicId": "findit/items/1341ca4b-e53a-4ef4-a77c-4f882f323780",
+    "sha256": "a6e97924f501a52c65eb92bcd5c0f314522fc8fe088d0b6e4eebbbe5861e5428",
+    "deliverySha256": "a6e97924f501a52c65eb92bcd5c0f314522fc8fe088d0b6e4eebbbe5861e5428"
+  },
+  "keys": {
+    "url": "https://res.cloudinary.com/n7vjm6qn/image/upload/v1794188920/findit/items/902e6609-c16e-424c-a124-43a040182324.png",
+    "publicId": "findit/items/902e6609-c16e-424c-a124-43a040182324",
+    "sha256": "1dd27e6c0ec2dabeeb62361f6b1cc8a9c2948ed8593d0db94bceb8b760987669",
+    "deliverySha256": "1dd27e6c0ec2dabeeb62361f6b1cc8a9c2948ed8593d0db94bceb8b760987669"
+  },
+  "bottle": {
+    "url": "https://res.cloudinary.com/n7vjm6qn/image/upload/v1794188924/findit/items/aef39302-ee70-483c-a6f8-8b563d40a052.png",
+    "publicId": "findit/items/aef39302-ee70-483c-a6f8-8b563d40a052",
+    "sha256": "b1599effdb511f416129e00f8c8dc82102cdf76baf9481c37495610c66457658",
+    "deliverySha256": "b1599effdb511f416129e00f8c8dc82102cdf76baf9481c37495610c66457658"
+  },
+  "books": {
+    "url": "https://res.cloudinary.com/n7vjm6qn/image/upload/v1794188928/findit/items/73f5fd3c-a70f-4984-a63d-cecce4024f1d.png",
+    "publicId": "findit/items/73f5fd3c-a70f-4984-a63d-cecce4024f1d",
+    "sha256": "0dc1f3b9e609f55fd11fef24f7b166dd5019eeaab400d1fbbfd34d288add78ff",
+    "deliverySha256": "0dc1f3b9e609f55fd11fef24f7b166dd5019eeaab400d1fbbfd34d288add78ff"
+  },
+  "accessory": {
+    "url": "https://res.cloudinary.com/n7vjm6qn/image/upload/v1794188932/findit/items/24b7a857-5c36-4edd-a60b-0755edb782b6.png",
+    "publicId": "findit/items/24b7a857-5c36-4edd-a60b-0755edb782b6",
+    "sha256": "2d9597daa44dd1c4259ec0724ac2efdb026d873259ae099863126e4fe6b12635",
+    "deliverySha256": "2d9597daa44dd1c4259ec0724ac2efdb026d873259ae099863126e4fe6b12635"
+  }
+}
