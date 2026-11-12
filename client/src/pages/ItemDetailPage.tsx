@@ -267,20 +267,22 @@ function Detail({ item }: { item: Item }) {
           )}
         </div>
       </div>
-      {!hidden && canShowVisualSuggestions({
-        enabled: import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_ENABLED === "true",
-        owner,
-        type: item.type,
-        status: item.status,
-      }) && (
-        <VisualSuggestions
-          itemId={item.id}
-          previewFixture={
-            import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE ===
-            "true"
-          }
-        />
-      )}
+      {!hidden &&
+        canShowVisualSuggestions({
+          enabled:
+            import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_ENABLED === "true",
+          owner,
+          type: item.type,
+          status: item.status,
+        }) && (
+          <VisualSuggestions
+            itemId={item.id}
+            previewFixture={
+              import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE ===
+              "true"
+            }
+          />
+        )}
       <div className="detail-tabs">
         <div className="tabs" role="tablist" aria-label="Thông tin liên quan">
           <button

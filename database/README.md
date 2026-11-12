@@ -1,8 +1,8 @@
 # FindIt — MySQL database
 
-Database gồm **11 bảng nghiệp vụ** và bảng kỹ thuật `_schema_migrations`, triển khai theo [ERD](../docs/erd.md), [yêu cầu](../docs/requirements.md), [quy tắc nghiệp vụ](../docs/business-rules.md) và [hợp đồng API](../docs/api-contract.md).
+Database gồm **11 bảng nghiệp vụ, 11 bảng AI Visual, 4 bảng tài khoản/chat** và bảng kỹ thuật `_schema_migrations`, triển khai theo [ERD](../docs/erd.md), [yêu cầu](../docs/requirements.md), [quy tắc nghiệp vụ](../docs/business-rules.md) và [hợp đồng API](../docs/api-contract.md).
 
-Có 25 migrations: `001–011` tạo các bảng nghiệp vụ, `012–013` bổ sung indexes/ràng buộc, `014–016` hỗ trợ embeddings và candidates AI, `017–024` hỗ trợ revision/snapshot/decision/outbox và demo fixture AI, `025` tạo revision gốc.
+Có **30 file migration** trong manifest: `001–011` tạo các bảng nghiệp vụ, `012–013` bổ sung indexes/ràng buộc, nhóm AI `014–016` hỗ trợ embeddings và candidates, `017–024` hỗ trợ revision/snapshot/decision/outbox và demo fixture, `025` tạo revision gốc. Năm migration tài khoản/chat gồm `014_session_version.sql`, `015_password_reset_tokens.sql`, `016_email_outbox.sql`, `017_conversations.sql`, `018_messages.sql`. Các tiền tố `014–018` được dùng ở hai nhánh trước khi tích hợp; tên file đầy đủ và checksum là định danh trong ledger, không được đổi số hoặc sửa các file đã công bố.
 
 ## Chuẩn bị và cấu hình
 

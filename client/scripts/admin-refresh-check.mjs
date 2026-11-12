@@ -24,9 +24,7 @@ export async function adminRefreshCheck({ page, url, artifacts, reportId }) {
     "data-tooltip",
     /thao tác/,
   );
-  await page
-    .getByText("Xem bảng số liệu", { exact: true })
-    .click();
+  await page.getByText("Xem bảng số liệu", { exact: true }).click();
   await expect(page.locator(".admin-data-table table")).toBeVisible();
   await page.screenshot({
     path: resolve(artifacts, "desktop-admin-dashboard.png"),

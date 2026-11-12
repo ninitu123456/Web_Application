@@ -5,6 +5,7 @@ import { createMatchingRepository } from './matching.repository.js';
 import { deleteAiVisualCandidatesIfPresent } from '../ai-visual/invalidation.js';
 import { bumpAiVisualCatalogRevision } from '../ai-visual/catalog-revision.js';
 import { hiddenItemSql } from '../utils/item-visibility.js';
+import { lockActiveAdmin } from './admin-actor.js';
 
 const columns = `i.item_id, i.user_id, i.category_id, i.location_id, i.title, i.description, i.type, i.color, i.event_date, i.status, i.created_at, i.updated_at, c.name AS category_name, l.name AS location_name, ${hiddenItemSql()} AS is_hidden`;
 const joins = 'FROM items i JOIN categories c ON c.category_id = i.category_id JOIN locations l ON l.location_id = i.location_id';
@@ -22,11 +23,12 @@ export function createItemRepository(pool, execute = (sql, values = []) => query
   }
   return {
     // All Item mutations share this row lock, including close and image writes.
-    withLockedItem(id, operation, { matching = false, connection: session } = {}) {
+    withLockedItem(id, operation, { matching = false, connection: session, adminActor } = {}) {
       const transact = matching ? matchingTransaction : transaction;
       const runTransaction = session ? (callback) => inTransaction(session, callback) : (callback) => transact(pool, callback);
       return runTransaction(async (connection) => {
         const run = (sql, values = []) => connection.query({ sql, timeout: databaseTimeout }, values);
+        if (adminActor !== undefined) await lockActiveAdmin(run, adminActor);
         await run('SELECT item_id FROM items WHERE item_id = ? FOR UPDATE', [id]);
         const scoped = createItemRepository(pool, run, { lockReferences: true });
         scoped.recordClose = async (identity, previousStatus) => {

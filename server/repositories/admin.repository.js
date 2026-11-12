@@ -2,6 +2,7 @@
 
 import { createAdminModerationRepository } from './admin-moderation.repository.js';
 import { bumpAiVisualCatalogRevision } from '../ai-visual/catalog-revision.js';
+import { lockActiveAdmin } from './admin-actor.js';
 const userColumns = 'u.user_id, u.full_name, u.email, u.account_status, u.created_at, u.updated_at, r.name AS role';
 const tableConfig = { categories: { table: 'categories', id: 'category_id', entity: 'CATEGORY' }, locations: { table: 'locations', id: 'location_id', entity: 'LOCATION' } };
 export function createAdminRepository(pool, execute = (sql, values = []) => query(pool, sql, values)) {
@@ -62,6 +63,7 @@ export function createAdminRepository(pool, execute = (sql, values = []) => quer
     async createLookup(actorId, kind, input) {
       const cfg = tableConfig[kind], entity = cfg.entity;
       return repo.withTransaction(async (source) => {
+        await lockActiveAdmin(source.run, actorId);
         const [result] = await source.run(`INSERT INTO ${cfg.table} (name) VALUES (?)`, [input.name]);
         await source.run('INSERT INTO activity_logs (user_id, action, entity_type, entity_id, details, created_at) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())', [actorId, `${entity}_CREATED`, entity, result.insertId, JSON.stringify({ name: input.name })]);
         const [[row]] = await source.run(`SELECT ${cfg.id}, name, is_active FROM ${cfg.table} WHERE ${cfg.id}=?`, [result.insertId]);
@@ -71,6 +73,7 @@ export function createAdminRepository(pool, execute = (sql, values = []) => quer
     async updateLookup(actorId, kind, id, input, deactivate = false) {
       const cfg = tableConfig[kind], entity = cfg.entity;
       return repo.withTransaction(async (source) => {
+        await lockActiveAdmin(source.run, actorId);
         const [[row]] = await source.run(`SELECT ${cfg.id}, name, is_active FROM ${cfg.table} WHERE ${cfg.id}=? FOR UPDATE`, [id]);
         if (!row) return undefined;
         const name = input.name ?? row.name;

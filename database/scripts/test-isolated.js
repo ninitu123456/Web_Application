@@ -76,7 +76,7 @@ try {
     const code = await new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', resolve); });
     if (code !== 0) throw new Error('Isolated MySQL integration tests failed');
   }
-  if (process.argv.includes('--all') || process.argv.includes('--security')) {
+  if (process.argv.includes('--all') || process.argv.includes('--security') || process.argv.includes('--ai-real-e2e')) {
     await execute([fileURLToPath(new URL('./cli.js', import.meta.url)), 'setup']);
     // One runner reports all suites and cannot silently skip a failed command.
     const files = [];
@@ -88,7 +88,8 @@ try {
     }
     const suite = process.argv.find((arg) => arg.startsWith('--suite='))?.slice(8);
     if (suite && !/^[a-z-]+\.integration\.js$/.test(suite)) throw new Error('Invalid integration suite');
-    const selected = suite ? files.filter((name) => name.endsWith('/' + suite) || name.endsWith('\\' + suite)) : process.argv.includes('--security') ? files.filter((name) => name.endsWith('security.integration.js')) : files;
+    const selected = process.argv.includes('--ai-real-e2e') ? [fileURLToPath(new URL('../../server/tests/ai-real-e2e.js', import.meta.url))]
+      : suite ? files.filter((name) => name.endsWith('/' + suite) || name.endsWith('\\' + suite)) : process.argv.includes('--security') ? files.filter((name) => name.endsWith('security.integration.js')) : files;
     if (!selected.length) throw new Error('No integration suites found');
     await execute(['--test', ...(process.env.FINDIT_COVERAGE_TAP === '1' ? ['--test-reporter=tap'] : []), ...selected]);
   } else await execute(['--test', fileURLToPath(new URL('../tests/mysql.integration.js', import.meta.url))]);
