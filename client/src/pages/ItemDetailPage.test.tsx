@@ -185,3 +185,22 @@ describe("redesigned item detail with AI integration", () => {
     },
   );
 });
+
+describe("owner-only suggestions UX", () => {
+  it.each(["USER", "ADMIN", null] as const)(
+    "removes the entire suggestions tab/region for %s non-owner",
+    (role) => {
+      mocks.user = role
+        ? { id: 9, fullName: "Other", email: "other@example.test", role }
+        : null;
+      const html = render();
+      expect(html).not.toContain("Gợi ý cho bạn");
+      expect(html).not.toContain("Đăng nhập để xem gợi ý");
+      expect(
+        mocks.resource.mock.calls.some(([path]) =>
+          String(path).endsWith("/suggestions"),
+        ),
+      ).toBe(false);
+    },
+  );
+});

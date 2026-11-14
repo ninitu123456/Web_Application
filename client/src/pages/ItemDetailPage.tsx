@@ -15,7 +15,6 @@ import {
   Button,
   ConfirmDialog,
   dateLabel,
-  EmptyState,
   ErrorState,
   ItemImage,
   Loading,
@@ -54,8 +53,14 @@ function Detail({ item }: { item: Item }) {
   const owner = item.userId === user?.id;
   const hidden = item.visibility === "HIDDEN";
   const canInspect = item.type === "FOUND" && (owner || user?.role === "ADMIN");
+  const showSuggestions =
+    owner &&
+    !hidden &&
+    ["OPEN", "CLAIM_PENDING", "CLAIMED"].includes(item.status);
   const tab =
-    params.get("tab") === "claims" && canInspect ? "claims" : "matches";
+    canInspect && (params.get("tab") === "claims" || !showSuggestions)
+      ? "claims"
+      : "matches";
   async function startChat() {
     if (lock.current) return;
     lock.current = true;
@@ -263,67 +268,54 @@ function Detail({ item }: { item: Item }) {
           )}
         </div>
       </div>
-      <div className="detail-tabs">
-        <div className="tabs" role="tablist" aria-label="Thông tin liên quan">
-          <button
-            role="tab"
-            aria-selected={tab === "matches"}
-            className={tab === "matches" ? "active" : ""}
-            onClick={() => setParams({ tab: "matches" })}
-          >
-            Gợi ý cho bạn
-          </button>
-          {canInspect && (
-            <button
-              role="tab"
-              aria-selected={tab === "claims"}
-              className={tab === "claims" ? "active" : ""}
-              onClick={() => setParams({ tab: "claims" })}
-            >
-              Yêu cầu nhận được
-            </button>
-          )}
-        </div>
-        <div className="tab-content" role="tabpanel">
-          {tab === "claims" ? (
-            <ReceivedClaims itemId={item.id} canAct={owner} />
-          ) : hidden ? (
-            <EmptyState title="Bài đã gỡ không tham gia gợi ý đồ vật" />
-          ) : owner &&
-            ["OPEN", "CLAIM_PENDING", "CLAIMED"].includes(item.status) ? (
-            <VisualSuggestions
-              key={item.id + ":" + user?.id}
-              itemId={item.id}
-              enabled={canShowVisualSuggestions({
-                enabled:
-                  import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_ENABLED === "true",
-                owner,
-                type: item.type,
-                status: item.status,
-              })}
-              previewFixture={
-                import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE ===
-                "true"
-              }
-            />
-          ) : (
-            <EmptyState
-              title={
-                user
-                  ? "Gợi ý riêng chỉ dành cho chủ bài đang hoạt động"
-                  : "Khám phá những kết nối có thể phù hợp"
-              }
-            >
-              <Link
-                className="button secondary"
-                to={`/dang-nhap?next=${encodeURIComponent(`/do-vat/${item.id}`)}`}
+      {(showSuggestions || canInspect) && (
+        <div className="detail-tabs">
+          <div className="tabs" role="tablist" aria-label="Thông tin liên quan">
+            {showSuggestions && (
+              <button
+                role="tab"
+                aria-selected={tab === "matches"}
+                className={tab === "matches" ? "active" : ""}
+                onClick={() => setParams({ tab: "matches" })}
               >
-                Đăng nhập để xem gợi ý ↗
-              </Link>
-            </EmptyState>
-          )}
+                Gợi ý cho bạn
+              </button>
+            )}
+            {canInspect && (
+              <button
+                role="tab"
+                aria-selected={tab === "claims"}
+                className={tab === "claims" ? "active" : ""}
+                onClick={() => setParams({ tab: "claims" })}
+              >
+                Yêu cầu nhận được
+              </button>
+            )}
+          </div>
+          <div className="tab-content" role="tabpanel">
+            {tab === "claims" ? (
+              <ReceivedClaims itemId={item.id} canAct={owner} />
+            ) : showSuggestions ? (
+              <VisualSuggestions
+                key={item.id + ":" + user?.id}
+                itemId={item.id}
+                enabled={canShowVisualSuggestions({
+                  enabled:
+                    import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_ENABLED ===
+                    "true",
+                  owner,
+                  type: item.type,
+                  status: item.status,
+                })}
+                previewFixture={
+                  import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE ===
+                  "true"
+                }
+              />
+            ) : null}
+          </div>
         </div>
-      </div>
+      )}
       {claimOpen && (
         <ClaimModal itemId={item.id} close={() => setClaimOpen(false)} />
       )}
