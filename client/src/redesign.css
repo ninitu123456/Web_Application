@@ -1996,3 +1996,100 @@ main[tabindex="-1"]:focus {
 .hero-tag {
   color: var(--ink);
 }
+
+/* Bound the mobile thread above the floating nav/visual viewport. Only history
+   scrolls; the heading and composer never compete with a 55vh history minimum. */
+@media (max-width: 760px) {
+  .messages-page {
+    display: flex;
+    flex-direction: column;
+    height: var(--chat-height, calc(100dvh - 200px));
+    min-height: 0;
+  }
+  .messages-page > .page-heading {
+    flex-shrink: 0;
+  }
+  .messages-page[data-compact="true"] > .page-heading {
+    display: none;
+  }
+  .messages-page .chat-layout {
+    flex: 1;
+    min-height: 0;
+  }
+  .messages-page .chat-main {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    padding: 16px;
+  }
+  .messages-page .chat-heading,
+  .messages-page .chat-compose {
+    flex-shrink: 0;
+  }
+  .messages-page .chat-heading h2 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .messages-page .chat-history {
+    min-height: 0;
+    max-height: none;
+    overscroll-behavior: contain;
+  }
+  .messages-page .chat-compose textarea {
+    min-height: 54px;
+    max-height: 96px;
+    resize: none;
+  }
+  .messages-page .chat-list {
+    min-height: 0;
+    max-height: 100%;
+  }
+}
+
+/* Shared cards carry both sources, with readable metadata and no raw cosine. */
+.unified-suggestions {
+  margin-block: 28px;
+}
+.unified-suggestions .visual-suggestions {
+  margin-top: 20px;
+  padding: 20px;
+}
+.unified-suggestions .visual-suggestion-card {
+  display: block;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+.unified-suggestions .match-reasons,
+.unified-suggestions .card-meta,
+.unified-suggestions .card-location,
+.unified-suggestions .badge {
+  font-size: 13px;
+}
+.unified-suggestions .match-reasons p,
+.unified-suggestions h3 a {
+  font-size: 14px;
+}
+.unified-suggestions .match-reasons {
+  padding: 14px 4px;
+}
+.suggestion-reasons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.similarity-band {
+  font-weight: 600;
+  color: var(--forest);
+}
+.suggestion-skeleton {
+  min-height: 390px;
+  border-radius: var(--radius);
+  background: var(--card);
+}
+.unified-suggestions .visual-suggestion-card .item-card {
+  height: auto;
+}

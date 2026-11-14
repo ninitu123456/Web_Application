@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import type { Item, User, VisualSuggestion } from "../lib/types";
+import type { Item, User, Suggestion } from "../lib/types";
 import { ItemDetailPage } from "./ItemDetailPage";
 
 const mocks = vi.hoisted(() => ({
@@ -32,16 +32,16 @@ const item: Item = {
   createdAt: "2026-11-07",
   updatedAt: "2026-11-07",
 };
-const suggestion: VisualSuggestion = {
-  itemId: 6,
-  title: "FOUND local backpack",
-  description: "Synthetic suggestion",
-  category: "Bags",
-  location: "Library",
-  color: null,
-  eventDate: "2026-11-07",
-  thumbnailUrl: null,
-  cosineScore: 0.9739,
+const suggestion: Suggestion = {
+  item: {
+    ...item,
+    id: 6,
+    userId: 9,
+    type: "FOUND",
+    title: "FOUND local backpack",
+  },
+  reasons: ["IMAGE"],
+  similarityBand: "VERY_HIGH",
 };
 let current: Item;
 let panel: Record<string, unknown>;
@@ -70,11 +70,18 @@ beforeEach(() => {
     role: "USER",
   };
   current = { ...item };
-  panel = { loading: false, data: { success: true, data: [suggestion] } };
+  panel = {
+    loading: false,
+    data: {
+      success: true,
+      visualState: "ready",
+      data: { visual: [suggestion], information: [], totalUnique: 1 },
+    },
+  };
   mocks.resource.mockImplementation((path: string) =>
     path === "/items/5"
       ? { loading: false, data: { success: true, data: current } }
-      : path.endsWith("/visual-suggestions")
+      : path.endsWith("/suggestions")
         ? panel
         : { loading: false, data: { success: true, data: [] } },
   );
@@ -85,17 +92,47 @@ afterEach(() => {
 });
 
 describe("redesigned item detail with AI integration", () => {
+  it("offers reverse LOST suggestions to the FOUND owner without changing Claim controls", () => {
+    current = { ...item, type: "FOUND" };
+    panel = {
+      loading: false,
+      data: {
+        success: true,
+        visualState: "ready",
+        data: {
+          visual: [
+            {
+              ...suggestion,
+              item: {
+                ...suggestion.item,
+                type: "LOST",
+                title: "LOST reverse suggestion",
+              },
+            },
+          ],
+          information: [],
+          totalUnique: 1,
+        },
+      },
+    };
+    const html = render();
+    expect(html).toContain("LOST reverse suggestion");
+    expect(html).toContain("Giống về hình ảnh");
+    expect(html).toContain("Yêu cầu nhận được");
+    expect(html).not.toContain("Đây có thể là đồ của tôi");
+  });
   it("keeps owner AI suggestions, official matches tab, detail link and explore navigation together", () => {
     const html = render();
-    expect(html).toContain("Gợi ý hình ảnh AI");
+    expect(html).toContain("Giống về hình ảnh");
     expect(html).toContain("FOUND local backpack");
-    expect(html).toContain("0.974");
+    expect(html).toContain("Rất giống");
+    expect(html).not.toContain("0.974");
     expect(html).toContain('href="/do-vat/6"');
     expect(html).toContain('href="/kham-pha?type=LOST"');
-    expect(html).toContain("Gợi ý đồ vật");
+    expect(html).toContain("Gợi ý cho bạn");
     expect(mocks.resource).toHaveBeenCalledWith(
-      "/items/5/visual-suggestions",
-      {},
+      "/items/5/suggestions",
+      { page: 1, limit: 6, visual: "true" },
       0,
     );
   });
@@ -118,9 +155,7 @@ describe("redesigned item detail with AI integration", () => {
   it("hides AI suggestions for an owner when moderation hides the LOST item", () => {
     current = { ...item, visibility: "HIDDEN" };
     expect(render()).not.toContain("visual-suggestions-title");
-    expect(mocks.resource).not.toHaveBeenCalledWith(
-      "/items/5/visual-suggestions",
-    );
+    expect(mocks.resource).not.toHaveBeenCalledWith("/items/5/suggestions");
   });
   it.each(["loading", "empty", "error"] as const)(
     "keeps the AI %s state inside the redesigned LOST page",
@@ -130,9 +165,16 @@ describe("redesigned item detail with AI integration", () => {
           ? { loading: true }
           : state === "error"
             ? { loading: false, error: new Error("network") }
-            : { loading: false, data: { success: true, data: [] } };
+            : {
+                loading: false,
+                data: {
+                  success: true,
+                  visualState: "ready",
+                  data: { visual: [], information: [], totalUnique: 0 },
+                },
+              };
       const html = render();
-      expect(html).toContain("visual-suggestions-title");
+      expect(html).toContain('id="suggestions-title"');
       expect(html).toContain(
         state === "loading"
           ? 'role="status"'

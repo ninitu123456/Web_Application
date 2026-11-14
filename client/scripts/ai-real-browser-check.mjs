@@ -30,6 +30,23 @@ export async function realAiBrowser({ url, email, password, artifacts }) {
       page.getByRole("link", { name: "Bài của tôi", exact: true }).first(),
     ).toBeVisible();
     return {
+      async loginAs(email, password) {
+        if (await page.locator(".account summary").count()) {
+          await page.locator(".account summary").click();
+          await page
+            .getByRole("button", { name: "Đăng xuất", exact: true })
+            .click();
+        }
+        await page.goto(url + "/dang-nhap");
+        await page.getByLabel("Email", { exact: true }).fill(email);
+        await page.getByLabel("Mật khẩu", { exact: true }).fill(password);
+        await page
+          .getByRole("button", { name: "Đăng nhập →", exact: true })
+          .click();
+        await expect(
+          page.getByRole("link", { name: "Bài của tôi", exact: true }).first(),
+        ).toBeVisible();
+      },
       async upload(itemId, images) {
         await page.goto(url + `/do-vat/${itemId}/sua`);
         await expect(
@@ -54,7 +71,7 @@ export async function realAiBrowser({ url, email, password, artifacts }) {
         await page.goto(url + `/do-vat/${itemId}`);
         const panel = page.locator(".visual-suggestions");
         await expect(
-          panel.getByRole("heading", { name: "Vật phẩm có thể tương tự" }),
+          panel.getByRole("heading", { name: "Giống về hình ảnh" }),
         ).toBeVisible();
         await expect(panel.locator(".visual-suggestion-card")).toHaveCount(
           expected.length,
@@ -62,15 +79,20 @@ export async function realAiBrowser({ url, email, password, artifacts }) {
         for (const [index, item] of expected.entries()) {
           const card = panel.locator(".visual-suggestion-card").nth(index);
           await expect(card.locator("h3")).toHaveText(item.title);
-          await expect(
-            card.locator(".visual-suggestion-score strong"),
-          ).toHaveText(item.cosineScore.toFixed(3));
-          await expect(card.getByRole("img")).toBeVisible();
-          await card.getByRole("img").scrollIntoViewIfNeeded();
+          await expect(card.locator(".similarity-band")).toHaveText(
+            item.cosineScore >= 0.85
+              ? "Rất giống"
+              : item.cosineScore >= 0.7
+                ? "Khá giống"
+                : "Có thể liên quan",
+          );
+          await expect(card).not.toContainText(item.cosineScore.toFixed(3));
+          await expect(card.locator(".card-image img")).toBeVisible();
+          await card.locator(".card-image img").scrollIntoViewIfNeeded();
           await expect
             .poll(() =>
               card
-                .getByRole("img")
+                .locator(".card-image img")
                 .evaluate((image) => image.complete && image.naturalWidth > 0),
             )
             .toBe(true);
@@ -89,7 +111,10 @@ export async function realAiBrowser({ url, email, password, artifacts }) {
               ),
             );
             await page.screenshot({
-              path: resolve(artifacts, `real-clip-${width}.png`),
+              path: resolve(
+                artifacts,
+                `real-clip-${screenshot === "found" ? "found-" : ""}${width}.png`,
+              ),
               fullPage: true,
             });
           }

@@ -169,11 +169,11 @@ export async function aiUiBrowserCheck({
     await page
       .getByRole("button", { name: "Đăng nhập →", exact: true })
       .click();
-    const panel = page.locator(".visual-suggestions");
+    const panel = page.locator(".unified-suggestions");
     await expect(
-      panel.getByRole("heading", { name: "Vật phẩm có thể tương tự" }),
+      panel.getByRole("heading", { name: "Gợi ý cho bạn" }),
     ).toBeVisible();
-    await expect(panel.getByText("0.980", { exact: true })).toBeVisible();
+    await expect(panel.getByText("Rất giống", { exact: true })).toBeVisible();
     await expect(panel.getByRole("note")).toContainText("Dữ liệu minh họa");
     for (const width of [360, 390, 768, 1024, 1440]) {
       await page.setViewportSize({ width, height: 1000 });
@@ -184,7 +184,7 @@ export async function aiUiBrowserCheck({
         `AI detail fits ${width}px`,
       );
       await expect(
-        panel.getByRole("link", { name: "Xem bài đăng", exact: true }),
+        panel.getByRole("link", { name: found.title, exact: true }),
       ).toBeVisible();
       if (width === 390 || width === 1440)
         await panel.screenshot({
@@ -196,9 +196,7 @@ export async function aiUiBrowserCheck({
           fullPage: true,
         });
     }
-    await panel
-      .getByRole("link", { name: "Xem bài đăng", exact: true })
-      .click();
+    await panel.getByRole("link", { name: found.title, exact: true }).click();
     await expect(
       page.getByRole("heading", { name: "Nhận lại đồ như thế nào?" }),
     ).toBeVisible();
@@ -210,7 +208,7 @@ export async function aiUiBrowserCheck({
       path: resolve(artifacts, "ai-ui-found-desktop.png"),
       fullPage: true,
     });
-    const pattern = `**/api/items/${lost.id}/visual-suggestions`;
+    const pattern = `**/api/items/${lost.id}/suggestions?*`;
     let release;
     const gate = new Promise((done) => {
       release = done;
@@ -230,7 +228,7 @@ export async function aiUiBrowserCheck({
       fullPage: true,
     });
     release();
-    await expect(panel.getByText("0.980", { exact: true })).toBeVisible();
+    await expect(panel.getByText("Rất giống", { exact: true })).toBeVisible();
     await query(pool, "DELETE FROM ai_visual_candidates WHERE lost_item_id=?", [
       lost.id,
     ]);
@@ -263,7 +261,7 @@ export async function aiUiBrowserCheck({
       fullPage: true,
     });
     await panel.getByRole("button", { name: "Thử tải lại" }).click();
-    await expect(panel.getByText("0.980", { exact: true })).toBeVisible();
+    await expect(panel.getByText("Rất giống", { exact: true })).toBeVisible();
     await query(
       pool,
       "INSERT INTO ai_visual_notification_preferences(user_id,enabled,updated_at) VALUES(?,TRUE,UTC_TIMESTAMP())",

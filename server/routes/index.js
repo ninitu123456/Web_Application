@@ -10,7 +10,7 @@ import { notificationRoutes } from './notification.routes.js';
 import { reportRoutes } from './report.routes.js';
 import { adminRoutes } from './admin.routes.js';
 
-export function apiRoutes(healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, uploadLimiter, lookupService, visualSuggestionsService, chatService, passwordResetService) {
+export function apiRoutes(healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, uploadLimiter, lookupService, visualSuggestionsService, chatService, passwordResetService, suggestionsService) {
   const router = Router();
   if (lookupService) {
     const lookup = createLookupController(lookupService);
@@ -22,7 +22,7 @@ export function apiRoutes(healthService, authService, userService, itemService, 
     router.use('/auth', authRoutes(authService, passwordResetService));
     if (chatService) router.use('/conversations', chatRoutes(authService, chatService));
     router.use('/users', userRoutes(authService, userService));
-    if (itemService) router.use('/items', itemRoutes(authService, itemService, matchingService, claimService, uploadLimiter, visualSuggestionsService));
+    if (itemService) router.use('/items', itemRoutes(authService, itemService, matchingService, claimService, uploadLimiter, visualSuggestionsService, suggestionsService));
     if (claimService) router.use('/claims', claimRoutes(authService, claimService));
     if (notificationService) router.use('/notifications', notificationRoutes(authService, notificationService));
     if (reportService) {

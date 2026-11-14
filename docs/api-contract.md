@@ -293,11 +293,11 @@ Hệ thống phải trả về danh sách rỗng thay vì thông báo lỗi.
 
 **Endpoint:** `GET /api/items/:id/visual-suggestions`
 
-**Xác thực và quyền:** Bắt buộc JWT hợp lệ của người dùng `ACTIVE`. Chỉ chủ sở hữu bài LOST đang hoạt động (`OPEN`, `CLAIM_PENDING`, `CLAIMED`) được đọc gợi ý; bài không tồn tại, không thuộc người gọi, sai loại hoặc không hoạt động đều trả `404` chung để tránh tiết lộ bản ghi.
+**Xác thực và quyền:** Bắt buộc JWT hợp lệ của người dùng `ACTIVE`. Chỉ chủ sở hữu bài LOST hoặc FOUND đang hoạt động (`OPEN`, `CLAIM_PENDING`, `CLAIMED`) được đọc gợi ý; bài không tồn tại, không thuộc người gọi, sai loại hoặc không hoạt động đều trả `404` chung để tránh tiết lộ bản ghi.
 
 **Feature flags:** Backend `AI_VISUAL_SUGGESTIONS_ENABLED=true` và frontend `VITE_AI_VISUAL_SUGGESTIONS_ENABLED=true`; cả hai mặc định tắt. Chế độ local yêu cầu `NODE_ENV=development|test`, `DB_HOST=127.0.0.1`, cổng khác `3306`/`3311` và `FINDIT_ISOLATED_DATADIR` dưới `%TEMP%\findit-mysql-*\data`, có kiểm tra `@@datadir` và `@@port`. Chế độ production là nhánh cấu hình riêng, yêu cầu `AI_VISUAL_MODE=production`, `NODE_ENV=production`, đúng service role và cấu hình DB tường minh; xem [production deployment](AI-PRODUCTION-DEPLOYMENT.md). Không tự chạy migration. Production giữ mọi cờ AI notification processing/shadow/demo bằng `false`. `VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE=true` chỉ dùng cho build test local có marker tường minh; build triển khai từ chối fixture. Gợi ý production cần đủ schema hiện tại, không chỉ migrations 014–016.
 
-**Phản hồi:** `200 OK`, tối đa ba FOUND đang hoạt động và đã có embedding mới nhất cho mọi ảnh. Ứng viên thiếu embedding hiện hành, sai model/revision, sai trạng thái hoặc không còn truy cập được sẽ bị loại. Khi các bảng AI chưa được cài, trả mảng rỗng; các lỗi database khác vẫn theo xử lý lỗi chung.
+**Phản hồi:** `200 OK`, tối đa ba bài đối loại đang hoạt động và đã có embedding mới nhất cho mọi ảnh. Ứng viên thiếu embedding hiện hành, sai model/revision, sai trạng thái hoặc không còn truy cập được sẽ bị loại. Khi các bảng AI chưa được cài, trả mảng rỗng; các lỗi database khác vẫn theo xử lý lỗi chung.
 
 ```json
 {
@@ -841,3 +841,13 @@ Các endpoint dưới đây **đã có trong hợp đồng**, được cập nh�
 
 Khi có dữ liệu, `data` vẫn là mảng DTO hiện có của từng endpoint. Trang trống hoặc vượt phạm vi trả `200` với `data: []`. Item không tồn tại trả `404`. Thứ tự Claim: mới nhất trước (`submitted_at DESC`, `claim_id DESC`); Match: điểm cao trước (`match_score DESC`, `match_id ASC`).
 
+
+### 4.3. Gợi ý hợp nhất theo chủ bài
+
+`GET /api/items/:id/suggestions?page=1&limit=6&visual=true` yêu cầu ACTIVE owner (USER hoặc ADMIN); ADMIN không được xem thay owner. Bài phải PUBLIC và OPEN/CLAIM_PENDING/CLAIMED. Sai owner, ẩn, đóng hoặc đã trả: 404 chung; không JWT: 401. Query chỉ page/limit/visual=true|false; phân trang dùng giới hạn hiện hành. Header no-store.
+
+Envelope: `{success:true,data:{visual:Suggestion[],information:Suggestion[],totalUnique:number},visualState,pagination}`. Mỗi Suggestion có `item:ItemDto`, `reasons:[IMAGE|INFORMATION]`, optional `similarityBand`, `informationScore`, `informationReasons`. Chỉ có dữ liệu Item công khai. Ba kết quả visual được ghim phía trên; các ID đó được loại khỏi SQL COUNT và phân trang information trước LIMIT/OFFSET. Một thẻ có cả hai nguồn mang cả hai lý do. Pagination.total là số thẻ information chưa nằm ở visual; totalUnique là tổng hai nhóm. Snapshot nhất quán trong mỗi request; dữ liệu có thể thay đổi giữa request như các danh sách hiện hành.
+
+Band hiển thị: VERY_HIGH >=0.85 (Rất giống), HIGH >=0.70 (Khá giống), còn lại MEDIUM (Có thể liên quan). Đây là ngưỡng trình bày **chưa hiệu chỉnh trên ảnh thật**, không lọc candidate hoặc đổi threshold rule-based >=50/100. Endpoint hợp nhất không xuất raw cosine; endpoint visual legacy giữ contract kỹ thuật cũ. AI disabled không làm mất gợi ý rule-based. visualState=disabled|processing|ready|error; UI polling 10s khi processing và 30s khi ready/error, dọn timer khi unmount/session/item thay đổi và dừng khi lỗi HTTP cần Retry.
+
+Không tạo Match/Claim/notification/email trong đường đọc này. Cảnh báo UI: “Gợi ý không phải là xác nhận quyền sở hữu.”

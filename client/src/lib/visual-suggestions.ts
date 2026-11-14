@@ -14,7 +14,7 @@ export function canShowVisualSuggestions({
   return (
     enabled &&
     owner &&
-    type === "LOST" &&
+    ["LOST", "FOUND"].includes(type) &&
     ["OPEN", "CLAIM_PENDING", "CLAIMED"].includes(status)
   );
 }

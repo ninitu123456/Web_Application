@@ -13,18 +13,20 @@ export function createVisualSuggestionsService(repository, { enabled = false, pr
     async forOwner(identity, itemId, { withState = false } = {}) {
       if (!enabled) throw notFound();
       if (!identity || !['USER', 'ADMIN'].includes(identity.role)) throw new HttpError(401, 'Chưa xác thực hoặc token không hợp lệ');
-      if (!await repository.isEligibleOwnedLostItem(itemId, identity.id)) throw notFound();
+      const eligible=repository.isEligibleOwnedItem??repository.isEligibleOwnedLostItem;
+      const list=repository.listForOwnedItem??repository.listForLostItem;
+      if (!await eligible.call(repository,itemId, identity.id)) throw notFound();
       let rows, state = 'ready';
       try {
         state = await repository.processingState?.(itemId) ?? 'ready';
-        rows = await repository.listForLostItem(itemId, 3, identity.id);
+        rows = await list.call(repository,itemId, 3, identity.id);
       }
       catch (error) {
         if (isMissingAiVisualTable(error) && !production) rows = [];
         else throw error;
       }
       // Revalidate after the reads; never disclose a source that became hidden.
-      if (!await repository.isEligibleOwnedLostItem(itemId, identity.id)) throw notFound();
+      if (!await eligible.call(repository,itemId, identity.id)) throw notFound();
       const data = rows.map((row) => ({
         itemId: publicId(row.item_id),
         title: row.title,

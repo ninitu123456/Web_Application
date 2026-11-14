@@ -1,3 +1,5 @@
+import { createSuggestionsService } from '../services/suggestions.service.js';
+import { createSuggestionsRepository } from '../repositories/suggestions.repository.js';
 // Opt-in, real pinned CLIP inference. Invoked only by the disposable runner's
 // --ai-real-e2e mode, never skipped or substituted in ordinary CI regression.
 import { assertIsolatedInstance } from '../../database/scripts/assert-isolated.js';
@@ -94,7 +96,7 @@ test('real CLIP: upload -> jobs -> embeddings -> matching -> owner API -> browse
     const claims = createClaimService(createClaimRepository(pool));
     const admins = createAdminService(createAdminRepository(pool), items);
     const suggestions = createVisualSuggestionsService(createVisualSuggestionsRepository(pool), { enabled: true });
-    const apiApp = createApp({ healthService: { async check() { return {}; } }, authService: auth, userService: createUserService(users),
+    const apiApp = createApp({ suggestionsService: createSuggestionsService(createSuggestionsRepository(pool, { visualEnabled: true })), healthService: { async check() { return {}; } }, authService: auth, userService: createUserService(users),
       itemService: items, lookupService: createLookupService(createLookupRepository(pool)), visualSuggestionsService: suggestions,
       matchingService: createMatchingService(createMatchingRepository(pool)), claimService: claims,
       notificationService: createNotificationService(createNotificationRepository(pool)), security: { apiMax: 5000, uploadMax: 200 } });
@@ -189,6 +191,20 @@ test('real CLIP: upload -> jobs -> embeddings -> matching -> owner API -> browse
       const entry = queryItems[0], result = await request(http, `/api/items/${entry.itemId}/visual-suggestions`, { token: ownerToken });
       await browser.suggestions(entry.itemId, result.json.data, true);
       assert.equal((await items.list({ page: 1, limit: 10 })).data.length > 0, true);
+    });
+    await t.test('FOUND owner sees real reverse LOST rankings in API and unified browser; other owners including ADMIN are denied',async()=>{
+      const found=corpus.find(item=>item.type==='FOUND');
+      const path='/api/items/'+found.itemId+'/visual-suggestions';
+      assert.equal((await request(http,path)).status,401);
+      assert.equal((await request(http,path,{token:ownerToken})).status,404);
+      const result=await request(http,path,{token:finderToken});assert.equal(result.status,200);
+      const [expected]=await query(pool,'SELECT lost_item_id,cosine_score FROM ai_visual_candidates WHERE found_item_id=? ORDER BY cosine_score DESC,lost_item_id ASC LIMIT 3',[found.itemId]);
+      assert.deepEqual(result.json.data.map(row=>row.itemId),expected.map(row=>Number(row.lost_item_id)));
+      const unified=await request(http,'/api/items/'+found.itemId+'/suggestions?limit=6',{token:finderToken});
+      assert.equal(unified.status,200);assert.ok(unified.json.data.visual.every(row=>row.item.type==='LOST'));
+      await browser.loginAs('finder@real-ai.example.test',password);
+      await browser.suggestions(found.itemId,result.json.data,'found');
+      await browser.loginAs('owner@real-ai.example.test',password);
     });
     const metrics = retrievalMetrics(corpus, predictions), gallery = corpus.filter(item => item.type === 'FOUND');
     const assertAbsent = async id => {

@@ -8,7 +8,7 @@ default `AI_VISUAL_MODE=isolated`. Notifications/shadow/demo remain forbidden in
 production. Historical references below to a future production worker are
 superseded by that runbook; Linux resource and provider E2E validation remain open.
 
-The worker stores image embeddings and shadow candidates only. A separate read-only suggestions API may expose current candidates to the owner of an eligible LOST item when its own feature flag is explicitly enabled. It never alters `matches`, creates notifications, or changes Claim state.
+The worker stores image embeddings and shadow candidates only. A separate read-only suggestions API may expose current candidates to the owner of an eligible LOST or FOUND item when its own feature flag is explicitly enabled. It never alters `matches`, creates notifications, or changes Claim state.
 
 ## Experimental AI notification foundation (development only)
 
@@ -35,7 +35,7 @@ The suite asserts that a partial snapshot creates no notification, that complete
 - Both `AI_VISUAL_SUGGESTIONS_ENABLED` (backend) and `VITE_AI_VISUAL_SUGGESTIONS_ENABLED` (frontend build) default to `false`. Enable both only for a local preview. `VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE=true` adds an explicit synthetic-score label and otherwise defaults to `false`.
 - Backend enablement requires `NODE_ENV=development|test`, loopback MySQL on a port other than 3306/3311, and a `FINDIT_ISOLATED_DATADIR` under `%TEMP%/findit-mysql-*/data`. Startup verifies the live MySQL datadir and port. The flag does not enable image uploads for AI, load CLIP, start a worker, or require Cloudinary credentials.
 - The preview database must already contain migrations 014–016 and current candidate/embedding rows. This feature does not run migrations or write during reads. Missing AI tables safely produce an empty list.
-- `GET /api/items/:id/visual-suggestions` requires an authenticated owner of an active LOST item. It returns at most three active FOUND items, using the pinned model/revision and requiring fresh embeddings for all current images. Other users receive a generic 404.
+- `GET /api/items/:id/visual-suggestions` requires an authenticated owner of an active LOST or FOUND item. It returns at most three active opposite-type items, using the pinned model/revision and requiring fresh embeddings for all current images. Other users receive a generic 404.
 - The score is a cosine ranking score, not a probability or identity confirmation. The endpoint never creates Matches, Notifications, or Claims.
 
 For a synthetic-data preview, set the backend flag and `VITE_AI_VISUAL_SUGGESTIONS_ENABLED=true` only when using a verified disposable local database. The frontend variable is public build configuration and must never contain credentials.

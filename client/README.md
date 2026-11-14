@@ -46,7 +46,8 @@ Socket.IO gọi origin của API ở path `/socket.io/`, không phải `/api/soc
 
 | URL | Nội dung |
 | --- | --- |
-| `/` | Giới thiệu, tìm kiếm, bộ lọc theo URL, sorting và phân trang |
+| `/` | Trang chủ FindIt 2.0, tìm kiếm và đồ vật mới; bookmark bộ lọc cũ chuyển sang Khám phá |
+| `/kham-pha` | Tìm kiếm, bộ lọc theo URL, sorting và phân trang |
 | `/dang-nhap`, `/dang-ky` | Xác thực, validation theo backend, quay lại đường dẫn nội bộ hợp lệ |
 | `/do-vat/:id` | Gallery, chi tiết, đóng bài, Matching, gửi Claim, tab Claim nhận được |
 | `/dang-bai`, `/do-vat/:id/sua` | Form chung, preview/thêm/xóa ảnh, phục hồi upload lỗi |
@@ -63,7 +64,7 @@ Socket.IO gọi origin của API ở path `/socket.io/`, không phải `/api/soc
 | `/quan-tri/danh-muc-dia-diem` | Tạo/đổi tên/bật/tắt lookup, giữ tham chiếu lịch sử |
 | `/quan-tri/nhat-ky` | Nhật ký nghiệp vụ có bộ lọc, phân trang và details được cho phép |
 
-Modal báo cáo được mở từ bài đăng, chủ bài hoặc Claim được phép tiếp cận; tự lấy loại/ID mục tiêu. Không triển khai chat, sửa email/avatar/mật khẩu hoặc các luồng xác thực bổ sung.
+Modal báo cáo được mở từ bài đăng, chủ bài hoặc Claim được phép tiếp cận; tự lấy loại/ID mục tiêu. Chat riêng tư có tại `/tin-nhan`; quên/đặt lại mật khẩu có tại `/quen-mat-khau` và `/dat-lai-mat-khau`. Chưa có sửa email/avatar hoặc đổi mật khẩu trong hồ sơ.
 
 ## API và trạng thái
 
@@ -109,3 +110,9 @@ Kiểm tra có đăng ký, desktop/mobile, upload lỗi rồi thử lại, khôn
 Browser test chặn mạng HTTPS bên ngoài để dùng font hệ thống dự phòng và không gọi Cloudinary thật. Test app tăng riêng quota API lên 3.000/phút để đủ lượt hồi quy; runtime giữ nguyên quota hiện có. Tests limiter backend vẫn chạy với cấu hình riêng của chúng. Unit frontend còn kiểm tra gộp GET, bỏ lỗi response của phiên cũ và các nhánh tìm Claim qua trang. Log mới ở `.cache/frontend-extended-browser.txt`, `.cache/frontend-extended-regression.txt`.
 
 Sau test, `dist/` là build test local dùng API cùng origin. Trước khi triển khai, build lại bằng API URL công khai đã xác minh và tắt preview fixture. Chưa kiểm chứng Cloudinary qua mạng thật, Firefox/Safari, thiết bị vật lý hoặc cấu hình hosting production.
+
+## Gợi ý hợp nhất và regression runtime
+
+Trang chi tiết của chủ bài LOST/FOUND dùng `GET /items/:id/suggestions`: một khu “Gợi ý cho bạn”, nhóm “Giống về hình ảnh” và “Trùng thông tin”. Dùng ItemCard chung; một thẻ có cả hai nguồn mang cả hai lý do. Backend loại ID visual khỏi COUNT/LIMIT của nhóm thông tin trước khi phân trang. Giao diện không render raw cosine hoặc gọi đó là xác suất; band chỉ trình bày và chưa hiệu chỉnh bằng ảnh thật. Feature AI tắt vẫn giữ gợi ý thông tin. Các trạng thái loading/processing/empty/error/retry và polling 10/30 giây được giữ, timer dọn khi unmount/item/session thay đổi.
+
+Ở root, `npm run test:browser:runtime` chạy đầy đủ startServer + API/Socket.IO/CORS + frontend build local test trên MySQL disposable riêng. Kiểm tra console/HTTP không có lỗi ứng dụng, khác với suite cố ý chèn lỗi hoặc chỉ mount một phần service. HTTPS fonts ngoài bị chặn có nhãn riêng. Ảnh ở `.cache/frontend-browser/full-runtime/`; chỉ là giả lập browser, chưa xác minh keyboard/safe-area thiết bị vật lý.

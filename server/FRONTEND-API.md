@@ -27,3 +27,7 @@ Backend hiện kiểm tra danh mục/địa điểm **chỉ khi trường ID đ�
 - `node --test server/tests/frontend-api.test.js`: DTO, public access, JWT, route order, query/pagination và điều kiện SQL theo chủ bài.
 - `npm.cmd run test:integration:isolated`: suite Item xác minh public lookup loại bản ghi inactive, phân trang theo chủ bài với MySQL thật và giữ tham chiếu inactive khi PATCH bỏ trường ID.
 - Từ `client/`: `npm.cmd run test:browser` chạy Chrome, backend thật và MySQL cô lập. Xem `client/README.md` về môi trường, storage giả và các giới hạn.
+
+## Gợi ý riêng hợp nhất
+
+`GET /api/items/:id/suggestions` yêu cầu ACTIVE owner của bài LOST/FOUND PUBLIC đang hoạt động; ADMIN không bypass ownership. DTO public ItemCard và lý do hai nguồn được mô tả ở mục 4.3 của [API contract](../docs/api-contract.md). Dedup xảy ra trước SQL pagination. Frontend mới cần API này được phát hành trước. Các endpoint legacy giữ cấu trúc/authorization cũ; không chuyển quyền owner-only của endpoint mới thành quyền ADMIN toàn cục.

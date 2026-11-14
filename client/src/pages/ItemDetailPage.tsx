@@ -1,5 +1,5 @@
 import { Icon } from "../components/Icon";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   Link,
   useLocation,
@@ -7,20 +7,18 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import { api, errorText, invalidate, itemDetail } from "../lib/api";
+import { api, errorText, invalidate } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useResource } from "../lib/hooks";
-import type { Item, Match } from "../lib/types";
+import type { Item } from "../lib/types";
 import {
   Button,
   ConfirmDialog,
   dateLabel,
   EmptyState,
   ErrorState,
-  ItemCard,
   ItemImage,
   Loading,
-  Pagination,
   StatusBadge,
   useToast,
 } from "../components/ui";
@@ -265,22 +263,6 @@ function Detail({ item }: { item: Item }) {
           )}
         </div>
       </div>
-      {!hidden &&
-        canShowVisualSuggestions({
-          enabled:
-            import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_ENABLED === "true",
-          owner,
-          type: item.type,
-          status: item.status,
-        }) && (
-          <VisualSuggestions
-            itemId={item.id}
-            previewFixture={
-              import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE ===
-              "true"
-            }
-          />
-        )}
       <div className="detail-tabs">
         <div className="tabs" role="tablist" aria-label="Thông tin liên quan">
           <button
@@ -289,7 +271,7 @@ function Detail({ item }: { item: Item }) {
             className={tab === "matches" ? "active" : ""}
             onClick={() => setParams({ tab: "matches" })}
           >
-            Gợi ý đồ vật
+            Gợi ý cho bạn
           </button>
           {canInspect && (
             <button
@@ -307,10 +289,31 @@ function Detail({ item }: { item: Item }) {
             <ReceivedClaims itemId={item.id} canAct={owner} />
           ) : hidden ? (
             <EmptyState title="Bài đã gỡ không tham gia gợi ý đồ vật" />
-          ) : user ? (
-            <Matches itemId={item.id} />
+          ) : owner &&
+            ["OPEN", "CLAIM_PENDING", "CLAIMED"].includes(item.status) ? (
+            <VisualSuggestions
+              key={item.id + ":" + user?.id}
+              itemId={item.id}
+              enabled={canShowVisualSuggestions({
+                enabled:
+                  import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_ENABLED === "true",
+                owner,
+                type: item.type,
+                status: item.status,
+              })}
+              previewFixture={
+                import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE ===
+                "true"
+              }
+            />
           ) : (
-            <EmptyState title="Khám phá những kết nối có thể phù hợp">
+            <EmptyState
+              title={
+                user
+                  ? "Gợi ý riêng chỉ dành cho chủ bài đang hoạt động"
+                  : "Khám phá những kết nối có thể phù hợp"
+              }
+            >
               <Link
                 className="button secondary"
                 to={`/dang-nhap?next=${encodeURIComponent(`/do-vat/${item.id}`)}`}
@@ -338,97 +341,6 @@ function Detail({ item }: { item: Item }) {
     </section>
   );
 }
-function Matches({ itemId }: { itemId: number }) {
-  const [page, setPage] = useState(1);
-  const result = useResource<Match[]>(`/items/${itemId}/matches`, {
-    page,
-    limit: 6,
-  });
-  const [items, setItems] = useState<Map<number, Item>>(new Map());
-  const [failed, setFailed] = useState<number[]>([]);
-  const [loading, setLoading] = useState(false);
-  const rows = result.data?.data;
-  useEffect(() => {
-    let active = true;
-    setItems(new Map());
-    setFailed([]);
-    if (!rows?.length) return;
-    setLoading(true);
-    Promise.allSettled(
-      [...new Set(rows.map((match) => match.itemId))].map((id) =>
-        itemDetail(id).then((item) => [id, item] as const),
-      ),
-    ).then((responses) => {
-      if (!active) return;
-      const found = new Map<number, Item>();
-      const errors: number[] = [];
-      const ids = [...new Set(rows.map((match) => match.itemId))];
-      responses.forEach((response, index) => {
-        if (response.status === "fulfilled") found.set(...response.value);
-        else errors.push(ids[index]);
-      });
-      setItems(found);
-      setFailed(errors);
-      setLoading(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, [rows]);
-  return (
-    <section>
-      <div className="section-heading">
-        <div>
-          <h2>Những kết nối có thể phù hợp</h2>
-          <p className="muted">
-            Điểm tương đồng chỉ phản ánh mức giống nhau giữa hai bài đăng, không
-            xác nhận quyền sở hữu. Hãy kiểm tra thông tin và bằng chứng.
-          </p>
-        </div>
-      </div>
-      {result.loading || loading ? (
-        <Loading />
-      ) : result.error ? (
-        <ErrorState error={result.error} retry={invalidate} />
-      ) : rows?.length ? (
-        <div className="item-grid matches-grid">
-          {rows.map((match) => (
-            <div key={match.matchId} className="match-card">
-              {items.get(match.itemId) ? (
-                <ItemCard item={items.get(match.itemId)!} />
-              ) : (
-                <div className="panel">
-                  <Link to={`/do-vat/${match.itemId}`}>
-                    Xem bài #{match.itemId} ↗
-                  </Link>
-                  {failed.includes(match.itemId) && (
-                    <p className="muted">Chưa tải được ảnh và tiêu đề.</p>
-                  )}
-                </div>
-              )}
-              <div className="match-reasons">
-                <strong>
-                  {match.score}/100 <span>điểm tương đồng</span>
-                </strong>
-                <ul>
-                  {match.reasons.map((reason, index) => (
-                    <li key={index}>{reason}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <EmptyState title="Chưa có gợi ý đồ vật phù hợp">
-          <p>Gợi ý dựa trên danh mục, địa điểm, ngày và nội dung bài đăng.</p>
-        </EmptyState>
-      )}
-      <Pagination data={result.data?.pagination} change={setPage} />
-    </section>
-  );
-}
-
 const PROGRESS = [
   "Đã đăng bài",
   "Chờ yêu cầu nhận lại",

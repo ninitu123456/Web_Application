@@ -139,6 +139,8 @@ export async function browserCheck({
     await pageA.setViewportSize({ width: 1440, height: 1000 });
 
     await pageB.goto(url);
+    await expect(pageB.locator("h1.home-title")).toBeVisible();
+    await expect(pageB.locator(".home-search")).toBeVisible();
     await pageB.screenshot({
       path: resolve(artifacts, "mobile-home.png"),
       fullPage: true,
@@ -482,7 +484,7 @@ export async function browserCheck({
       pageA.getByRole("heading", { name: lostTitle, exact: true }),
     ).toBeVisible();
     await expect(
-      pageA.getByText("điểm tương đồng", { exact: true }).first(),
+      pageA.getByText(/\d+\/100 điểm trùng thông tin/, { exact: true }).first(),
     ).toBeVisible();
     assert.ok(!(await pageA.locator("body").innerText()).includes(proof));
     await pageB

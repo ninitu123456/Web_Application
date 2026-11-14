@@ -76,10 +76,23 @@ export interface PaginationData {
   totalPages: number;
 }
 export interface Envelope<T> {
-  visualState?: "processing" | "error" | "ready";
+  visualState?: "processing" | "error" | "ready" | "disabled";
   success: boolean;
   message?: string;
   data: T;
   pagination?: PaginationData;
 }
 export type Query = Record<string, string | number | undefined>;
+
+export interface Suggestion {
+  item: Item;
+  reasons: ("IMAGE" | "INFORMATION")[];
+  similarityBand?: "VERY_HIGH" | "HIGH" | "MEDIUM";
+  informationScore?: number;
+  informationReasons?: string[];
+}
+export interface SuggestionsData {
+  visual: Suggestion[];
+  information: Suggestion[];
+  totalUnique: number;
+}

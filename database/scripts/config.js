@@ -1,3 +1,4 @@
+import { assertDemoSeedAllowed } from './seed-guard.js';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'node:url';
 dotenv.config({ path: fileURLToPath(new URL('../../.env', import.meta.url)), quiet: true });
@@ -17,6 +18,7 @@ export function configFromEnv(env = process.env) {
   };
 }
 export function seedConfig(env = process.env) {
+  assertDemoSeedAllowed(env);
   const result = {};
   for (const role of ['ADMIN', 'USER']) {
     const email = env[`SEED_${role}_EMAIL`];
