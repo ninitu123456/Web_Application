@@ -63,7 +63,7 @@ Socket.IO gọi origin của API ở path `/socket.io/`, không phải `/api/soc
 | `/quan-tri/danh-muc-dia-diem` | Tạo/đổi tên/bật/tắt lookup, giữ tham chiếu lịch sử |
 | `/quan-tri/nhat-ky` | Nhật ký nghiệp vụ có bộ lọc, phân trang và details được cho phép |
 
-Modal báo cáo được mở từ bài đăng, chủ bài hoặc Claim được phép tiếp cận; tự lấy loại/ID mục tiêu. Không triển khai chat, sửa email/avatar/mật khẩu hoặc các luồng xác thực bổ sung.
+Modal báo cáo được mở từ bài đăng, chủ bài hoặc Claim được phép tiếp cận; tự lấy loại/ID mục tiêu. Chat riêng tư có tại `/tin-nhan`; quên/đặt lại mật khẩu có tại `/quen-mat-khau` và `/dat-lai-mat-khau`. Chưa có sửa email/avatar hoặc đổi mật khẩu trong hồ sơ.
 
 ## API và trạng thái
 

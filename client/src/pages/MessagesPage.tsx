@@ -192,9 +192,47 @@ export function MessagesPage() {
       setError(errorText(e));
     }
   }
+  const frame = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const element = frame.current;
+    if (!element) return;
+    let scheduled = 0;
+    const measure = () => {
+      cancelAnimationFrame(scheduled);
+      scheduled = requestAnimationFrame(() => {
+        const viewport = window.visualViewport;
+        const bottom =
+          (viewport?.height ?? innerHeight) + (viewport?.offsetTop ?? 0);
+        const nav = document.querySelector<HTMLElement>(".bottom-nav");
+        const box = nav?.getBoundingClientRect();
+        const availableBottom =
+          box && box.height > 0 ? Math.min(bottom, box.top) : bottom;
+        const height = Math.max(
+          120,
+          availableBottom - element.getBoundingClientRect().top - 16,
+        );
+        element.style.setProperty("--chat-height", height + "px");
+        element.dataset.compact = String(height < 420);
+      });
+    };
+    const observer = new ResizeObserver(measure);
+    const header = document.querySelector(".header");
+    if (header) observer.observe(header);
+    window.addEventListener("resize", measure);
+    window.visualViewport?.addEventListener("resize", measure);
+    window.visualViewport?.addEventListener("scroll", measure);
+    measure();
+    return () => {
+      cancelAnimationFrame(scheduled);
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+      window.visualViewport?.removeEventListener("resize", measure);
+      window.visualViewport?.removeEventListener("scroll", measure);
+    };
+  }, []);
   const peer = conversations.find((chat) => chat.id === selected)?.peer;
   return (
-    <section className="page-section">
+    <section ref={frame} className="page-section messages-page">
       <div className="page-heading">
         <h1>Tin nhắn</h1>
         <p className="muted" role="status">

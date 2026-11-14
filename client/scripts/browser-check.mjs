@@ -139,6 +139,8 @@ export async function browserCheck({
     await pageA.setViewportSize({ width: 1440, height: 1000 });
 
     await pageB.goto(url);
+    await expect(pageB.locator("h1.home-title")).toBeVisible();
+    await expect(pageB.locator(".home-search")).toBeVisible();
     await pageB.screenshot({
       path: resolve(artifacts, "mobile-home.png"),
       fullPage: true,

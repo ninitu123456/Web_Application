@@ -115,6 +115,15 @@ export async function featureBrowserCheck({
       path: artifacts + "/mobile-chat.png",
       fullPage: true,
     });
+    const { chatLayoutCheck } = await import("./chat-layout-check.mjs");
+    await chatLayoutCheck({
+      page: b,
+      url,
+      conversation,
+      pool,
+      query,
+      artifacts,
+    });
     await b.goto(url + "/quen-mat-khau");
     await expect(
       b.getByRole("heading", { name: "Quên mật khẩu?" }),

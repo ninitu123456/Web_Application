@@ -117,6 +117,6 @@ GitHub Actions hiện kiểm tra backend/database, dependency production và cov
 ## Giới hạn cần biết
 
 - Chưa kiểm chứng Cloudinary qua mạng thật, Firefox/Safari, thiết bị vật lý hoặc hosting production trong bộ kiểm thử được mô tả.
-- Chưa có chat, refresh token hoặc chức năng đổi mật khẩu.
+- Có chat riêng tư realtime và đặt lại mật khẩu qua email khi Resend được cấu hình. Chưa có refresh token hoặc trang đổi mật khẩu trong hồ sơ.
 - Bài CLOSED kết thúc hoạt động nghiệp vụ nhưng vẫn có thể được đọc công khai. ADMIN resolve chỉ xử lý Claim PENDING, không hoàn tất bàn giao thay chủ bài.
 - Trước khi triển khai sau reverse proxy hoặc nhiều instance, cần cấu hình phù hợp cho HTTPS, IP trust và rate-limit store; xem [bảo mật](server/SECURITY.md).
