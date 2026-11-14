@@ -11,6 +11,7 @@ import { useAuth } from "../lib/auth";
 import { itemFieldErrors, type ItemFields as Fields } from "../lib/item-form";
 import { ImageCarousel } from "../components/ImageCarousel";
 import {
+  reconcileUploadedImages,
   runImageUploads,
   updateUpload,
   uploadLabels,
@@ -103,6 +104,9 @@ function ItemForm({
   const [saved, setSaved] = useState<Item | undefined>(original);
   const [files, setFiles] = useState<UploadEntry[]>([]);
   const queue = useRef<UploadEntry[]>([]);
+  const snapshotRequest = useRef<AbortController | null>(null);
+  const mounted = useRef(true);
+  const imagesMutated = useRef(false);
   const urls = useRef(new Map<string, string>());
   const [previewSelection, setPreviewSelection] = useState<string>();
   const formRef = useRef<HTMLFormElement>(null);
@@ -127,6 +131,7 @@ function ItemForm({
   const [error, setError] = useState("");
   const [savedMessage, setSavedMessage] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [pendingDeletion, setPendingDeletion] = useState<number | null>(null);
   const [uncertain, setUncertain] = useState(false);
   const lock = useRef(false);
   const toast = useToast();
@@ -150,13 +155,16 @@ function ItemForm({
     }
     return true;
   }
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      snapshotRequest.current?.abort();
       urls.current.forEach((url) => URL.revokeObjectURL(url));
       urls.current.clear();
-    },
-    [],
-  );
+      if (imagesMutated.current) invalidate();
+    };
+  }, []);
   const set = (key: keyof Fields, value: string) => {
     const next = changeItemField(fields, fieldErrors, key, value);
     setFields(next.fields);
@@ -169,7 +177,7 @@ function ItemForm({
     changeQueue((old) => old.filter((entry) => entry.key !== key));
   }
   function chooseFiles(selected: FileList | null) {
-    if (!selected) return;
+    if (!selected || lock.current || pendingDeletion !== null) return;
     const incoming = Array.from(selected);
     if (
       incoming.some(
@@ -205,13 +213,34 @@ function ItemForm({
     setError("");
   }
   async function refreshSaved(itemId: number) {
-    const response = await api<Item>(`/items/${itemId}`);
+    snapshotRequest.current?.abort();
+    const request = new AbortController();
+    snapshotRequest.current = request;
+    const response = await api<Item>("/items/" + itemId, {
+      signal: request.signal,
+    });
+    if (
+      !mounted.current ||
+      request.signal.aborted ||
+      snapshotRequest.current !== request
+    )
+      throw new DOMException("Outdated image snapshot", "AbortError");
+    const kept = reconcileUploadedImages(queue.current, response.data.images);
+    const keys = new Set(kept.map((entry) => entry.key));
+    for (const entry of queue.current) {
+      if (!keys.has(entry.key)) {
+        const url = urls.current.get(entry.key);
+        if (url) URL.revokeObjectURL(url);
+        urls.current.delete(entry.key);
+      }
+    }
+    changeQueue(() => kept);
     setSaved(response.data);
     return response.data;
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (lock.current || uncertain) return;
+    if (lock.current || uncertain || pendingDeletion !== null) return;
     if (wizard && step === 1) {
       setError("");
       setStep(2);
@@ -345,31 +374,79 @@ function ItemForm({
       setBusy(false);
     }
   }
+  async function reconcileDeletion(
+    itemId: number,
+    imageId: number,
+    failure?: unknown,
+  ) {
+    try {
+      const fresh = await refreshSaved(itemId);
+      setPendingDeletion(null);
+      if (fresh.images.some((image) => image.id === imageId)) {
+        setError(
+          (failure ? errorText(failure) + " " : "") +
+            "Ảnh vẫn còn trên bài đăng. Bạn có thể thử xóa lại.",
+        );
+      } else {
+        setError(
+          failure
+            ? errorText(failure) +
+                " Đã đối chiếu: ảnh không còn trong bài đăng, không cần xóa lại."
+            : "",
+        );
+        toast("Đã xác nhận ảnh không còn trong bài đăng.");
+      }
+      // Keep the verified snapshot: an extra parent GET could fail and discard
+      // local files. Invalidate shared views when this form unmounts instead.
+    } catch (error) {
+      if (
+        !mounted.current ||
+        (error instanceof Error && error.name === "AbortError")
+      )
+        return;
+      setPendingDeletion(imageId);
+      setError(
+        "Chưa xác định kết quả xóa ảnh. Không thể đối chiếu với máy chủ; hãy thử đồng bộ lại ảnh.",
+      );
+    }
+  }
+  async function verifyDeletion() {
+    if (!saved || pendingDeletion === null || lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    try {
+      await reconcileDeletion(saved.id, pendingDeletion);
+    } finally {
+      lock.current = false;
+      if (mounted.current) setBusy(false);
+    }
+  }
   async function removeImage() {
-    if (!saved || deleting === null || lock.current) return;
+    if (!saved || deleting === null || lock.current || pendingDeletion !== null)
+      return;
+    const itemId = saved.id,
+      imageId = deleting;
+    imagesMutated.current = true;
     lock.current = true;
     setBusy(true);
     setError("");
     try {
-      await api(`/items/${saved.id}/images/${deleting}`, { method: "DELETE" });
-      await refreshSaved(saved.id);
-      const removed = queue.current.find(
-        (entry) => entry.image?.id === deleting,
-      );
-      if (removed) dropFile(removed.key);
-      toast("Đã xóa ảnh.");
-    } catch (e) {
-      setError(errorText(e));
+      let failure: unknown;
       try {
-        await refreshSaved(saved.id);
-      } catch {
-        /* Surface original error. */
+        await api("/items/" + itemId + "/images/" + imageId, {
+          method: "DELETE",
+        });
+      } catch (error) {
+        failure = error;
       }
+      // Neither a 2xx nor an error alone substitutes for the authoritative list.
+      if (mounted.current) await reconcileDeletion(itemId, imageId, failure);
     } finally {
-      setDeleting(null);
       lock.current = false;
-      setBusy(false);
-      invalidate();
+      if (mounted.current) {
+        setDeleting(null);
+        setBusy(false);
+      }
     }
   }
   function lookupSelect(
@@ -572,23 +649,28 @@ function ItemForm({
                     !files.some((entry) => entry.image?.id === image.id),
                 )
                 .map((image) => (
-                  <div key={image.id}>
+                  <div key={image.id} data-image-id={image.id}>
                     <ItemImage src={image.url} title="Ảnh đã lưu" />
                     <button
                       type="button"
                       className="image-remove"
-                      disabled={busy}
+                      disabled={busy || pendingDeletion !== null}
                       onClick={() => setDeleting(image.id)}
                       aria-label="Xóa ảnh đã lưu"
                     >
                       ×
                     </button>
-                    <small>Đã lưu</small>
+                    <small>
+                      {pendingDeletion === image.id
+                        ? "Chưa xác định kết quả xóa"
+                        : "Đã lưu"}
+                    </small>
                   </div>
                 ))}
               {files.map((entry, index) => (
                 <div
                   key={entry.key}
+                  data-image-id={entry.image?.id}
                   data-upload-key={entry.key}
                   data-upload-status={entry.status}
                 >
@@ -597,7 +679,7 @@ function ItemForm({
                     <button
                       type="button"
                       className="image-remove"
-                      disabled={busy}
+                      disabled={busy || pendingDeletion !== null}
                       onClick={() => setDeleting(entry.image!.id)}
                       aria-label="Xóa ảnh đã lưu"
                     >
@@ -615,7 +697,9 @@ function ItemForm({
                     </button>
                   )}
                   <small role={entry.status === "failed" ? "alert" : "status"}>
-                    {uploadLabels[entry.status]}
+                    {pendingDeletion === entry.image?.id
+                      ? "Chưa xác định kết quả xóa"
+                      : uploadLabels[entry.status]}
                   </small>
                   {entry.status === "failed" && (
                     <>
@@ -625,7 +709,7 @@ function ItemForm({
                       <button
                         type="button"
                         className="button secondary"
-                        disabled={busy || uncertain}
+                        disabled={busy || uncertain || pendingDeletion !== null}
                         onClick={() => formRef.current?.requestSubmit()}
                       >
                         Thử lại ảnh lỗi
@@ -640,7 +724,11 @@ function ItemForm({
               type="file"
               accept="image/jpeg,image/png,image/gif,image/webp"
               multiple
-              disabled={busy || (saved?.images.length || 0) + pendingCount >= 5}
+              disabled={
+                busy ||
+                pendingDeletion !== null ||
+                (saved?.images.length || 0) + pendingCount >= 5
+              }
               onChange={(e) => {
                 chooseFiles(e.target.files);
                 e.target.value = "";
@@ -715,6 +803,20 @@ function ItemForm({
               {error}
             </p>
           )}
+          {pendingDeletion !== null && (
+            <div className="notice" role="alert">
+              Chưa xác định kết quả xóa. Các thao tác ghi ảnh tạm dừng cho đến
+              khi đối chiếu được với máy chủ.{" "}
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => void verifyDeletion()}
+              >
+                Thử đồng bộ lại ảnh
+              </Button>
+            </div>
+          )}
           {uncertain && (
             <div className="notice" role="alert">
               Chưa xác định kết quả lưu. Hãy kiểm tra dữ liệu trước khi gửi lại.{" "}
@@ -757,6 +859,7 @@ function ItemForm({
               disabled={
                 busy ||
                 uncertain ||
+                pendingDeletion !== null ||
                 (!created &&
                   (!wizard || step !== 1) &&
                   (!categories.data || !locations.data))

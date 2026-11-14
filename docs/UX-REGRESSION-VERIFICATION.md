@@ -108,3 +108,41 @@ The final responsive evidence/report update is committed after the implementatio
 - `server/tests/pagination-audit.test.js`
 - `server/tests/security.integration.js`
 - `server/tests/workflow.integration.js`
+
+## P2 deletion reconciliation follow-up — final verification
+
+The final push review reproduced a ghost thumbnail after an image-row deletion committed but DELETE returned 503 because cleanup was pending. `refreshSaved` only replaced `saved.images`; acknowledged entries in the upload queue still rendered independently. The error path did not drop those entries. This follow-up supersedes the earlier seven-issue signoff for image deletion recovery.
+
+The frontend now reads the authoritative Item after every DELETE outcome. It reconciles acknowledged queue entries by stable image ID, preserves pending/uploading/failed/uncertain entries, and revokes each removed entry's object URL once. A retained server image stays available for a normal delete retry. A failed GET leaves an explicit unknown-deletion label and read-only synchronization retry, with further writes blocked until reconciliation succeeds. No HTTP status alone implies deletion success. Newer reads abort older requests, and unmount abort/identity guards prevent an abandoned form response from overwriting another form. Upload/delete and duplicate confirmation remain serialized by the existing synchronous lock. Shared caches are invalidated on leaving a form that attempted deletion, avoiding a redundant parent GET that could discard local files after an already verified snapshot.
+
+No backend change is required: the existing Item GET supplies stable image IDs, and the existing integration test proves that a durable cleanup failure can return 503 after deleting the image row. The new browser test forwards a real isolated DELETE and substitutes the documented 503; it also injects refusal-before-delete and read failures. These are controlled faults, not production incidents.
+
+| Regression case | Final evidence |
+| --- | --- |
+| DELETE 2xx | Exact visible ID set equals DB IDs; other images retained |
+| DELETE 503, row deleted | Four thumbnails become three; no ghost or duplicate |
+| DELETE 503, row retained | Same ID preserved, explanatory error and enabled retry |
+| Reconciliation GET fails | Unknown label, no success claim, writes blocked; retry performs GET without another DELETE |
+| GET retry fails then succeeds | Unknown state persists until verified; local pending/failed entries survive |
+| No redundant parent read after verification | Additional reads deliberately fail; verified form and local files remain |
+| Delete during concurrent uploads | Disabled delete and zero DELETE requests until uploads settle |
+| Two near-simultaneous confirmations | One DELETE; a subsequent different deletion changes only its own ID |
+| Local files | Pending and failed keys/preview URL survive reconciliation; uncertain/uploading states preserved in unit tests |
+| Object URLs | Each removed acknowledged preview revoked exactly once; retained local URL remains live |
+| Step return / multi-image preview | Existing 1/2/3/5-image keyboard/swipe/step-return browser assertions remain PASS |
+| Reload after deletion | Fresh form has no deleted image |
+| Stale GET after route change | Old form request aborted; different Item form/title/images unaffected |
+
+Before application changes, the new browser assertion failed with `Expected: 3, Received: 4` (before-browser2.log). After the fix, final-browser.log reports IMAGE_DELETION_BROWSER_PASS and all 19 Item/browser tests pass. Six new meaningful unit cases bring frontend tests from 103 to 109. Existing assertions were retained; no tests skipped.
+
+Final reruns: frontend 109 PASS; backend/auth/database 179/7/17 PASS; complete isolated MySQL 395 PASS; browser 19 PASS with all original UX checks plus deletion regression; real CLIP 9 PASS; chat/account/reset 13 PASS; actual full runtime/Socket.IO 1 PASS with application console=0 and HTTP=0. TypeScript, Prettier, production build and diff whitespace checks PASS. Production build uses an explicit example HTTPS API, AI UI enabled and fixture=false, solely for validation. Every MySQL runner verifies a fresh temporary datadir/port and removes it. Providers/mail are mocked; no production access.
+
+An initial new fixture run exhausted the old test account's upload rate limit (429); it now registers its own isolated test user without changing rate limits or assertions. An AI E2E account-switch run exposed a harness synchronization error: the footer's always-visible “Bài của tôi” link did not prove login completion. The harness now additionally waits for successful login navigation before continuing; all original AI assertions remain. No application auth/AI logic changed. Final AI rerun is 9/9 PASS.
+
+Follow-up files: `client/src/pages/ItemFormPage.tsx`, `client/src/lib/image-uploads.ts`, `client/src/lib/image-uploads.test.ts`, `client/scripts/image-deletion-check.mjs`, `client/scripts/browser-check.mjs`, `client/scripts/ai-real-browser-check.mjs`, this verification report and `TASK_DECOMPOSITION.md`. The first six local commits are retained, including final evidence commit a913d19. One separate follow-up commit uses `fix(upload): reconcile image deletion state after uncertain response`.
+
+Final issue status: 1 FIXED with deletion recovery covered; 2–7 remain FIXED with their previous frontend/API/browser assertions passing. Physical devices, Safari/Firefox, full accessibility certification, real-photo field accuracy and the earlier intermittent email deadlock remain UNVERIFIED/outside this P2 scope. Upload retry for a proxy-generated 503 after a committed upload remains a separately documented risk; this follow-up changes DELETE recovery only.
+
+Logs remain outside Git under the OS-temp `findit-delete-fix-a913d19` directory: before-browser2.log, final-frontend.log, final-typecheck.log, final-format.log, final-build.log, unit.log, integration.log, final-browser.log, final-ai.log, final-chat.log and final-runtime.log. No cache, screenshot, model, .env or provider credential is included in the follow-up commit.
+
+Status: READY FOR PUSH REVIEW locally after the P2 fix. STOP before push. GitHub Actions and Vercel Preview still require checks on an approved pushed SHA. Hosting release still requires compatible backend before frontend; no migration, cleanup/ADMIN/threshold/provider change is part of this commit. Local PASS is not a production-readiness certification.

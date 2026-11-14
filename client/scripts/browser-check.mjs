@@ -749,6 +749,17 @@ export async function browserCheck({
       query,
       artifacts,
     });
+    const { imageDeletionCheck } = await import("./image-deletion-check.mjs");
+    await imageDeletionCheck({
+      browser,
+      url,
+      ownerEmail,
+      password,
+      categoryId,
+      locationId,
+      pool,
+      query,
+    });
     const { aiUiBrowserCheck } = await import("./ai-ui-browser-check.mjs");
     await aiUiBrowserCheck({
       browser,

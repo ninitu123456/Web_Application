@@ -66,3 +66,16 @@ export const uploadLabels: Record<UploadStatus, string> = {
   failed: "Tải ảnh thất bại",
   uncertain: "Chưa xác định kết quả — kiểm tra ảnh đã lưu",
 };
+
+// Only acknowledged uploads have a stable server ID. Never infer the outcome
+// of pending/failed/uncertain files from counts or unrelated server images.
+export function reconcileUploadedImages(
+  entries: UploadEntry[],
+  images: { id: number }[],
+) {
+  const ids = new Set(images.map((image) => image.id));
+  return entries.filter(
+    (entry) =>
+      entry.status !== "saved" || (entry.image && ids.has(entry.image.id)),
+  );
+}

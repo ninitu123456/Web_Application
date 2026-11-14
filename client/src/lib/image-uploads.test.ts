@@ -1,5 +1,6 @@
 ﻿import { describe, expect, it } from "vitest";
 import {
+  reconcileUploadedImages,
   runImageUploads,
   updateUpload,
   type UploadEntry,
@@ -105,5 +106,67 @@ describe("per-image uploads", () => {
         image: { id: 9, url: "x" },
       }),
     ).toEqual([]);
+  });
+});
+
+describe("authoritative image reconciliation", () => {
+  it("removes only acknowledged uploads whose stable ID is absent, independent of image order/count", () => {
+    const a = {
+      ...entry("a"),
+      status: "saved" as const,
+      image: { id: 11, url: "a" },
+    };
+    const b = {
+      ...entry("b"),
+      status: "saved" as const,
+      image: { id: 22, url: "b" },
+    };
+    const c = {
+      ...entry("c"),
+      status: "saved" as const,
+      image: { id: 33, url: "c" },
+    };
+    const entries = [a, b, c];
+    expect(
+      reconcileUploadedImages(entries, [{ id: 33 }, { id: 44 }, { id: 11 }]),
+    ).toEqual([a, c]);
+    expect(entries).toEqual([a, b, c]);
+    expect(reconcileUploadedImages([a], [{ id: 11 }])).toEqual([a]);
+    expect(reconcileUploadedImages([a], [])).toEqual([]);
+  });
+  it.each(["pending", "uploading", "failed", "uncertain"] as const)(
+    "preserves %s files without guessing server identity",
+    (status) => {
+      const local = { ...entry(status), status };
+      expect(reconcileUploadedImages([local], [])).toEqual([local]);
+      expect(reconcileUploadedImages([local], [{ id: 99 }])).toEqual([local]);
+    },
+  );
+  it("keeps delayed uploads and newly selected local files while deleting another acknowledged image", async () => {
+    let queue = [
+      {
+        ...entry("deleted"),
+        status: "saved" as const,
+        image: { id: 1, url: "a" },
+      },
+      entry("delayed"),
+    ];
+    const pending = deferred<{ id: number; url: string }>();
+    const task = runImageUploads(
+      queue,
+      () => pending.promise,
+      (update) => {
+        queue = updateUpload(queue, update);
+      },
+    );
+    queue = reconcileUploadedImages([...queue, entry("new")], []);
+    expect(queue.map((e) => e.key)).toEqual(["delayed", "new"]);
+    pending.resolve({ id: 2, url: "b" });
+    await task;
+    expect(queue.map((e) => [e.key, e.status])).toEqual([
+      ["delayed", "saved"],
+      ["new", "pending"],
+    ]);
+    expect(reconcileUploadedImages(queue, [{ id: 2 }])).toEqual(queue);
   });
 });
