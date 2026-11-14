@@ -104,7 +104,7 @@ export async function browserCheck({
         .click();
       await expect(page).toHaveURL(url + next);
     }
-    await pageA.goto(url);
+    await pageA.goto(`${url}/kham-pha`);
     assert.notEqual(
       await pageA
         .locator(".skip-link")
@@ -140,7 +140,7 @@ export async function browserCheck({
 
     await pageB.goto(url);
     await pageB.screenshot({
-      path: resolve(artifacts, "mobile-explore.png"),
+      path: resolve(artifacts, "mobile-home.png"),
       fullPage: true,
     });
     assert.ok(

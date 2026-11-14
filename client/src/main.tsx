@@ -14,6 +14,7 @@ import { AuthProvider, Protected } from "./lib/auth";
 import { ToastProvider } from "./components/ui";
 import { Layout } from "./components/Layout";
 import { ExplorePage } from "./pages/ExplorePage";
+import { HomePage } from "./pages/HomePage";
 import { AuthPage } from "./pages/AuthPage";
 import { ItemDetailPage } from "./pages/ItemDetailPage";
 import { ItemFormPage } from "./pages/ItemFormPage";
@@ -35,6 +36,7 @@ import {
 import { AdminLookupsPage } from "./pages/admin/LookupsPage";
 import { AdminActivityPage } from "./pages/admin/ActivityPage";
 import "./styles.css";
+import "./redesign.css";
 function ScrollToTop() {
   const location = useLocation();
   useEffect(() => {
@@ -52,7 +54,8 @@ createRoot(document.getElementById("root")!).render(
               <ScrollToTop />
               <Routes>
                 <Route element={<Layout />}>
-                  <Route index element={<ExplorePage />} />
+                  <Route index element={<HomePage />} />
+                  <Route path="kham-pha" element={<ExplorePage />} />
                   <Route path="dang-nhap" element={<AuthPage />} />
                   <Route path="quen-mat-khau" element={<PasswordResetPage />} />
                   <Route

@@ -49,7 +49,10 @@ function render() {
   return renderToStaticMarkup(
     <MemoryRouter
       initialEntries={[
-        { pathname: "/do-vat/5", state: { exploreFrom: "/?type=LOST" } },
+        {
+          pathname: "/do-vat/5",
+          state: { exploreFrom: "/kham-pha?type=LOST" },
+        },
       ]}
     >
       <Routes>
@@ -88,7 +91,7 @@ describe("redesigned item detail with AI integration", () => {
     expect(html).toContain("FOUND local backpack");
     expect(html).toContain("0.974");
     expect(html).toContain('href="/do-vat/6"');
-    expect(html).toContain('href="/?type=LOST"');
+    expect(html).toContain('href="/kham-pha?type=LOST"');
     expect(html).toContain("Gợi ý đồ vật");
     expect(mocks.resource).toHaveBeenCalledWith(
       "/items/5/visual-suggestions",

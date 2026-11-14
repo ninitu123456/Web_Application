@@ -1,3 +1,4 @@
+import { Icon } from "../components/Icon";
 import { PasswordInput } from "../components/PasswordInput";
 import { useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
@@ -78,6 +79,23 @@ export function AuthPage({ register = false }: { register?: boolean }) {
   }
   return (
     <div className="auth-layout">
+      <section className="auth-story" aria-labelledby="auth-story-title">
+        <div className="hero-tag" aria-hidden="true">
+          <div className="hero-tag-art" style={{ background: "#efe4d2" }}>
+            <Icon name="box" width="48" height="48" strokeWidth="1.2" />
+          </div>
+          <div className="hero-tag-body">
+            <span className="badge status-returned">Đã trao trả</span>
+            <strong>Ví da màu nâu</strong>
+          </div>
+        </div>
+        <h2 id="auth-story-title">Mỗi món đồ đều có đường về nhà.</h2>
+        <p>
+          {register
+            ? "Tạo tài khoản để đăng bài, nhận gợi ý trùng khớp và nhắn tin bàn giao an toàn."
+            : "Đăng nhập để đăng bài, nhận gợi ý trùng khớp và nhắn tin bàn giao an toàn."}
+        </p>
+      </section>
       <section className="panel auth-panel">
         <h1>{register ? "Tạo tài khoản" : "Đăng nhập"}</h1>
         <form onSubmit={submit}>
