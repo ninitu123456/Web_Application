@@ -1,3 +1,4 @@
+import { assertDemoSeedAllowed } from '../scripts/seed-guard.js';
 import bcrypt from 'bcryptjs';
 import { withLock } from '../scripts/connection.js';
 import { verifyMigrations } from '../scripts/migrate.js';
@@ -76,6 +77,7 @@ async function processSeed(connection, credentials, write) {
 }
 
 export async function seed(connection, database, credentials) {
+  assertDemoSeedAllowed();
   return withLock(connection, database, async () => {
     await verifyMigrations(connection, database);
     await connection.beginTransaction();
