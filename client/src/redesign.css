@@ -658,6 +658,7 @@ h3 {
 }
 .image-fallback > small {
   font-size: 12px;
+  color: var(--muted);
 }
 .card-skeleton {
   border-radius: 24px;
@@ -751,7 +752,8 @@ h3 {
   display: inline-block;
 }
 .home-title .muted-line {
-  color: #8a918b;
+  /* ≥3:1 on --paper for large text (was #8a918b, 2.9:1). */
+  color: #7d847e;
 }
 .rotator {
   position: relative;
@@ -1291,6 +1293,12 @@ h3 {
 .search-bar:focus-within {
   border-color: var(--forest);
 }
+/* The inner inputs drop their outline; show the ring on the whole bar. */
+.search-bar:has(input:focus-visible),
+.home-search:has(input:focus-visible) {
+  outline: 3px solid #2f7a57;
+  outline-offset: 2px;
+}
 .search-bar .field {
   flex: 1;
   margin: 0;
@@ -1478,7 +1486,7 @@ h3 {
   align-items: center;
   gap: 12px;
   font-size: 14px;
-  color: #8a918b;
+  color: var(--muted);
 }
 .progress-steps li > span {
   width: 24px;
