@@ -134,7 +134,18 @@ export function Layout() {
               aria-expanded={open}
               aria-controls="navigation"
               aria-label="Mở điều hướng"
-              onClick={() => setOpen(!open)}
+              onClick={() => {
+                const next = !open;
+                setOpen(next);
+                // The toggle sits after <nav> in DOM order, so move focus into
+                // the opened menu; otherwise Tab skips past its links.
+                if (next)
+                  requestAnimationFrame(() =>
+                    document
+                      .querySelector<HTMLAnchorElement>("#navigation a")
+                      ?.focus(),
+                  );
+              }}
             >
               <Icon name={open ? "close" : "menu"} />
             </button>
