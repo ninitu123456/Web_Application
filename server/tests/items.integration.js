@@ -1,3 +1,5 @@
+import {createChatService} from '../services/chat.service.js';
+import {createChatRepository} from '../repositories/chat.repository.js';
 import { createSuggestionsService } from '../services/suggestions.service.js';
 import { createSuggestionsRepository } from '../repositories/suggestions.repository.js';
 import { assertIsolatedInstance } from '../../database/scripts/assert-isolated.js';
@@ -46,7 +48,7 @@ test('Item integration: HTTP/JWT, transactions, concurrent uploads and durable c
   assert.equal(base.host, '127.0.0.1');
   const connection = await connect(base, false);
   const name = `findit_test_${randomBytes(12).toString('hex')}`;
-  let created = false, pool, http;
+  let created = false, pool, http, chat;
   try {
     const [[instance]] = await connection.query('SELECT @@datadir AS directory, @@port AS port');
     assert.equal(resolve(instance.directory), resolve(process.env.FINDIT_ISOLATED_DATADIR));
@@ -86,7 +88,8 @@ test('Item integration: HTTP/JWT, transactions, concurrent uploads and durable c
     const users = createUserRepository(pool);
     const tokens = createTokenService({ secret: randomBytes(32).toString('hex'), expiresIn: 3600 });
     const auth = createAuthService(users, tokens);
-    http = await serveApp(createApp({ suggestionsService: createSuggestionsService(createSuggestionsRepository(pool, { visualEnabled: process.env.FINDIT_FRONTEND_BROWSER === '1' })), healthService: { async check() { return {}; } }, authService: auth, userService: createUserService(users), itemService: service, lookupService: createLookupService(createLookupRepository(pool)), claimService: createClaimService(createClaimRepository(pool)), matchingService: createMatchingService(createMatchingRepository(pool)), security: process.env.FINDIT_FRONTEND_BROWSER === '1' ? { apiMax: 3000 } : undefined, notificationService: createNotificationService(createNotificationRepository(pool)), reportService: createReportService(createReportRepository(pool)), adminService: createAdminService(createAdminRepository(pool), service), visualSuggestionsService: createVisualSuggestionsService(createVisualSuggestionsRepository(pool), { enabled: process.env.FINDIT_FRONTEND_BROWSER === '1' }), logger: () => {} }));
+    chat=createChatService(createChatRepository(pool));
+    http = await serveApp(createApp({ chatService:chat, suggestionsService: createSuggestionsService(createSuggestionsRepository(pool, { visualEnabled: process.env.FINDIT_FRONTEND_BROWSER === '1' })), healthService: { async check() { return {}; } }, authService: auth, userService: createUserService(users), itemService: service, lookupService: createLookupService(createLookupRepository(pool)), claimService: createClaimService(createClaimRepository(pool)), matchingService: createMatchingService(createMatchingRepository(pool)), security: process.env.FINDIT_FRONTEND_BROWSER === '1' ? { apiMax: 3000 } : undefined, notificationService: createNotificationService(createNotificationRepository(pool)), reportService: createReportService(createReportRepository(pool)), adminService: createAdminService(createAdminRepository(pool), service), visualSuggestionsService: createVisualSuggestionsService(createVisualSuggestionsRepository(pool), { enabled: process.env.FINDIT_FRONTEND_BROWSER === '1' }), logger: () => {} }));
     let token, adminToken, itemId;
     const create = async (overrides = {}) => service.create(owner, { ...input, ...overrides });
     const images = async (id) => (await query(pool, 'SELECT image_id, cloudinary_public_id FROM item_images WHERE item_id=? ORDER BY image_id', [id]))[0];
@@ -310,6 +313,7 @@ test('Item integration: HTTP/JWT, transactions, concurrent uploads and durable c
     });
   } finally {
     if (http) await http.close();
+    chat?.close();
     if (pool) await pool.end();
     try {
       if (created) {

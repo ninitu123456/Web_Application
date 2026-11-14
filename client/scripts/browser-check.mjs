@@ -736,6 +736,19 @@ export async function browserCheck({
     console.log(
       "Browser: desktop/mobile, registration, upload recovery, inactive lookup edit, matching, search, modal keyboard, claim duplicate/privacy, handover, nested refresh, logout and invalid JWT cleanup verified.",
     );
+    const { uxRegressionCheck } = await import("./ux-regression-check.mjs");
+    await uxRegressionCheck({
+      browser,
+      url,
+      ownerEmail,
+      otherEmail,
+      password,
+      categoryId,
+      locationId,
+      pool,
+      query,
+      artifacts,
+    });
     const { aiUiBrowserCheck } = await import("./ai-ui-browser-check.mjs");
     await aiUiBrowserCheck({
       browser,
