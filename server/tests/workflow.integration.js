@@ -1,3 +1,5 @@
+import { createSuggestionsService } from '../services/suggestions.service.js';
+import { createSuggestionsRepository } from '../repositories/suggestions.repository.js';
 import { assertIsolatedInstance } from '../../database/scripts/assert-isolated.js';
 await assertIsolatedInstance();
 import test from 'node:test';
@@ -52,7 +54,7 @@ test('Phase 5 integration: real notifications, reports, transactions and additiv
     const users = createUserRepository(pool), auth = createAuthService(users, createTokenService({ secret: randomBytes(32).toString('hex'), expiresIn: 3600 }));
     const items = createItemService(createItemRepository(pool)), claims = createClaimService(createClaimRepository(pool));
     const notifications = createNotificationService(createNotificationRepository(pool)), reports = createReportService(createReportRepository(pool));
-    http = await serveApp(createApp({ healthService: { async check() { return {}; } }, authService: auth, userService: createUserService(users), itemService: items,
+    http = await serveApp(createApp({ suggestionsService:createSuggestionsService(createSuggestionsRepository(pool)), healthService: { async check() { return {}; } }, authService: auth, userService: createUserService(users), itemService: items,
       matchingService: createMatchingService(createMatchingRepository(pool)), claimService: claims, notificationService: notifications, reportService: reports, logger: () => {} }));
     const accounts = {};
     for (const label of ['owner', 'admin', 'claimant', 'other']) {
@@ -167,6 +169,48 @@ test('Phase 5 integration: real notifications, reports, transactions and additiv
       assert.deepEqual(await notifications.unread(other), otherBefore);
       await notifications.emit('NEW_MATCH', '9000000', [owner.id]);
       assert.deepEqual(await notifications.unread(owner), { unreadCount: 1 });
+    });
+
+    await t.test('notification targets: recipient-only matching source in both directions, no ADMIN bypass/read side effects, safe legacy and lifecycle fallback',async()=>{
+      const lost=await makeItem('LOST',owner,{title:'UX target wallet',description:'wallet library blue'});
+      const found=await makeItem('FOUND',claimant,{title:'UX target wallet',description:'wallet library blue'});
+      const [[match]]=await query(pool,'SELECT match_id FROM matches WHERE lost_item_id=? AND found_item_id=?',[lost.id,found.id]);assert.ok(match);
+      for(const [identity,item] of [[owner,lost],[claimant,found]]) {
+        const [[notice]]=await query(pool,'SELECT notification_id,is_read FROM notifications WHERE user_id=? AND event_key=?',[identity.id,'NEW_MATCH:'+match.match_id]);assert.ok(notice);
+        const path='/api/notifications/'+notice.notification_id+'/target';
+        const response=await request(http,path,{token:identity.token});assert.equal(response.status,200);assert.deepEqual(response.json.data,{kind:'SUGGESTIONS',itemId:item.id});assert.match(response.headers.get('cache-control'),/no-store/);
+        for(const denied of [other,admin])assert.equal((await request(http,path,{token:denied.token})).status,404);
+        assert.equal((await request(http,path)).status,401);
+        const [[unchanged]]=await query(pool,'SELECT is_read FROM notifications WHERE notification_id=?',[notice.notification_id]);assert.equal(Number(unchanged.is_read),Number(notice.is_read));
+        for(const endpoint of ['suggestions','matches']){
+        assert.equal((await request(http,'/api/items/'+item.id+'/'+endpoint,{token:identity.token})).status,200);
+        for(const denied of [other,admin,identity===owner?claimant:owner])assert.equal((await request(http,'/api/items/'+item.id+'/'+endpoint,{token:denied.token})).status,404);
+        }
+        for(const denied of [other,admin,identity===owner?claimant:owner])assert.equal((await request(http,'/api/items/'+item.id+'/suggestions',{token:denied.token})).status,404);
+      }
+      const repo=createNotificationRepository(pool);const key='AI_VISUAL:ux-target';
+      await query(pool,'INSERT INTO ai_visual_pair_alerts(recipient_id,lost_item_id,found_item_id,event_key,delivered_at) VALUES(?,?,?,?,UTC_TIMESTAMP())',[owner.id,lost.id,found.id,key]);
+      await repo.insert(owner.id,'AI_VISUAL_SIMILAR_ITEM','No private data',key);
+      const [[ai]]=await query(pool,'SELECT notification_id FROM notifications WHERE user_id=? AND event_key=?',[owner.id,key]);
+      assert.deepEqual((await request(http,'/api/notifications/'+ai.notification_id+'/target',{token:owner.token})).json.data,{kind:'SUGGESTIONS',itemId:lost.id});
+      const [legacy]=await query(pool,"INSERT INTO notifications(user_id,type,message,is_read,created_at) VALUES(?,'NEW_MATCH','Contains an unreliable #123',FALSE,UTC_TIMESTAMP())",[owner.id]);
+      assert.equal((await request(http,'/api/notifications/'+legacy.insertId+'/target',{token:owner.token})).status,404);
+      await items.close(claimant,found.id);
+      assert.equal((await request(http,'/api/notifications/'+ai.notification_id+'/target',{token:owner.token})).status,404);
+    });
+    await t.test('approved Claim notification targets the FOUND owner contact; completed/hidden states use claimant history without private evidence',async()=>{
+      const found=await makeItem('FOUND',owner,{title:'UX Claim contact'}),claim=await createClaim(found);
+      const [[incoming]]=await query(pool,'SELECT notification_id FROM notifications WHERE user_id=? AND event_key=?',[owner.id,'NEW_CLAIM:'+claim.id]);
+      assert.deepEqual((await request(http,'/api/notifications/'+incoming.notification_id+'/target',{token:owner.token})).json.data,{kind:'RECEIVED_CLAIM',itemId:found.id,claimId:claim.id});
+      await claims.approve(owner,claim.id);
+      const [[approved]]=await query(pool,'SELECT notification_id FROM notifications WHERE user_id=? AND event_key=?',[claimant.id,'CLAIM_APPROVED:'+claim.id]);
+      const path='/api/notifications/'+approved.notification_id+'/target';
+      const response=await request(http,path,{token:claimant.token});assert.equal(response.status,200);assert.deepEqual(response.json.data,{kind:'CLAIM_CONTACT',itemId:found.id,claimId:claim.id});assert.ok(!JSON.stringify(response.json).includes(proof));
+      assert.equal((await request(http,path,{token:owner.token})).status,404);assert.equal((await request(http,path,{token:admin.token})).status,404);
+      await query(pool,"INSERT INTO activity_logs(user_id,action,entity_type,entity_id,details,created_at) VALUES(?,'ITEM_HIDDEN','ITEM',?,'{}',UTC_TIMESTAMP())",[admin.id,found.id]);
+      assert.equal((await request(http,path,{token:claimant.token})).json.data.kind,'CLAIM_HISTORY');
+      await claims.complete(owner,claim.id);
+      assert.equal((await request(http,path,{token:claimant.token})).json.data.kind,'CLAIM_HISTORY');
     });
 
     await t.test('concurrent Match creation and duplicate Claim creation never duplicate notifications', async () => {

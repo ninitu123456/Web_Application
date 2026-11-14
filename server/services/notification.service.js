@@ -20,6 +20,11 @@ export function createNotificationService(repository) {
       }
     },
     async list(identity, options) { const { rows, total } = await repository.list(identity.id, options); return paged(rows, total, options, notificationDto); },
+    async target(identity,id) {
+      const target=await repository.resolveTarget(identity.id,id);
+      if(!target)throw new HttpError(404,'Nội dung thông báo không còn khả dụng hoặc bạn không có quyền xem');
+      return target;
+    },
     async unread(identity) {
       const unreadCount = Number(await repository.unread(identity.id));
       if (!Number.isSafeInteger(unreadCount) || unreadCount < 0) throw new Error('Unread count cannot be represented safely');

@@ -1,3 +1,4 @@
+import { useNotificationArrival } from "../lib/notification-navigation";
 import { Icon } from "../components/Icon";
 import { useRef, useState } from "react";
 import {
@@ -44,6 +45,13 @@ function Detail({ item }: { item: Item }) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const toast = useToast();
+  const [suggestionsReady, setSuggestionsReady] = useState(false);
+  const [claimsReady, setClaimsReady] = useState(false);
+  const arrival = useNotificationArrival({
+    itemId: item.id,
+    suggestionsReady,
+    claimsReady,
+  });
   const [selected, setSelected] = useState(0);
   const [claimOpen, setClaimOpen] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
@@ -100,6 +108,11 @@ function Detail({ item }: { item: Item }) {
   }
   return (
     <section className="page-section">
+      {arrival.error && (
+        <p className="notice" role="alert">
+          {arrival.error}
+        </p>
+      )}
       <Link className="back-link" to={exploreFrom}>
         ← Khám phá đồ vật
       </Link>
@@ -192,8 +205,15 @@ function Detail({ item }: { item: Item }) {
             ))}
           {!hidden && user && !owner && (
             <div className="actions">
-              <Button variant="secondary" disabled={busy} onClick={startChat}>
-                Nhắn tin
+              <Button
+                id="contact-action"
+                variant="secondary"
+                disabled={busy}
+                onClick={startChat}
+              >
+                {arrival.target?.kind === "CLAIM_CONTACT"
+                  ? "Liên hệ người nhặt"
+                  : "Nhắn tin"}
               </Button>
             </div>
           )}
@@ -269,7 +289,7 @@ function Detail({ item }: { item: Item }) {
         </div>
       </div>
       {(showSuggestions || canInspect) && (
-        <div className="detail-tabs">
+        <div className="detail-tabs" id="received-claims" tabIndex={-1}>
           <div className="tabs" role="tablist" aria-label="Thông tin liên quan">
             {showSuggestions && (
               <button
@@ -294,11 +314,16 @@ function Detail({ item }: { item: Item }) {
           </div>
           <div className="tab-content" role="tabpanel">
             {tab === "claims" ? (
-              <ReceivedClaims itemId={item.id} canAct={owner} />
+              <ReceivedClaims
+                itemId={item.id}
+                canAct={owner}
+                onReady={setClaimsReady}
+              />
             ) : showSuggestions ? (
               <VisualSuggestions
                 key={item.id + ":" + user?.id}
                 itemId={item.id}
+                onReady={() => setSuggestionsReady(true)}
                 enabled={canShowVisualSuggestions({
                   enabled:
                     import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_ENABLED ===

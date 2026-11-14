@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  notificationRoute,
+  navigableNotifications,
+  type NotificationTarget,
+} from "../lib/notification-navigation";
 import { api, errorText, invalidate } from "../lib/api";
 import { useResource } from "../lib/hooks";
 import { useNotifications } from "../lib/notifications";
@@ -14,6 +19,24 @@ import {
   useToast,
 } from "../components/ui";
 export function NotificationsPage() {
+  const navigate = useNavigate();
+  async function open(notification: Notification) {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      const { data } = await api<NotificationTarget>(
+        `/notifications/${notification.id}/target`,
+      );
+      navigate(notificationRoute(data, notification.id));
+    } catch (error) {
+      setError(errorText(error));
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
   const [params, setParams] = useSearchParams();
   const notifications = useNotifications();
   useEffect(() => {
@@ -84,6 +107,7 @@ export function NotificationsPage() {
         <div className="stack">
           {result.data.data.map((notification) => (
             <article
+              data-notification-id={notification.id}
               key={notification.id}
               className={`panel notification-row ${notification.isRead ? "" : "unread"}`}
             >
@@ -91,7 +115,28 @@ export function NotificationsPage() {
                 <span className="badge">
                   {notification.isRead ? "Đã đọc" : "Chưa đọc"}
                 </span>
-                <p>{notification.message}</p>
+                {navigableNotifications.has(notification.type) ? (
+                  <button
+                    type="button"
+                    className="notification-open"
+                    disabled={busy}
+                    onClick={() => void open(notification)}
+                  >
+                    <span>{notification.message}</span>
+                    <span className="notification-cta">
+                      {notification.type === "CLAIM_APPROVED"
+                        ? "Xem yêu cầu đã duyệt →"
+                        : "Xem nội dung thông báo →"}
+                    </span>
+                  </button>
+                ) : (
+                  <>
+                    <p>{notification.message}</p>
+                    <small className="muted">
+                      Thông báo này chưa có liên kết đích.
+                    </small>
+                  </>
+                )}
                 <small className="muted">
                   {dateLabel(notification.createdAt)}
                 </small>

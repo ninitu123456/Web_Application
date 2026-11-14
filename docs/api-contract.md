@@ -851,3 +851,15 @@ Envelope: `{success:true,data:{visual:Suggestion[],information:Suggestion[],tota
 Band hiển thị: VERY_HIGH >=0.85 (Rất giống), HIGH >=0.70 (Khá giống), còn lại MEDIUM (Có thể liên quan). Đây là ngưỡng trình bày **chưa hiệu chỉnh trên ảnh thật**, không lọc candidate hoặc đổi threshold rule-based >=50/100. Endpoint hợp nhất không xuất raw cosine; endpoint visual legacy giữ contract kỹ thuật cũ. AI disabled không làm mất gợi ý rule-based. visualState=disabled|processing|ready|error; UI polling 10s khi processing và 30s khi ready/error, dọn timer khi unmount/session/item thay đổi và dừng khi lỗi HTTP cần Retry.
 
 Không tạo Match/Claim/notification/email trong đường đọc này. Cảnh báo UI: “Gợi ý không phải là xác nhận quyền sở hữu.”
+
+### 5.5. Phân giải đích thông báo
+
+`GET /api/notifications/:id/target` yêu cầu ACTIVE USER/ADMIN là chính người nhận. Trả `Cache-Control: no-store`; không ghi dữ liệu và không tự đánh dấu đã đọc. `401` khi chưa xác thực; `404` chung khi không phải người nhận, event cũ thiếu metadata đáng tin cậy, đối tượng không còn hợp lệ hoặc không còn quyền. Không đọc ID từ nội dung thông báo.
+
+`data` là một trong các descriptor: `{kind:"SUGGESTIONS",itemId}`, `{kind:"RECEIVED_CLAIM",itemId,claimId}`, `{kind:"CLAIM_CONTACT",itemId,claimId}` hoặc `{kind:"CLAIM_HISTORY",claimId,page}`. Không trả event_key, ID người liên hệ, bằng chứng Claim hoặc điểm AI. Matching định tuyến tới bài LOST/FOUND của người nhận; cặp không còn public/active bị từ chối. Claim APPROVED hợp lệ định tuyến tới FOUND của người nhặt; hidden/completed/rejected chuyển về trang lịch sử riêng của claimant. NEW_CLAIM chỉ mở danh sách nhận được của FOUND owner. Không tạo conversation trong GET này.
+
+Frontend dùng route nội bộ theo descriptor, đợi nội dung đích hợp lệ tải xong, scroll/focus rồi mới PATCH `/notifications/:id/read`. Navigation/load thất bại giữ unread; thao tác đánh dấu đã đọc thủ công giữ nguyên nghiệp vụ hiện có. Target có thể được kiểm tra lại lúc đến; thay đổi quyền/trạng thái không được dùng metadata cũ để vượt kiểm tra.
+
+### Điều chỉnh quyền legacy Matching trong UX regression
+
+`GET /api/items/:id/matches` hiện cũng **owner-only**, gồm cả bài LOST và FOUND. USER khác và ADMIN không phải chủ bài nhận `404`, khách nhận `401`. Endpoint không còn chỉ yêu cầu đăng nhập như contract cũ. Service kiểm tra ownership trước và sau đọc snapshot; response/pagination/rule score/threshold không đổi. Hàm list nội bộ dùng cho transaction/regression không phải route công khai. `/suggestions` và `/visual-suggestions` tiếp tục owner-only; frontend không mount/gọi các panel riêng trên bài người khác.

@@ -1,4 +1,5 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useNotificationArrival } from "../lib/notification-navigation";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, errorText, invalidate } from "../lib/api";
 import { useResource } from "../lib/hooks";
@@ -109,9 +110,11 @@ const actionLabel: Record<Action, string> = {
 export function ReceivedClaims({
   itemId,
   canAct,
+  onReady,
 }: {
   itemId: number;
   canAct: boolean;
+  onReady?: (ready: boolean) => void;
 }) {
   const [page, setPage] = useState(1);
   const result = useResource<Claim[]>(`/items/${itemId}/claims`, {
@@ -125,6 +128,9 @@ export function ReceivedClaims({
   const [error, setError] = useState("");
   const lock = useRef(false);
   const toast = useToast();
+  useEffect(() => {
+    onReady?.(Boolean(result.data && !result.loading && !result.error));
+  }, [result.data, result.loading, result.error, onReady]);
   async function perform() {
     if (!action || lock.current) return;
     lock.current = true;
@@ -165,7 +171,12 @@ export function ReceivedClaims({
       ) : result.data?.data.length ? (
         <div className="claim-list">
           {result.data.data.map((claim) => (
-            <article className="panel claim-card" key={claim.id}>
+            <article
+              className="panel claim-card"
+              key={claim.id}
+              id={`claim-${claim.id}`}
+              tabIndex={-1}
+            >
               <div className="section-heading">
                 <div>
                   <h3>
@@ -247,8 +258,16 @@ export function MyClaimsPage() {
     page: params.get("page") || "1",
     limit: 10,
   });
+  const arrival = useNotificationArrival({
+    claimIds: result.data?.data.map((claim) => claim.id),
+  });
   return (
     <section className="page-section narrow">
+      {arrival.error && (
+        <p className="notice" role="alert">
+          {arrival.error}
+        </p>
+      )}
       <h1>Yêu cầu đã gửi</h1>
       {result.loading ? (
         <Loading />
@@ -257,7 +276,12 @@ export function MyClaimsPage() {
       ) : result.data?.data.length ? (
         <div className="claim-list">
           {result.data.data.map((claim) => (
-            <article className="panel claim-card" key={claim.id}>
+            <article
+              className="panel claim-card"
+              key={claim.id}
+              id={`claim-${claim.id}`}
+              tabIndex={-1}
+            >
               <div className="section-heading">
                 <div>
                   <h2>
@@ -312,6 +336,14 @@ export function MyClaimsPage() {
                 <p className="notice">
                   Yêu cầu đã được chấp thuận. Chủ bài sẽ xác nhận sau khi bàn
                   giao đồ vật.
+                  {claim.item?.visibility !== "HIDDEN" && (
+                    <Link
+                      className="button secondary"
+                      to={`/do-vat/${claim.itemId}#contact-action`}
+                    >
+                      Liên hệ người nhặt →
+                    </Link>
+                  )}
                 </p>
               )}
               {claim.completedAt && (

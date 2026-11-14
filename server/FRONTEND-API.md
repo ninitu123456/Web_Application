@@ -31,3 +31,5 @@ Backend hiện kiểm tra danh mục/địa điểm **chỉ khi trường ID đ�
 ## Gợi ý riêng hợp nhất
 
 `GET /api/items/:id/suggestions` yêu cầu ACTIVE owner của bài LOST/FOUND PUBLIC đang hoạt động; ADMIN không bypass ownership. DTO public ItemCard và lý do hai nguồn được mô tả ở mục 4.3 của [API contract](../docs/api-contract.md). Dedup xảy ra trước SQL pagination. Frontend mới cần API này được phát hành trước. Các endpoint legacy giữ cấu trúc/authorization cũ; không chuyển quyền owner-only của endpoint mới thành quyền ADMIN toàn cục.
+
+UX regression: endpoint legacy `/items/:id/matches` được siết owner-only giống `/suggestions` và `/visual-suggestions`; không có ADMIN bypass. Điều này thay thế ghi chú authorization legacy phía trên. Notification navigation dùng GET `/notifications/:id/target` với descriptor theo người nhận; xem mục 5.5 API contract. Backend cần phát hành contract này trước frontend mới. Không yêu cầu migration hoặc đổi feature flags/threshold.

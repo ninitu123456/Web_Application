@@ -13,10 +13,12 @@ export function VisualSuggestions({
   itemId,
   enabled = true,
   previewFixture = false,
+  onReady,
 }: {
   itemId: number;
   enabled?: boolean;
   previewFixture?: boolean;
+  onReady?: () => void;
 }) {
   const [page, setPage] = useState(1),
     [refresh, setRefresh] = useState(0);
@@ -26,6 +28,9 @@ export function VisualSuggestions({
     refresh,
   );
   const state = result.data?.visualState;
+  useEffect(() => {
+    if (result.data && !result.loading && !result.error) onReady?.();
+  }, [result.data, result.loading, result.error, onReady]);
   useEffect(() => {
     if (!enabled || !result.data || result.error || state === "disabled")
       return;
@@ -92,7 +97,9 @@ export function VisualSuggestions({
     >
       <div className="section-heading">
         <div>
-          <h2 id="suggestions-title">Gợi ý cho bạn</h2>
+          <h2 id="suggestions-title" tabIndex={-1}>
+            Gợi ý cho bạn
+          </h2>
           <p className="muted">Gợi ý không phải là xác nhận quyền sở hữu.</p>
           {data && (
             <p className="muted">
