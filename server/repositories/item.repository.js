@@ -108,10 +108,12 @@ export function createItemRepository(pool, execute = (sql, values = []) => query
         (image_id, model_id, model_revision, status, attempts, available_at, created_at, updated_at)
         VALUES (?, ?, ?, 'QUEUED', 0, UTC_TIMESTAMP(), UTC_TIMESTAMP(), UTC_TIMESTAMP())`, [imageId, modelId, modelRevision]);
     },
-    async deleteAiVisualData(itemId) {
+    async deleteAiVisualData(itemId, imageId) {
       await execute('DELETE FROM ai_visual_candidates WHERE lost_item_id=? OR found_item_id=?', [itemId, itemId]);
       await execute('DELETE j FROM ai_visual_jobs j JOIN item_images im ON im.image_id=j.image_id WHERE im.item_id=?', [itemId]);
-      await execute('DELETE e FROM item_image_embeddings e JOIN item_images im ON im.image_id=e.image_id WHERE im.item_id=?', [itemId]);
+      // Rebuild pairs after removal, retaining vectors for unchanged photos.
+      if (imageId === undefined) await execute('DELETE e FROM item_image_embeddings e JOIN item_images im ON im.image_id=e.image_id WHERE im.item_id=?', [itemId]);
+      else await execute('DELETE FROM item_image_embeddings WHERE image_id=?', [imageId]);
     },
     async deleteAiVisualDataIfPresent(itemId, imageId) {
       const [rows] = await execute(`SELECT TABLE_NAME AS table_name FROM information_schema.TABLES

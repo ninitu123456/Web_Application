@@ -88,7 +88,8 @@ test('worker retries failed inference, cleans its local image and never calls no
   });
   assert.equal(await worker.processNext(), true);
   assert.equal(failures, 1); assert.equal(cleaned, 1); assert.equal(modelCalls, 1);
-  assert.equal(events.at(-1).event, 'job_failed');
+  assert.equal(events.find(event => event.event === 'job_failed').code, 'AI_VISUAL_PROCESSING_FAILED');
+  assert.equal(events.at(-1).event, 'job_settled');
   assert.equal(await worker.processNext(), false);
   assert.equal(claims, 2);
 });

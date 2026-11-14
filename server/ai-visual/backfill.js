@@ -4,10 +4,15 @@ import { CLIP_MODEL_ID, CLIP_MODEL_REVISION } from './config.js';
 
 // Each item shares the image mutation lock. Unique image/model/revision keys
 // make repeated and concurrent runs safe; never steal an active worker lease.
-export async function backfillAiVisual(pool, { retryFailed = false, rebuild = false, signal } = {}) {
+export async function backfillAiVisual(pool, { retryFailed = false, rebuild = false, signal, itemIds } = {}) {
+  if (itemIds !== undefined && (!Array.isArray(itemIds) || !itemIds.length || itemIds.length > 1000 ||
+      itemIds.some(id => !/^[1-9][0-9]{0,19}$/.test(String(id)) || BigInt(id) > 18446744073709551615n))) {
+    throw new Error('AI_VISUAL_INVALID_BACKFILL_ITEM_IDS');
+  }
+  const ids = itemIds === undefined ? undefined : [...new Set(itemIds.map(String))];
   let after = '0', scannedItems = 0, changedJobs = 0;
   while (!signal?.aborted) {
-    const [page] = await query(pool, 'SELECT item_id FROM items WHERE item_id > ? ORDER BY item_id LIMIT 100', [after]);
+    const [page] = await query(pool, `SELECT item_id FROM items WHERE item_id > ?${ids ? ` AND item_id IN (${ids.map(() => '?').join(',')})` : ''} ORDER BY item_id LIMIT 100`, [after, ...(ids ?? [])]);
     if (!page.length) break;
     for (const row of page) {
       if (signal?.aborted) break;

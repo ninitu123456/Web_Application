@@ -131,7 +131,7 @@ export function createItemService(repository, imageStorage, imageOperations, aiV
           open(await owned(identity, id, source));
           const current = await source.findImage(imageId);
           if (!current || String(current.item_id) !== String(id)) throw notFound();
-          if (aiVisual.enabled) await source.deleteAiVisualData(id);
+          if (aiVisual.enabled) await source.deleteAiVisualData(id, current.image_id);
           else if (source.deleteAiVisualDataIfPresent) await source.deleteAiVisualDataIfPresent(id, current.image_id);
           await source.deleteImage(imageId);
           if (aiVisual.enabled) {

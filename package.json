@@ -12,6 +12,7 @@
     "dev": "node --watch server/server.js",
     "worker:ai-visual": "node server/ai-visual/main.js",
     "ai-visual:smoke": "node server/ai-visual/smoke.js",
+    "ai-visual:benchmark": "node server/ai-visual/benchmark.js",
     "ai-visual:backfill": "node server/ai-visual/backfill-main.js",
     "test:backend": "node --test server/tests/*.test.js",
     "test:items": "node --test server/tests/items.test.js",

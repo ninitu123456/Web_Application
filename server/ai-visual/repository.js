@@ -11,7 +11,16 @@ export function createAiVisualRepository(pool) {
     async claimNext(maxAttempts) {
       const leaseToken = randomUUID();
       return transaction(pool, async (connection) => {
-        await connection.query({ sql: `UPDATE ai_visual_jobs SET status = IF(attempts >= ?, 'FAILED', 'QUEUED'), locked_until = NULL, lease_token = NULL, available_at = UTC_TIMESTAMP(), updated_at = UTC_TIMESTAMP() WHERE status = 'PROCESSING' AND locked_until <= UTC_TIMESTAMP()`, timeout: databaseTimeout }, [maxAttempts]);
+        // A range UPDATE can wait for uncommitted upload inserts, even when
+        // the subsequent claim uses SKIP LOCKED. Lock a bounded expired batch
+        // without waiting, then update only those primary keys we own.
+        const [expired] = await connection.query({ sql: `SELECT job_id FROM ai_visual_jobs
+          WHERE status='PROCESSING' AND locked_until<=UTC_TIMESTAMP()
+          ORDER BY job_id LIMIT 100 FOR UPDATE SKIP LOCKED`, timeout: databaseTimeout });
+        if (expired.length) {
+          await connection.query({ sql: `UPDATE ai_visual_jobs SET status = IF(attempts >= ?, 'FAILED', 'QUEUED'), locked_until = NULL, lease_token = NULL, available_at = UTC_TIMESTAMP(), updated_at = UTC_TIMESTAMP()
+            WHERE job_id IN (${expired.map(() => '?').join(',')})`, timeout: databaseTimeout }, [maxAttempts, ...expired.map(row => row.job_id)]);
+        }
         // Claim locks jobs only. Item mutations and embedding writes lock Item
         // before Job; a claiming worker must not wait for Item while holding Job.
         const [rows] = await connection.query({ sql: `SELECT j.job_id, j.image_id, j.model_id, j.model_revision, j.attempts
@@ -34,6 +43,22 @@ export function createAiVisualRepository(pool) {
       const [result] = await query(pool, `UPDATE ai_visual_jobs SET locked_until=DATE_ADD(UTC_TIMESTAMP(), INTERVAL 2 MINUTE), updated_at=UTC_TIMESTAMP()
         WHERE job_id=? AND status='PROCESSING' AND lease_token=? AND locked_until>UTC_TIMESTAMP()`, [job.job_id, job.lease_token]);
       return result.affectedRows === 1;
+    },
+    async existingEmbedding(job) {
+      // Image IDs/public IDs are immutable; replacing a photo creates a new ID.
+      // A matching retry after inference must not download or infer again.
+      const [[row]] = await query(pool, `SELECT e.dimensions, e.embedding_data
+        FROM ai_visual_jobs j JOIN item_images im ON im.image_id=j.image_id
+        JOIN item_image_embeddings e ON e.image_id=j.image_id AND e.model_id=j.model_id AND e.model_revision=j.model_revision
+        WHERE j.job_id=? AND j.status='PROCESSING' AND j.lease_token=? AND j.locked_until>UTC_TIMESTAMP()
+        AND im.cloudinary_public_id=?`, [job.job_id, job.lease_token, job.cloudinary_public_id]);
+      if (!row || Number(row.dimensions) !== 512) return undefined;
+      try {
+        const vector = decodeEmbedding(row.embedding_data);
+        const norm = vector.reduce((sum, value) => sum + value * value, 0);
+        if (!Number.isFinite(norm) || Math.abs(norm - 1) > 0.001) return undefined;
+        return vector;
+      } catch { return undefined; }
     },
     async saveEmbedding(job, embeddingData) {
       return transaction(pool, async (connection) => {
