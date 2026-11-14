@@ -9,12 +9,12 @@ function publicId(value) {
 }
 
 export function createVisualSuggestionsService(repository, { enabled = false, production = false } = {}) {
-  const eligible=repository.isEligibleOwnedItem??repository.isEligibleOwnedLostItem;
-  const list=repository.listForOwnedItem??repository.listForLostItem;
   return {
     async forOwner(identity, itemId, { withState = false } = {}) {
       if (!enabled) throw notFound();
       if (!identity || !['USER', 'ADMIN'].includes(identity.role)) throw new HttpError(401, 'Chưa xác thực hoặc token không hợp lệ');
+      const eligible=repository.isEligibleOwnedItem??repository.isEligibleOwnedLostItem;
+      const list=repository.listForOwnedItem??repository.listForLostItem;
       if (!await eligible.call(repository,itemId, identity.id)) throw notFound();
       let rows, state = 'ready';
       try {

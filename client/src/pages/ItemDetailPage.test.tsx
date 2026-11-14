@@ -42,16 +42,6 @@ const suggestion: Suggestion = {
   },
   reasons: ["IMAGE"],
   similarityBand: "VERY_HIGH",
-  /*
-  itemId: 6,
-  title: "FOUND local backpack",
-  description: "Synthetic suggestion",
-  category: "Bags",
-  location: "Library",
-  color: null,
-  eventDate: "2026-11-07",
-  thumbnailUrl: null,
-  cosineScore: 0.9739, */
 };
 let current: Item;
 let panel: Record<string, unknown>;

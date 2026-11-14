@@ -161,7 +161,9 @@ export function VisualSuggestions({
             ) : (
               <EmptyState
                 title={
-                  data?.visual.length
+                  data?.visual.some((entry) =>
+                    entry.reasons.includes("INFORMATION"),
+                  )
                     ? "Các kết quả trùng thông tin đã được gộp ở trên"
                     : "Chưa có gợi ý đồ vật phù hợp"
                 }
