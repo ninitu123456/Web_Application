@@ -30,6 +30,23 @@ export async function realAiBrowser({ url, email, password, artifacts }) {
       page.getByRole("link", { name: "Bài của tôi", exact: true }).first(),
     ).toBeVisible();
     return {
+      async loginAs(email, password) {
+        if (await page.locator(".account summary").count()) {
+          await page.locator(".account summary").click();
+          await page
+            .getByRole("button", { name: "Đăng xuất", exact: true })
+            .click();
+        }
+        await page.goto(url + "/dang-nhap");
+        await page.getByLabel("Email", { exact: true }).fill(email);
+        await page.getByLabel("Mật khẩu", { exact: true }).fill(password);
+        await page
+          .getByRole("button", { name: "Đăng nhập →", exact: true })
+          .click();
+        await expect(
+          page.getByRole("link", { name: "Bài của tôi", exact: true }).first(),
+        ).toBeVisible();
+      },
       async upload(itemId, images) {
         await page.goto(url + `/do-vat/${itemId}/sua`);
         await expect(
@@ -70,12 +87,12 @@ export async function realAiBrowser({ url, email, password, artifacts }) {
                 : "Có thể liên quan",
           );
           await expect(card).not.toContainText(item.cosineScore.toFixed(3));
-          await expect(card.getByRole("img")).toBeVisible();
-          await card.getByRole("img").scrollIntoViewIfNeeded();
+          await expect(card.locator(".card-image img")).toBeVisible();
+          await card.locator(".card-image img").scrollIntoViewIfNeeded();
           await expect
             .poll(() =>
               card
-                .getByRole("img")
+                .locator(".card-image img")
                 .evaluate((image) => image.complete && image.naturalWidth > 0),
             )
             .toBe(true);
@@ -94,7 +111,10 @@ export async function realAiBrowser({ url, email, password, artifacts }) {
               ),
             );
             await page.screenshot({
-              path: resolve(artifacts, `real-clip-${width}.png`),
+              path: resolve(
+                artifacts,
+                `real-clip-${screenshot === "found" ? "found-" : ""}${width}.png`,
+              ),
               fullPage: true,
             });
           }

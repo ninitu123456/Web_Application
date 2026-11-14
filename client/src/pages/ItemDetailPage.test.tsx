@@ -102,6 +102,35 @@ afterEach(() => {
 });
 
 describe("redesigned item detail with AI integration", () => {
+  it("offers reverse LOST suggestions to the FOUND owner without changing Claim controls", () => {
+    current = { ...item, type: "FOUND" };
+    panel = {
+      loading: false,
+      data: {
+        success: true,
+        visualState: "ready",
+        data: {
+          visual: [
+            {
+              ...suggestion,
+              item: {
+                ...suggestion.item,
+                type: "LOST",
+                title: "LOST reverse suggestion",
+              },
+            },
+          ],
+          information: [],
+          totalUnique: 1,
+        },
+      },
+    };
+    const html = render();
+    expect(html).toContain("LOST reverse suggestion");
+    expect(html).toContain("Giống về hình ảnh");
+    expect(html).toContain("Yêu cầu nhận được");
+    expect(html).not.toContain("Đây có thể là đồ của tôi");
+  });
   it("keeps owner AI suggestions, official matches tab, detail link and explore navigation together", () => {
     const html = render();
     expect(html).toContain("Giống về hình ảnh");

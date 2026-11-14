@@ -28,7 +28,7 @@ export function createSuggestionsRepository(pool, {visualEnabled=false,productio
         const source=await owned(run,id,owner);if(!source)throw missing();
         const items=createItemRepository(pool,run);
         let visualRows=[],visualState='disabled';
-        if(visualEnabled&&visual&&source.type==='LOST') {
+        if(visualEnabled&&visual) {
           const result=await createVisualSuggestionsService(createVisualSuggestionsRepository(pool,run),{enabled:true,production}).forOwner({id:owner,role:'USER'},id,{withState:true});
           visualRows=result.data;visualState=result.visualState;
         }

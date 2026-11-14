@@ -11,7 +11,7 @@ Workflow: implement -> targeted verification -> scoped Conventional Commit. Keep
 | B2. Email concurrency | Controlled barrier/deadlock evidence before fix; preserve provider snapshot/idempotency/lease states; bounded acquisition-only retry if proven | Pending |
 | B3. Documentation/harness | Correct Chat docs; await loaded Home; distinguish intentional harness faults from app console errors | In progress: Chat docs corrected; loaded Home assertion added, final browser verification pending |
 | C1. Unified suggestions LOST | One "Gợi ý cho bạn" section; visual + information reasons; dedup across pages without losing records; preserve states/polling/privacy | PASS: owner gate/unit, dedup across pages on MySQL, frontend 84/84, browser 19/19 |
-| C2. FOUND suggestions | Owner-only reverse lookup over existing candidates, no Claim changes; contracts/types/tests compatible | Pending |
+| C2. FOUND suggestions | Owner-only reverse lookup over existing candidates, no Claim changes; contracts/types/tests compatible | PASS: frontend 85/85, MySQL reverse/privacy/lifecycle, real CLIP browser 9/9 |
 | D. Product content | Dynamic footer; remove unwanted academic text; preserve honest AI/fixture warnings and build guards | Pending |
 | E1. Purge dry-run/manifest | Read-only default, masked report, exact row checksums/target identity, confirmed/possible/admin classification, block unapproved edges | Pending |
 | E2. Purge execute/cloud | Explicit reviewed manifest; transactional exact deletion; preserve every ADMIN field/login and real data; separate reviewed Cloudinary asset reconciliation | Pending |

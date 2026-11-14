@@ -109,7 +109,16 @@ test('visual suggestion API data query is owner scoped, read only, current, boun
     }
     assert.equal(new Set(withoutAi).size,4);assert.deepEqual(new Set(withoutAi),new Set(validFound.map(Number)));
     await assert.rejects(()=>unified.forOwner({id:String(adminUser.user_id),role:'ADMIN'},lostId,{page:1,limit:6}),error=>error.status===404);
-        await query(pool, 'DROP TABLE ai_visual_candidates');
+        const reverse=await service.forOwner(identity,validFound[0]);
+    assert.deepEqual(reverse.map(row=>row.itemId),[Number(lostId)]);
+    const reverseUnified=await unified.forOwner(identity,validFound[0],{page:1,limit:6,visual:true});
+    assert.equal(reverseUnified.data.visual[0].item.type,'LOST');
+    assert.deepEqual(reverseUnified.data.visual[0].reasons,['IMAGE','INFORMATION']);
+    await assert.rejects(()=>service.forOwner({id:String(adminUser.user_id),role:'ADMIN'},validFound[0]),error=>error.status===404);
+    await query(pool,"UPDATE items SET status='RETURNED' WHERE item_id=?",[validFound[0]]);
+    await assert.rejects(()=>service.forOwner(identity,validFound[0]),error=>error.status===404);
+    await query(pool,"UPDATE items SET status='OPEN' WHERE item_id=?",[validFound[0]]);
+    await query(pool, 'DROP TABLE ai_visual_candidates');
     assert.deepEqual(await service.forOwner(identity, Number(lostId)), [], 'missing AI tables resolve to a safe empty result');
     await query(pool, "UPDATE items SET status='CLOSED' WHERE item_id=?", [lostId]);
     await assert.rejects(() => service.forOwner(identity, Number(lostId)), error => error.status === 404);
