@@ -31,3 +31,16 @@ export function itemFieldErrors(
     errors.description = "Mô tả quá dài. Vui lòng rút ngắn.";
   return errors;
 }
+
+export function changeItemField(
+  fields: ItemFields,
+  errors: Partial<Record<keyof ItemFields, string>>,
+  key: keyof ItemFields,
+  value: string,
+) {
+  const next = { ...fields, [key]: value };
+  const validation = Object.hasOwn(errors, key)
+    ? { ...errors, [key]: itemFieldErrors(next)[key] }
+    : errors;
+  return { fields: next, errors: validation };
+}

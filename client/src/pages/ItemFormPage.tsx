@@ -9,6 +9,15 @@ import { api, ApiError, errorText, invalidate } from "../lib/api";
 import { useResource } from "../lib/hooks";
 import { useAuth } from "../lib/auth";
 import { itemFieldErrors, type ItemFields as Fields } from "../lib/item-form";
+import { ImageCarousel } from "../components/ImageCarousel";
+import {
+  runImageUploads,
+  updateUpload,
+  uploadLabels,
+  type UploadEntry,
+  type UploadUpdate,
+} from "../lib/image-uploads";
+import { changeItemField } from "../lib/item-form";
 import { Icon } from "../components/Icon";
 import type { Item, ItemType, Lookup } from "../lib/types";
 import {
@@ -92,8 +101,28 @@ function ItemForm({
   >({});
   const stepTitle = useRef<HTMLHeadingElement>(null);
   const [saved, setSaved] = useState<Item | undefined>(original);
-  const [files, setFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [files, setFiles] = useState<UploadEntry[]>([]);
+  const queue = useRef<UploadEntry[]>([]);
+  const urls = useRef(new Map<string, string>());
+  const [previewSelection, setPreviewSelection] = useState<string>();
+  const formRef = useRef<HTMLFormElement>(null);
+  function changeQueue(change: (old: UploadEntry[]) => UploadEntry[]) {
+    queue.current = change(queue.current);
+    setFiles(queue.current);
+  }
+  const previews = files
+    .filter((entry) => entry.status !== "saved")
+    .map((entry) => entry.previewUrl);
+  const pendingCount = files.filter((entry) => entry.status !== "saved").length;
+  const previewImages = [
+    ...(saved?.images || []).map((image) => ({
+      key: "saved:" + image.id,
+      src: image.url,
+    })),
+    ...files
+      .filter((entry) => entry.status !== "saved")
+      .map((entry) => ({ key: entry.key, src: entry.previewUrl })),
+  ];
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [savedMessage, setSavedMessage] = useState(false);
@@ -121,13 +150,24 @@ function ItemForm({
     }
     return true;
   }
-  useEffect(() => {
-    const urls = files.map((file) => URL.createObjectURL(file));
-    setPreviews(urls);
-    return () => urls.forEach((url) => URL.revokeObjectURL(url));
-  }, [files]);
-  const set = (key: keyof Fields, value: string) =>
-    setFields((old) => ({ ...old, [key]: value }));
+  useEffect(
+    () => () => {
+      urls.current.forEach((url) => URL.revokeObjectURL(url));
+      urls.current.clear();
+    },
+    [],
+  );
+  const set = (key: keyof Fields, value: string) => {
+    const next = changeItemField(fields, fieldErrors, key, value);
+    setFields(next.fields);
+    setFieldErrors(next.errors);
+  };
+  function dropFile(key: string) {
+    const url = urls.current.get(key);
+    if (url) URL.revokeObjectURL(url);
+    urls.current.delete(key);
+    changeQueue((old) => old.filter((entry) => entry.key !== key));
+  }
   function chooseFiles(selected: FileList | null) {
     if (!selected) return;
     const incoming = Array.from(selected);
@@ -146,11 +186,22 @@ function ItemForm({
       );
       return;
     }
-    if ((saved?.images.length || 0) + files.length + incoming.length > 5) {
+    if (
+      (saved?.images.length || 0) +
+        queue.current.filter((entry) => entry.status !== "saved").length +
+        incoming.length >
+      5
+    ) {
       setError("Mỗi bài đăng có tối đa 5 ảnh, tính cả ảnh đã lưu.");
       return;
     }
-    setFiles((old) => [...old, ...incoming]);
+    const entries = incoming.map((file) => {
+      const key = crypto.randomUUID(),
+        previewUrl = URL.createObjectURL(file);
+      urls.current.set(key, previewUrl);
+      return { key, file, previewUrl, status: "pending" as const, attempt: 0 };
+    });
+    changeQueue((old) => [...old, ...entries]);
     setError("");
   }
   async function refreshSaved(itemId: number) {
@@ -210,14 +261,47 @@ function ItemForm({
             `/do-vat/${current.id}/sua`,
           );
       }
-      if (current && files.length) {
-        const data = new FormData();
-        files.forEach((file) => data.append("images", file));
-        await api(`/items/${current.id}/images`, {
-          method: "POST",
-          body: data,
-        });
-        setFiles([]);
+      if (current && pendingCount) {
+        const itemId = current.id;
+        const results = await runImageUploads(
+          queue.current,
+          async (file) => {
+            const data = new FormData();
+            data.append("images", file);
+            const response = await api<{ id: number; url: string }[]>(
+              `/items/${itemId}/images`,
+              { method: "POST", body: data },
+            );
+            return response.data[0];
+          },
+          (update: UploadUpdate) => {
+            changeQueue((old) => updateUpload(old, update));
+            if (update.image) {
+              const image = update.image;
+              setSaved((old) =>
+                old
+                  ? {
+                      ...old,
+                      images: [
+                        ...old.images.filter(
+                          (existing) => existing.id !== image.id,
+                        ),
+                        image,
+                      ],
+                    }
+                  : old,
+              );
+            }
+          },
+        );
+        const failure = results.find((result) => !result.success);
+        if (failure) {
+          if (
+            results.some((result) => "uncertain" in result && result.uncertain)
+          )
+            setUncertain(true);
+          throw failure.error;
+        }
       }
       invalidate();
       toast(original ? "Đã lưu thay đổi." : "Bài đăng đã sẵn sàng.");
@@ -227,8 +311,7 @@ function ItemForm({
       if (current) {
         setSavedMessage(true);
         try {
-          const fresh = await refreshSaved(current.id);
-          if (fresh.images.length !== current.images.length) setFiles([]);
+          await refreshSaved(current.id);
         } catch {
           setUncertain(true);
         }
@@ -245,10 +328,16 @@ function ItemForm({
     lock.current = true;
     setBusy(true);
     try {
-      const fresh = await refreshSaved(saved.id);
-      if (fresh.images.length !== saved.images.length) setFiles([]);
-      setUncertain(false);
-      setError("");
+      await refreshSaved(saved.id);
+      const unresolved = queue.current.some(
+        (entry) => entry.status === "uncertain",
+      );
+      setUncertain(unresolved);
+      setError(
+        unresolved
+          ? "Kết quả upload chưa xác định. Xem bài đăng để đối chiếu; không tự tải lại ảnh này nhằm tránh trùng."
+          : "",
+      );
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -264,6 +353,10 @@ function ItemForm({
     try {
       await api(`/items/${saved.id}/images/${deleting}`, { method: "DELETE" });
       await refreshSaved(saved.id);
+      const removed = queue.current.find(
+        (entry) => entry.image?.id === deleting,
+      );
+      if (removed) dropFile(removed.key);
       toast("Đã xóa ảnh.");
     } catch (e) {
       setError(errorText(e));
@@ -332,7 +425,12 @@ function ItemForm({
         </div>
       )}
       <div className="form-layout">
-        <form className="panel item-form" onSubmit={submit} noValidate>
+        <form
+          ref={formRef}
+          className="panel item-form"
+          onSubmit={submit}
+          noValidate
+        >
           {wizard && (
             <>
               <div className="wizard-heading">
@@ -468,36 +566,72 @@ function ItemForm({
               Tối đa 5 ảnh · JPG, PNG, GIF, WebP · Mỗi ảnh tối đa 5 MiB
             </p>
             <div className="image-previews">
-              {saved?.images.map((image) => (
-                <div key={image.id}>
-                  <ItemImage src={image.url} title="Ảnh đã lưu" />
-                  <button
-                    type="button"
-                    className="image-remove"
-                    disabled={busy}
-                    onClick={() => setDeleting(image.id)}
-                    aria-label="Xóa ảnh đã lưu"
-                  >
-                    ×
-                  </button>
-                  <small>Đã lưu</small>
-                </div>
-              ))}
-              {previews.map((url, index) => (
-                <div key={url}>
-                  <img src={url} alt={`Ảnh chờ tải ${index + 1}`} />
-                  <button
-                    type="button"
-                    className="image-remove"
-                    disabled={busy}
-                    onClick={() =>
-                      setFiles((old) => old.filter((_, i) => i !== index))
-                    }
-                    aria-label={`Bỏ ảnh chờ tải ${index + 1}`}
-                  >
-                    ×
-                  </button>
-                  <small>Chờ tải lên</small>
+              {saved?.images
+                .filter(
+                  (image) =>
+                    !files.some((entry) => entry.image?.id === image.id),
+                )
+                .map((image) => (
+                  <div key={image.id}>
+                    <ItemImage src={image.url} title="Ảnh đã lưu" />
+                    <button
+                      type="button"
+                      className="image-remove"
+                      disabled={busy}
+                      onClick={() => setDeleting(image.id)}
+                      aria-label="Xóa ảnh đã lưu"
+                    >
+                      ×
+                    </button>
+                    <small>Đã lưu</small>
+                  </div>
+                ))}
+              {files.map((entry, index) => (
+                <div
+                  key={entry.key}
+                  data-upload-key={entry.key}
+                  data-upload-status={entry.status}
+                >
+                  <img src={entry.previewUrl} alt={`Ảnh chọn ${index + 1}`} />
+                  {entry.status === "saved" ? (
+                    <button
+                      type="button"
+                      className="image-remove"
+                      disabled={busy}
+                      onClick={() => setDeleting(entry.image!.id)}
+                      aria-label="Xóa ảnh đã lưu"
+                    >
+                      ×
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="image-remove"
+                      disabled={busy || entry.status === "uncertain"}
+                      onClick={() => dropFile(entry.key)}
+                      aria-label={`Bỏ ảnh chờ tải ${index + 1}`}
+                    >
+                      ×
+                    </button>
+                  )}
+                  <small role={entry.status === "failed" ? "alert" : "status"}>
+                    {uploadLabels[entry.status]}
+                  </small>
+                  {entry.status === "failed" && (
+                    <>
+                      <small className="error-text">
+                        {errorText(entry.error)}
+                      </small>
+                      <button
+                        type="button"
+                        className="button secondary"
+                        disabled={busy || uncertain}
+                        onClick={() => formRef.current?.requestSubmit()}
+                      >
+                        Thử lại ảnh lỗi
+                      </button>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
@@ -506,7 +640,7 @@ function ItemForm({
               type="file"
               accept="image/jpeg,image/png,image/gif,image/webp"
               multiple
-              disabled={busy || (saved?.images.length || 0) + files.length >= 5}
+              disabled={busy || (saved?.images.length || 0) + pendingCount >= 5}
               onChange={(e) => {
                 chooseFiles(e.target.files);
                 e.target.value = "";
@@ -515,35 +649,53 @@ function ItemForm({
           </section>
           {wizard && step === 3 && (
             <section className="post-preview" aria-label="Xem trước bài đăng">
-              {previews.length > 0 && (
-                <div className="preview-images">
-                  {previews.map((url, index) => (
-                    <img key={url} src={url} alt={`Ảnh đồ vật ${index + 1}`} />
-                  ))}
-                </div>
-              )}
+              <ImageCarousel
+                images={previewImages}
+                selected={previewSelection}
+                onSelect={setPreviewSelection}
+              />
               <span className={`badge status-${fields.type.toLowerCase()}`}>
                 {fields.type === "FOUND" ? "Nhặt được" : "Bị mất"}
               </span>
               <h2>{fields.title}</h2>
-              <p className="preview-meta">
-                <Icon name="pin" />{" "}
-                {
-                  locations.data?.data.find(
-                    (row) => row.id === Number(fields.locationId),
-                  )?.name
-                }{" "}
-                · {fields.eventDate.split("-").reverse().join("/")}
-              </p>
-              <p className="muted">
-                {
-                  categories.data?.data.find(
-                    (row) => row.id === Number(fields.categoryId),
-                  )?.name
-                }
-                {fields.color && ` · ${fields.color}`}
-              </p>
-              <p className="description">{fields.description}</p>
+              <dl className="preview-facts">
+                <div>
+                  <dt>Danh mục</dt>
+                  <dd>
+                    {
+                      categories.data?.data.find(
+                        (row) => row.id === Number(fields.categoryId),
+                      )?.name
+                    }
+                  </dd>
+                </div>
+                {fields.color.trim() && (
+                  <div>
+                    <dt>Màu sắc</dt>
+                    <dd>{fields.color.trim()}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt>Địa điểm</dt>
+                  <dd>
+                    {
+                      locations.data?.data.find(
+                        (row) => row.id === Number(fields.locationId),
+                      )?.name
+                    }
+                  </dd>
+                </div>
+                <div>
+                  <dt>
+                    {fields.type === "FOUND" ? "Ngày nhặt được" : "Ngày bị mất"}
+                  </dt>
+                  <dd>{fields.eventDate.split("-").reverse().join("/")}</dd>
+                </div>
+                <div className="preview-description">
+                  <dt>Mô tả đồ vật</dt>
+                  <dd>{fields.description.trim()}</dd>
+                </div>
+              </dl>
               <p className="notice">
                 <Icon name="shield" /> Nội dung này sẽ hiển thị công khai. Giữ
                 lại đặc điểm bí mật để xác minh sở hữu.
@@ -613,7 +765,7 @@ function ItemForm({
               {busy
                 ? "Đang lưu…"
                 : created
-                  ? files.length
+                  ? pendingCount
                     ? "Tải ảnh cho bài đã tạo →"
                     : "Xem bài đã tạo →"
                   : original
