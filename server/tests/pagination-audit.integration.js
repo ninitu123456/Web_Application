@@ -45,7 +45,7 @@ test('F09: bounded Claim/Match HTTP lists, snapshots and EXPLAIN on isolated dat
       return { status: response.status, body: await response.json() };
     };
     await t.test('three lists default to ten and exhaustive pages preserve tie ordering, total and privacy', async () => {
-      for (const [path, token, total, key, direction] of [[`/api/items/${found}/claims`, 'owner', 120, 'id', -1], ['/api/claims/mine', 'claimant', 121, 'id', -1], [`/api/items/${lost}/matches`, 'other', 120, 'matchId', 1]]) {
+      for (const [path, token, total, key, direction] of [[`/api/items/${found}/claims`, 'owner', 120, 'id', -1], ['/api/claims/mine', 'claimant', 121, 'id', -1], [`/api/items/${lost}/matches`, 'owner', 120, 'matchId', 1]]) {
         const first = await get(path, token); assert.equal(first.status, 200); assert.equal(first.body.data.length, 10);
         assert.deepEqual(first.body.pagination, { page: 1, limit: 10, total, totalPages: Math.ceil(total / 10) });
         const rows = [];

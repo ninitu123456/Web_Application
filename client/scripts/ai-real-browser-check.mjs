@@ -26,6 +26,7 @@ export async function realAiBrowser({ url, email, password, artifacts }) {
     await page
       .getByRole("button", { name: "Đăng nhập →", exact: true })
       .click();
+    await expect(page).toHaveURL(url + "/");
     await expect(
       page.getByRole("link", { name: "Bài của tôi", exact: true }).first(),
     ).toBeVisible();
@@ -43,6 +44,8 @@ export async function realAiBrowser({ url, email, password, artifacts }) {
         await page
           .getByRole("button", { name: "Đăng nhập →", exact: true })
           .click();
+        // The footer also contains this link while logged out. Wait for login navigation.
+        await expect(page).toHaveURL(url + "/");
         await expect(
           page.getByRole("link", { name: "Bài của tôi", exact: true }).first(),
         ).toBeVisible();

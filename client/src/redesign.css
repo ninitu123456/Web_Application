@@ -2093,3 +2093,104 @@ main[tabindex="-1"]:focus {
 .unified-suggestions .visual-suggestion-card .item-card {
   height: auto;
 }
+/* Posting preview uses the existing FindIt tokens; no page-level horizontal strip. */
+.preview-carousel {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+  touch-action: pan-y;
+  margin-bottom: 20px;
+}
+.preview-carousel > img {
+  display: block;
+  width: 100%;
+  height: clamp(220px, 38vw, 360px);
+  object-fit: contain;
+}
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: var(--card);
+  color: var(--forest);
+  font-size: 22px;
+  cursor: pointer;
+}
+.carousel-arrow.previous {
+  left: 10px;
+}
+.carousel-arrow.next {
+  right: 10px;
+}
+.carousel-position {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--card);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 14px;
+}
+.preview-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+  margin-block: 20px;
+}
+.preview-facts dt {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.preview-facts dd {
+  margin: 0;
+  font-size: 15px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.preview-description {
+  grid-column: 1 / -1;
+}
+@media (max-width: 480px) {
+  .preview-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.notification-open {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+  color: var(--ink);
+  font: inherit;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.notification-open:hover .notification-cta {
+  text-decoration: underline;
+}
+.notification-cta {
+  color: var(--forest);
+  font-weight: 600;
+  font-size: 14px;
+}
+#suggestions-title,
+#received-claims,
+#contact-action,
+[id^="claim-"] {
+  scroll-margin-block: 120px;
+}

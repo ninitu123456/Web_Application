@@ -127,3 +127,12 @@ test('ambiguous BEGIN and RELEASE failures destroy connections without reusing o
     assert.ok(connection.calls.includes('destroy')); assert.ok(!connection.calls.includes('release'));
   }
 });
+
+test('HTTP matching entry point enforces owner scope before and after read, including ADMIN',async()=>{
+ const {createMatchingService}=await import('../services/matching.service.js');
+ let allowed=false,reads=0;
+ const service=createMatchingService({async owns(){return allowed;},async list(){reads++;return{rows:[],total:0}}});
+ for(const role of ['USER','ADMIN'])await assert.rejects(()=>service.listForOwner({id:9,role},5),error=>error.status===404);
+ assert.equal(reads,0);allowed=true;assert.deepEqual((await service.listForOwner({id:7,role:'USER'},5)).data,[]);assert.equal(reads,1);
+ const revoked=createMatchingService({async owns(){return allowed;},async list(){allowed=false;return{rows:[],total:0}}});allowed=true;await assert.rejects(()=>revoked.listForOwner({id:7,role:'USER'},5),error=>error.status===404);
+});

@@ -31,3 +31,27 @@ Workflow: implement -> targeted verification -> scoped Conventional Commit. Keep
 
 Baseline, final commands/counts, screenshots, limitations and release status will be recorded in docs/PRODUCTION-POLISH-VERIFICATION.md and docs/DEMO-CLEANUP-RUNBOOK.md. Ignored logs/screenshots/model cache must not be committed.
 
+
+# FindIt UX regression — active task
+
+Base: origin/main fbd96a1d6b8c3e7d0c298f17b335aed34702589e, fetched 2026-11-14. Branch: fix/findit-ux-regression. Source reference: Downloads/Các lỗi.docx (7 issues and 6 embedded screenshots inspected). Local implementation/tests/docs/commits only. STOP before push; no production/provider/ADMIN/cleanup/migration/threshold changes.
+
+| Issue | Plan and acceptance | Verified state |
+| --- | --- | --- |
+| 1 Upload status | Trace actual deferred upload; explicit per-image pending/uploading/saved/failed/uncertain states, stable identity, safe retry/reconciliation and object URL cleanup; out-of-order response regression | FIXED: keyed per-image state; async/retry/URL cleanup regression PASS |
+| 2 Location selection | Native select ID is canonical; reproduce stale validation/event behavior; preserve chosen ID across blur/lookup reload/steps; never accept label text as ID | FIXED: stale validation cleared; native keyboard/blur/submitted ID PASS |
+| 3 Preview carousel | Replace horizontal strip with bounded gallery, arrows/counter/keyboard/swipe, 1–5 images, stable selection after add/remove and step return | FIXED: 1/2/3/5-image carousel, 3 widths, keyboard/swipe PASS |
+| 4 Preview labels | Structured labeled category/color/description/type/title/location/date from submit fields, no inferred values | FIXED: labeled structured fields from submit state PASS |
+| 5 Matching notification | Resolve real event metadata server-side with recipient/lifecycle authorization; safe old-notification fallback; navigate/focus after load then mark read | FIXED: recipient resolver + loaded-panel focus/read; failed/legacy target stays unread PASS |
+| 6 Approved Claim | Resolve correct FOUND item/claim context for recipient, clear allowed contact CTA, preserve lifecycle/evidence rules | FIXED: approved -> FOUND contact/conversation, completed/hidden -> history PASS |
+| 7 Owner suggestions | Remove entire suggestions navigation/section for non-owner, keep authorized claims Admin view; verify API independently and session/item isolation | FIXED: whole section hidden; legacy /matches also owner-gated; USER/ADMIN/guest/session regression PASS |
+
+Verification: baseline frontend 85 PASS, typecheck/Prettier PASS; root unit baseline logged. Run isolated MySQL and existing browser baseline, then regression before/after each behavior. Add focused unit/API/MySQL/browser coverage, desktop 1440x900 and mobile 390x844/360, console/HTTP checks; retain all existing assertions. Meaningful local Conventional Commits by behavior with verified tests. Final evidence: docs/UX-REGRESSION-VERIFICATION.md, ignored .cache screenshots and OS-temp logs. AI field accuracy and physical-device keyboard remain outside local proof.
+
+Final verification: frontend 103, backend/auth/database 179/7/17, MySQL 395, browser 19 with UX extension, chat/account 13, real CLIP 9, full runtime 1; typecheck/Prettier/production build PASS. Screenshot and evidence inventory: docs/UX-REGRESSION-VERIFICATION.md. Local commits only. READY FOR PUSH REVIEW; STOP before push.
+
+## P2 image deletion reconciliation — follow-up
+
+Starting HEAD a913d1985ac4d17c77f2586dab2275b6efb8e5d3; retain all six commits. Reproduce ghost thumbnails before changing application code. Reconcile acknowledged uploads and saved images using authoritative GET image IDs after DELETE, including errors. Preserve unsaved entries, revoke removed object URLs, reject stale reads after unmount and serialize mutations. If GET fails, show an unknown deletion state and allow synchronization retry before further writes. Cover 2xx, 503 committed/retained, failed GET, upload/delete overlap, double confirmation, retry, reload/step return and pending local images. Run existing frontend/backend/isolated MySQL/browser/AI/chat checks, then one scoped local fix commit. No push or production/provider/ADMIN/threshold changes.
+
+P2 final: reproduction-before-fix Expected 3/Received 4; stable-ID reconciliation, explicit unknown/retry, request abort guards and safe URL cleanup now PASS. Additional parent-read failure and upload/delete serialization checks PASS. Frontend 109; backend/auth/database 179/7/17; MySQL 395; browser 19 plus deletion assertions; CLIP 9; chat 13; full runtime 1; typecheck/Prettier/production build/diff checks PASS. AI harness login navigation barrier strengthened after a reproduced account-switch race, with original assertions retained. Backend/production contracts unchanged. One scoped follow-up local commit; retain all prior six commits. READY FOR PUSH REVIEW; no push/merge/deploy.

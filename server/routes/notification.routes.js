@@ -8,6 +8,7 @@ export function notificationRoutes(auth, service) {
   router.use(authenticate(auth), authorizeRoles('USER', 'ADMIN'));
   router.get('/', controller.list);
   router.get('/unread-count', controller.unread);
+  router.get('/:id/target', controller.target);
   router.patch('/read-all', controller.markAll);
   router.patch('/:id/read', controller.markRead);
   return router;

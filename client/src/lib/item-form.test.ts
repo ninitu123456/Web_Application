@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { itemFieldErrors, type ItemFields } from "./item-form";
+import { itemFieldErrors, changeItemField, type ItemFields } from "./item-form";
 
 const fields: ItemFields = {
   title: "Bình nước xanh",
@@ -51,5 +51,38 @@ describe("item wizard validation", () => {
       description: "😀".repeat(16384),
     });
     expect(Object.keys(errors)).toEqual(["title", "color", "description"]);
+  });
+});
+
+// A corrected native-select value must clear its old error immediately.
+describe("selected location validation", () => {
+  it("clears stale errors on a valid ID and preserves other errors", () => {
+    const errors = itemFieldErrors({ ...fields, locationId: "", title: "" });
+    const next = changeItemField(
+      { ...fields, locationId: "", title: "" },
+      errors,
+      "locationId",
+      "2",
+    );
+    expect(next.fields.locationId).toBe("2");
+    expect(next.errors.locationId).toBeUndefined();
+    expect(next.errors.title).toBeTruthy();
+  });
+  it("does not accept display text as an ID and retains selection across lookup/step state", () => {
+    const next = changeItemField(
+      fields,
+      { locationId: "Chọn địa điểm hợp lệ." },
+      "locationId",
+      "Thư viện",
+    );
+    expect(next.errors.locationId).toBeTruthy();
+    const selected = changeItemField(
+      next.fields,
+      next.errors,
+      "locationId",
+      "2",
+    );
+    expect(itemFieldErrors(selected.fields)).toEqual({});
+    expect(selected.fields.locationId).toBe("2");
   });
 });

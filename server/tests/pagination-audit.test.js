@@ -6,7 +6,7 @@ import { createClaimRepository } from '../repositories/claim.repository.js';
 test('F09: all three list routes validate pagination before service work and preserve array envelopes', async () => {
   const calls = [];
   const list = async (...args) => { const options = args.at(-1); calls.push(options); return { data: [], pagination: { ...options, total: 0, totalPages: 0 } }; };
-  const http = await serve({ healthService: { check() {} }, authService: { async authenticate() { return { id: '7', role: 'USER' }; } }, userService: {}, itemService: {}, claimService: { mine: list, forItem: list }, matchingService: { list } });
+  const http = await serve({ healthService: { check() {} }, authService: { async authenticate() { return { id: '7', role: 'USER' }; } }, userService: {}, itemService: {}, claimService: { mine: list, forItem: list }, matchingService: { listForOwner: async(identity,id,options)=>{assert.equal(identity.id,'7');return list(id,options);} } });
   try {
     for (const route of ['/api/claims/mine', '/api/items/1/claims', '/api/items/1/matches']) {
       const get = (query = '') => fetch(http.url + route + query, { headers: { Authorization: 'Bearer valid' } });
