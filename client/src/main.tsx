@@ -1,7 +1,7 @@
 import { ChatProvider } from "./lib/chat";
 import { MessagesPage } from "./pages/MessagesPage";
 import { PasswordResetPage } from "./pages/PasswordResetPage";
-import { StrictMode, useEffect } from "react";
+import { lazy, StrictMode, Suspense, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import {
   BrowserRouter,
@@ -14,7 +14,6 @@ import { AuthProvider, Protected } from "./lib/auth";
 import { ToastProvider } from "./components/ui";
 import { Layout } from "./components/Layout";
 import { ExplorePage } from "./pages/ExplorePage";
-import { HomePage } from "./pages/HomePage";
 import { AuthPage } from "./pages/AuthPage";
 import { ItemDetailPage } from "./pages/ItemDetailPage";
 import { ItemFormPage } from "./pages/ItemFormPage";
@@ -37,6 +36,10 @@ import { AdminLookupsPage } from "./pages/admin/LookupsPage";
 import { AdminActivityPage } from "./pages/admin/ActivityPage";
 import "./styles.css";
 import "./redesign.css";
+// The home page bundles GSAP; load it on demand so other pages stay light.
+const HomePage = lazy(() =>
+  import("./pages/HomePage").then((module) => ({ default: module.HomePage })),
+);
 function ScrollToTop() {
   const location = useLocation();
   useEffect(() => {
@@ -54,7 +57,20 @@ createRoot(document.getElementById("root")!).render(
               <ScrollToTop />
               <Routes>
                 <Route element={<Layout />}>
-                  <Route index element={<HomePage />} />
+                  <Route
+                    index
+                    element={
+                      <Suspense
+                        fallback={
+                          <div className="state" role="status">
+                            Đang tải trang chủ…
+                          </div>
+                        }
+                      >
+                        <HomePage />
+                      </Suspense>
+                    }
+                  />
                   <Route path="kham-pha" element={<ExplorePage />} />
                   <Route path="dang-nhap" element={<AuthPage />} />
                   <Route path="quen-mat-khau" element={<PasswordResetPage />} />
