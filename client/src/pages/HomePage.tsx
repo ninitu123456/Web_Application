@@ -141,7 +141,14 @@ function Home() {
               .fromTo(
                 next,
                 { yPercent: 110 },
-                { yPercent: 0, duration: 0.7, ease: "power3.out" },
+                {
+                  yPercent: 0,
+                  duration: 0.7,
+                  ease: "power3.out",
+                  // fromTo renders its start state at creation by default; the
+                  // last step targets words[0] and would hide it on load.
+                  immediateRender: false,
+                },
                 "<0.25",
               );
           });
