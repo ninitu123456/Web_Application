@@ -437,10 +437,14 @@ export async function uxRegressionCheck({
     await readState(matchNotice, 1);
     await page.unroute(`**/api/items/${itemId}/suggestions?*`);
     await expect(page.locator("#suggestions-title")).toBeFocused();
-    await page.screenshot({
-      path: resolve(directory, "matching-arrival-360.png"),
-      fullPage: true,
-    });
+    for (const width of [1440, 390, 360]) {
+      await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
+      await noOverflow(page);
+      await page.screenshot({
+        path: resolve(directory, `matching-arrival-${width}.png`),
+        fullPage: true,
+      });
+    }
     const peerMatch = await openNotice(
       peer,
       peerEmail,
@@ -509,6 +513,14 @@ export async function uxRegressionCheck({
       page.getByRole("tab", { name: "Gợi ý cho bạn", exact: true }),
     ).toHaveCount(0);
     assert.equal(calls.length, 0);
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
+      await noOverflow(page);
+      await page.screenshot({
+        path: resolve(directory, `non-owner-found-${width}.png`),
+        fullPage: true,
+      });
+    }
     await admin.goto(url + "/do-vat/" + itemId);
     await expect(
       admin.getByRole("tab", { name: "Gợi ý cho bạn", exact: true }),
@@ -553,10 +565,32 @@ export async function uxRegressionCheck({
     await expect(
       page.getByRole("tab", { name: "Gợi ý cho bạn", exact: true }),
     ).toHaveCount(0);
-    await page.screenshot({
-      path: resolve(directory, "claim-contact-360.png"),
-      fullPage: true,
-    });
+    for (const width of [1440, 390, 360]) {
+      await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
+      const contact = page.getByRole("button", {
+        name: "Liên hệ người nhặt",
+        exact: true,
+      });
+      await contact.evaluate((node) =>
+        node.scrollIntoView({ block: "center" }),
+      );
+      assert.ok(
+        await contact.evaluate((node) => {
+          const box = node.getBoundingClientRect();
+          const hit = document.elementFromPoint(
+            box.x + box.width / 2,
+            box.y + box.height / 2,
+          );
+          return node.contains(hit) && box.height >= 44;
+        }),
+        "Contact CTA hit-test and touch size",
+      );
+      await noOverflow(page);
+      await page.screenshot({
+        path: resolve(directory, `claim-contact-${width}.png`),
+        fullPage: true,
+      });
+    }
     await page
       .getByRole("button", { name: "Liên hệ người nhặt", exact: true })
       .click();

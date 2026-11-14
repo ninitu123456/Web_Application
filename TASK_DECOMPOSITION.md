@@ -36,14 +36,16 @@ Baseline, final commands/counts, screenshots, limitations and release status wil
 
 Base: origin/main fbd96a1d6b8c3e7d0c298f17b335aed34702589e, fetched 2026-11-14. Branch: fix/findit-ux-regression. Source reference: Downloads/Các lỗi.docx (7 issues and 6 embedded screenshots inspected). Local implementation/tests/docs/commits only. STOP before push; no production/provider/ADMIN/cleanup/migration/threshold changes.
 
-| Issue | Plan and acceptance | Initial state |
+| Issue | Plan and acceptance | Verified state |
 | --- | --- | --- |
-| 1 Upload status | Trace actual deferred upload; explicit per-image pending/uploading/saved/failed/uncertain states, stable identity, safe retry/reconciliation and object URL cleanup; out-of-order response regression | Investigating |
-| 2 Location selection | Native select ID is canonical; reproduce stale validation/event behavior; preserve chosen ID across blur/lookup reload/steps; never accept label text as ID | Investigating |
-| 3 Preview carousel | Replace horizontal strip with bounded gallery, arrows/counter/keyboard/swipe, 1–5 images, stable selection after add/remove and step return | Reproduced in source/reference |
-| 4 Preview labels | Structured labeled category/color/description/type/title/location/date from submit fields, no inferred values | Reproduced in source/reference |
-| 5 Matching notification | Resolve real event metadata server-side with recipient/lifecycle authorization; safe old-notification fallback; navigate/focus after load then mark read | Reproduced: no navigation exists |
-| 6 Approved Claim | Resolve correct FOUND item/claim context for recipient, clear allowed contact CTA, preserve lifecycle/evidence rules | Reproduced: no navigation exists |
-| 7 Owner suggestions | Remove entire suggestions navigation/section for non-owner, keep authorized claims Admin view; verify API independently and session/item isolation | Reproduced: tab/empty section rendered for non-owner; private panel already gated |
+| 1 Upload status | Trace actual deferred upload; explicit per-image pending/uploading/saved/failed/uncertain states, stable identity, safe retry/reconciliation and object URL cleanup; out-of-order response regression | FIXED: keyed per-image state; async/retry/URL cleanup regression PASS |
+| 2 Location selection | Native select ID is canonical; reproduce stale validation/event behavior; preserve chosen ID across blur/lookup reload/steps; never accept label text as ID | FIXED: stale validation cleared; native keyboard/blur/submitted ID PASS |
+| 3 Preview carousel | Replace horizontal strip with bounded gallery, arrows/counter/keyboard/swipe, 1–5 images, stable selection after add/remove and step return | FIXED: 1/2/3/5-image carousel, 3 widths, keyboard/swipe PASS |
+| 4 Preview labels | Structured labeled category/color/description/type/title/location/date from submit fields, no inferred values | FIXED: labeled structured fields from submit state PASS |
+| 5 Matching notification | Resolve real event metadata server-side with recipient/lifecycle authorization; safe old-notification fallback; navigate/focus after load then mark read | FIXED: recipient resolver + loaded-panel focus/read; failed/legacy target stays unread PASS |
+| 6 Approved Claim | Resolve correct FOUND item/claim context for recipient, clear allowed contact CTA, preserve lifecycle/evidence rules | FIXED: approved -> FOUND contact/conversation, completed/hidden -> history PASS |
+| 7 Owner suggestions | Remove entire suggestions navigation/section for non-owner, keep authorized claims Admin view; verify API independently and session/item isolation | FIXED: whole section hidden; legacy /matches also owner-gated; USER/ADMIN/guest/session regression PASS |
 
 Verification: baseline frontend 85 PASS, typecheck/Prettier PASS; root unit baseline logged. Run isolated MySQL and existing browser baseline, then regression before/after each behavior. Add focused unit/API/MySQL/browser coverage, desktop 1440x900 and mobile 390x844/360, console/HTTP checks; retain all existing assertions. Meaningful local Conventional Commits by behavior with verified tests. Final evidence: docs/UX-REGRESSION-VERIFICATION.md, ignored .cache screenshots and OS-temp logs. AI field accuracy and physical-device keyboard remain outside local proof.
+
+Final verification: frontend 103, backend/auth/database 179/7/17, MySQL 395, browser 19 with UX extension, chat/account 13, real CLIP 9, full runtime 1; typecheck/Prettier/production build PASS. Screenshot and evidence inventory: docs/UX-REGRESSION-VERIFICATION.md. Local commits only. READY FOR PUSH REVIEW; STOP before push.
