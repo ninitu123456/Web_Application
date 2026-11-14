@@ -324,7 +324,7 @@ export function MyClaimsPage() {
         </div>
       ) : (
         <EmptyState title="Bạn chưa gửi yêu cầu nào">
-          <Link className="button secondary" to="/">
+          <Link className="button secondary" to="/kham-pha">
             Khám phá đồ vật ↗
           </Link>
         </EmptyState>

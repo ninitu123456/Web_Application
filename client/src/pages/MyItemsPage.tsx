@@ -2,12 +2,15 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useResource } from "../lib/hooks";
 import { invalidate } from "../lib/api";
 import type { Item } from "../lib/types";
+import { Icon } from "../components/Icon";
 import {
+  dateLabel,
   EmptyState,
   ErrorState,
-  ItemCard,
+  ItemImage,
   Loading,
   Pagination,
+  StatusBadge,
 } from "../components/ui";
 export function MyItemsPage() {
   const [params, setParams] = useSearchParams();
@@ -15,14 +18,20 @@ export function MyItemsPage() {
     page: params.get("page") || "1",
     limit: 12,
   });
+  const total = result.data?.pagination?.total;
   return (
-    <section className="page-section">
+    <section className="page-section my-page">
       <div className="section-heading">
         <div>
           <h1>Bài đăng của tôi</h1>
+          <p className="muted">
+            {typeof total === "number"
+              ? `${total} bài đăng · sửa, đóng bài và xử lý yêu cầu nhận lại ngay tại đây.`
+              : "Sửa, đóng bài và xử lý yêu cầu nhận lại ngay tại đây."}
+          </p>
         </div>
         <Link className="button primary" to="/dang-bai">
-          ＋ Đăng bài mới
+          <Icon name="plus" width="17" height="17" /> Đăng bài mới
         </Link>
       </div>
       {result.loading ? (
@@ -30,28 +39,58 @@ export function MyItemsPage() {
       ) : result.error ? (
         <ErrorState error={result.error} retry={invalidate} />
       ) : result.data?.data.length ? (
-        <div className="item-grid">
-          {result.data.data.map((item) => (
-            <div key={item.id}>
-              <ItemCard item={item} />
-              <div className="my-item-actions">
-                {item.status === "OPEN" && item.visibility !== "HIDDEN" && (
-                  <Link to={`/do-vat/${item.id}/sua`}>Sửa bài ↗</Link>
-                )}
-                <Link to={`/do-vat/${item.id}`}>
-                  Chi tiết
-                  {item.status === "OPEN" && item.visibility !== "HIDDEN"
-                    ? " / Đóng bài"
-                    : ""}
+        <div className="my-list">
+          {result.data.data.map((item) => {
+            const editable =
+              item.status === "OPEN" && item.visibility !== "HIDDEN";
+            return (
+              <article key={item.id} className="my-row">
+                <Link
+                  className="my-row-image"
+                  to={`/do-vat/${item.id}`}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                >
+                  <ItemImage src={item.images[0]?.url} title={item.title} />
                 </Link>
-                {item.type === "FOUND" && (
-                  <Link to={`/do-vat/${item.id}?tab=claims`}>
-                    Yêu cầu nhận đồ ↗
+                <div className="my-row-body">
+                  <div className="badge-row">
+                    <StatusBadge status={item.type} group="itemType" />
+                    <StatusBadge status={item.status} group="item" />
+                    {item.visibility === "HIDDEN" && (
+                      <span className="badge">Đã gỡ khỏi công khai</span>
+                    )}
+                  </div>
+                  <h2>
+                    <Link to={`/do-vat/${item.id}`}>{item.title}</Link>
+                  </h2>
+                  <small>
+                    {item.location?.name || `Địa điểm #${item.locationId}`} ·{" "}
+                    {dateLabel(item.eventDate)} · Bài #{item.id}
+                  </small>
+                </div>
+                <div className="my-item-actions">
+                  {item.type === "FOUND" && (
+                    <Link
+                      className="primary-action"
+                      to={`/do-vat/${item.id}?tab=claims`}
+                    >
+                      Yêu cầu nhận đồ
+                    </Link>
+                  )}
+                  {editable && (
+                    <Link to={`/do-vat/${item.id}/sua`}>Sửa bài</Link>
+                  )}
+                  <Link
+                    to={`/do-vat/${item.id}`}
+                    aria-label={`${editable ? "Chi tiết và đóng bài" : "Chi tiết"} ${item.title}`}
+                  >
+                    {editable ? "Chi tiết / Đóng bài" : "Chi tiết"}
                   </Link>
-                )}
-              </div>
-            </div>
-          ))}
+                </div>
+              </article>
+            );
+          })}
         </div>
       ) : (
         <EmptyState title="Bạn chưa có bài đăng nào">

@@ -124,7 +124,9 @@ export function dateLabel(value: string) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value))
     return value.split("-").reverse().join("/");
   return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
     timeZone: "Asia/Ho_Chi_Minh",
   }).format(new Date(value));
 }
@@ -147,42 +149,47 @@ export function ItemImage({ src, title }: { src?: string; title: string }) {
 export function ItemCard({ item }: { item: Item }) {
   const location = useLocation();
   const state =
-    location.pathname === "/"
-      ? { exploreFrom: `/${location.search}` }
+    location.pathname === "/kham-pha"
+      ? { exploreFrom: `/kham-pha${location.search}` }
       : undefined;
+  const place = item.location?.name || `Địa điểm #${item.locationId}`;
   return (
     <article className="item-card">
-      <Link className="card-image" to={`/do-vat/${item.id}`} state={state}>
+      <Link
+        className="card-image"
+        to={`/do-vat/${item.id}`}
+        state={state}
+        tabIndex={-1}
+        aria-hidden="true"
+      >
         <ItemImage src={item.images[0]?.url} title={item.title} />
+        <StatusBadge status={item.type} group="itemType" />
+        <span className="card-punch" />
       </Link>
       <div className="card-content">
-        <StatusBadge status={item.type} group="itemType" />
         {item.visibility === "HIDDEN" && (
           <span className="badge">Đã gỡ khỏi công khai</span>
         )}
-        <div className="card-meta">
-          <span>{item.category?.name || "Đồ vật"}</span>
-          <StatusBadge status={item.status} group="item" />
-        </div>
+        <span className="card-meta">
+          {item.category?.name || "Đồ vật"} · {dateLabel(item.eventDate)}
+        </span>
         <h3>
           <Link to={`/do-vat/${item.id}`} state={state}>
             {item.title}
           </Link>
         </h3>
-        <p className="muted">
-          <Icon name="pin" />{" "}
-          {item.location?.name || `Địa điểm #${item.locationId}`}
+        <p className="card-location">
+          <Icon name="pin" /> {place}
         </p>
         <div className="card-bottom">
-          <span>
-            <Icon name="calendar" /> {dateLabel(item.eventDate)}
-          </span>
+          <StatusBadge status={item.status} group="item" />
           <Link
+            className="card-go"
             aria-label={`Xem ${item.title}`}
             to={`/do-vat/${item.id}`}
             state={state}
           >
-            <Icon name="arrow" />
+            <Icon name="external" width="18" height="18" />
           </Link>
         </div>
       </div>
