@@ -189,7 +189,7 @@ export function Layout() {
             </div>
           </nav>
         </div>
-        <div className="footer-bottom">© 2026 FindIt · Đồ án môn học</div>
+        <div className="footer-bottom">© {new Date().getFullYear()} FindIt</div>
       </footer>
       <nav className="bottom-nav" aria-label="Điều hướng nhanh">
         <NavLink to="/" end>

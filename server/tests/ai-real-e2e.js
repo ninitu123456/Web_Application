@@ -1,3 +1,5 @@
+import { createSuggestionsService } from '../services/suggestions.service.js';
+import { createSuggestionsRepository } from '../repositories/suggestions.repository.js';
 // Opt-in, real pinned CLIP inference. Invoked only by the disposable runner's
 // --ai-real-e2e mode, never skipped or substituted in ordinary CI regression.
 import { assertIsolatedInstance } from '../../database/scripts/assert-isolated.js';
@@ -94,7 +96,7 @@ test('real CLIP: upload -> jobs -> embeddings -> matching -> owner API -> browse
     const claims = createClaimService(createClaimRepository(pool));
     const admins = createAdminService(createAdminRepository(pool), items);
     const suggestions = createVisualSuggestionsService(createVisualSuggestionsRepository(pool), { enabled: true });
-    const apiApp = createApp({ healthService: { async check() { return {}; } }, authService: auth, userService: createUserService(users),
+    const apiApp = createApp({ suggestionsService: createSuggestionsService(createSuggestionsRepository(pool, { visualEnabled: true })), healthService: { async check() { return {}; } }, authService: auth, userService: createUserService(users),
       itemService: items, lookupService: createLookupService(createLookupRepository(pool)), visualSuggestionsService: suggestions,
       matchingService: createMatchingService(createMatchingRepository(pool)), claimService: claims,
       notificationService: createNotificationService(createNotificationRepository(pool)), security: { apiMax: 5000, uploadMax: 200 } });

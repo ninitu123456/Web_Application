@@ -1,3 +1,5 @@
+import { createSuggestionsService } from './services/suggestions.service.js';
+import { createSuggestionsRepository } from './repositories/suggestions.repository.js';
 import { createMailer } from './services/mail.service.js';
 import { createPasswordResetService } from './services/password-reset.service.js';
 import { createEmailWorker, startEmailWorker } from './services/email-worker.js';
@@ -70,7 +72,7 @@ export async function startServer(config = readConfig()) {
     if (config.aiVisual?.enabled || config.aiVisualSuggestions?.enabled) await assertAiVisualSchema(pool);
     await healthService.check({ fresh: true });
     console.log('MySQL connection verified: findit_db');
-    server = createServer(createApp({ healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, lookupService, visualSuggestionsService, chatService, passwordResetService, corsOrigins: config.corsOrigins, security: config.security }));
+    server = createServer(createApp({ suggestionsService: createSuggestionsService(createSuggestionsRepository(pool, { visualEnabled: config.aiVisualSuggestions.enabled, production: config.aiVisualSuggestions.production })), healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, lookupService, visualSuggestionsService, chatService, passwordResetService, corsOrigins: config.corsOrigins, security: config.security }));
     io = attachChatSocket(server, { authService, chatService, corsOrigins: config.corsOrigins });
     await new Promise((resolve, reject) => {
       server.once('error', reject);

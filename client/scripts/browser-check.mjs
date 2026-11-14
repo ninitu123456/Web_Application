@@ -484,7 +484,7 @@ export async function browserCheck({
       pageA.getByRole("heading", { name: lostTitle, exact: true }),
     ).toBeVisible();
     await expect(
-      pageA.getByText("điểm tương đồng", { exact: true }).first(),
+      pageA.getByText(/\d+\/100 điểm trùng thông tin/, { exact: true }).first(),
     ).toBeVisible();
     assert.ok(!(await pageA.locator("body").innerText()).includes(proof));
     await pageB

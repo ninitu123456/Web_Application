@@ -54,7 +54,7 @@ export async function realAiBrowser({ url, email, password, artifacts }) {
         await page.goto(url + `/do-vat/${itemId}`);
         const panel = page.locator(".visual-suggestions");
         await expect(
-          panel.getByRole("heading", { name: "Vật phẩm có thể tương tự" }),
+          panel.getByRole("heading", { name: "Giống về hình ảnh" }),
         ).toBeVisible();
         await expect(panel.locator(".visual-suggestion-card")).toHaveCount(
           expected.length,
@@ -62,9 +62,14 @@ export async function realAiBrowser({ url, email, password, artifacts }) {
         for (const [index, item] of expected.entries()) {
           const card = panel.locator(".visual-suggestion-card").nth(index);
           await expect(card.locator("h3")).toHaveText(item.title);
-          await expect(
-            card.locator(".visual-suggestion-score strong"),
-          ).toHaveText(item.cosineScore.toFixed(3));
+          await expect(card.locator(".similarity-band")).toHaveText(
+            item.cosineScore >= 0.85
+              ? "Rất giống"
+              : item.cosineScore >= 0.7
+                ? "Khá giống"
+                : "Có thể liên quan",
+          );
+          await expect(card).not.toContainText(item.cosineScore.toFixed(3));
           await expect(card.getByRole("img")).toBeVisible();
           await card.getByRole("img").scrollIntoViewIfNeeded();
           await expect

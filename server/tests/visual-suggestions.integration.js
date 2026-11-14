@@ -1,3 +1,5 @@
+import { createSuggestionsRepository } from '../repositories/suggestions.repository.js';
+import { createSuggestionsService } from '../services/suggestions.service.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
@@ -87,7 +89,27 @@ test('visual suggestion API data query is owner scoped, read only, current, boun
     const [[after]] = await query(pool, 'SELECT (SELECT COUNT(*) FROM matches) AS matches,(SELECT COUNT(*) FROM notifications) AS notifications,(SELECT COUNT(*) FROM claims) AS claims');
     assert.deepEqual(Object.values(after).map(Number), Object.values(before).map(Number));
 
-    await query(pool, 'DROP TABLE ai_visual_candidates');
+    // A visual top-three overlap on different rule pages must be removed before
+    // pagination, not hidden after slicing a page in the browser.
+    for(const [index,found] of validFound.entries()) await query(pool,"INSERT INTO matches(lost_item_id,found_item_id,match_score,reasons,status,created_at) VALUES(?,?,?,?, 'POTENTIAL',UTC_TIMESTAMP())",[lostId,found,99-index,JSON.stringify(['Cùng danh mục'])]);
+    const unified=createSuggestionsService(createSuggestionsRepository(pool,{visualEnabled:true}));
+    const first=await unified.forOwner(identity,lostId,{page:1,limit:1,visual:true});
+    assert.equal(first.data.visual.length,3);assert.equal(first.data.information.length,1);
+    assert.equal(first.data.information[0].item.id,Number(validFound[3]));
+    assert.equal(first.data.totalUnique,4);assert.equal(first.pagination.total,1);
+    assert.ok(first.data.visual.every(row=>row.reasons.join(',')==='IMAGE,INFORMATION'));
+    assert.equal(JSON.stringify(first).includes('cosineScore'),false);
+    const second=await unified.forOwner(identity,lostId,{page:2,limit:1,visual:true});
+    assert.deepEqual(second.data.information,[]);assert.equal(second.pagination.total,1);
+    const withoutAi=[];
+    for(let page=1;page<=4;page++){
+      const result=await unified.forOwner(identity,lostId,{page,limit:1,visual:false});
+      assert.equal(result.visualState,'disabled');assert.equal(result.data.totalUnique,4);
+      withoutAi.push(...result.data.information.map(row=>row.item.id));
+    }
+    assert.equal(new Set(withoutAi).size,4);assert.deepEqual(new Set(withoutAi),new Set(validFound.map(Number)));
+    await assert.rejects(()=>unified.forOwner({id:String(adminUser.user_id),role:'ADMIN'},lostId,{page:1,limit:6}),error=>error.status===404);
+        await query(pool, 'DROP TABLE ai_visual_candidates');
     assert.deepEqual(await service.forOwner(identity, Number(lostId)), [], 'missing AI tables resolve to a safe empty result');
     await query(pool, "UPDATE items SET status='CLOSED' WHERE item_id=?", [lostId]);
     await assert.rejects(() => service.forOwner(identity, Number(lostId)), error => error.status === 404);

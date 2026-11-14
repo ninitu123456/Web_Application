@@ -2046,3 +2046,50 @@ main[tabindex="-1"]:focus {
     max-height: 100%;
   }
 }
+
+/* Shared cards carry both sources, with readable metadata and no raw cosine. */
+.unified-suggestions {
+  margin-block: 28px;
+}
+.unified-suggestions .visual-suggestions {
+  margin-top: 20px;
+  padding: 20px;
+}
+.unified-suggestions .visual-suggestion-card {
+  display: block;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+.unified-suggestions .match-reasons,
+.unified-suggestions .card-meta,
+.unified-suggestions .card-location,
+.unified-suggestions .badge {
+  font-size: 13px;
+}
+.unified-suggestions .match-reasons p,
+.unified-suggestions h3 a {
+  font-size: 14px;
+}
+.unified-suggestions .match-reasons {
+  padding: 14px 4px;
+}
+.suggestion-reasons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.similarity-band {
+  font-weight: 600;
+  color: var(--forest);
+}
+.suggestion-skeleton {
+  min-height: 390px;
+  border-radius: var(--radius);
+  background: var(--card);
+}
+.unified-suggestions .visual-suggestion-card .item-card {
+  height: auto;
+}

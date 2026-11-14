@@ -8,6 +8,8 @@ import { authorizeRoles } from '../middleware/authorize-roles.js';
 import { createClaimController } from '../controllers/claim.controller.js';
 import { createVisualSuggestionsController } from '../controllers/visual-suggestions.controller.js';
 
+import { createSuggestionsController } from '../controllers/suggestions.controller.js';
+
 const upload = multer({
   storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 5, fields: 0, parts: 6, fieldNameSize: 100 },
   fileFilter(request, file, callback) {
@@ -15,10 +17,11 @@ const upload = multer({
     callback(null, true);
   }
 });
-export function itemRoutes(authService, itemService, matchingService, claimService, uploadLimiter = (_req, _res, next) => next(), visualSuggestionsService) {
+export function itemRoutes(authService, itemService, matchingService, claimService, uploadLimiter = (_req, _res, next) => next(), visualSuggestionsService, suggestionsService) {
   const router = Router(), controller = createItemController(itemService);
   router.get('/', controller.list);
   router.get('/mine', authenticate(authService), authorizeRoles('USER', 'ADMIN'), controller.mine);
+  if (suggestionsService) router.get('/:id/suggestions', authenticate(authService), authorizeRoles('USER', 'ADMIN'), createSuggestionsController(suggestionsService));
   if (visualSuggestionsService) router.get('/:id/visual-suggestions', authenticate(authService), authorizeRoles('USER', 'ADMIN'), createVisualSuggestionsController(visualSuggestionsService));
   if (matchingService) router.get('/:id/matches', authenticate(authService), authorizeRoles('USER', 'ADMIN'), createMatchingController(matchingService));
   if (claimService) {

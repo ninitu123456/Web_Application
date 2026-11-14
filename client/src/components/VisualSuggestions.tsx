@@ -1,121 +1,175 @@
-import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { invalidate } from "../lib/api";
 import { useResource } from "../lib/hooks";
-import type { VisualSuggestion } from "../lib/types";
-import { EmptyState, ErrorState, ItemImage, Loading } from "./ui";
-import { Icon } from "./Icon";
+import type { Suggestion, SuggestionsData } from "../lib/types";
+import { EmptyState, ErrorState, ItemCard, Pagination } from "./ui";
 
+const bandLabels = {
+  VERY_HIGH: "Rất giống",
+  HIGH: "Khá giống",
+  MEDIUM: "Có thể liên quan",
+};
 export function VisualSuggestions({
   itemId,
+  enabled = true,
   previewFixture = false,
 }: {
   itemId: number;
+  enabled?: boolean;
   previewFixture?: boolean;
 }) {
-  const [refresh, setRefresh] = useState(0);
-  const result = useResource<VisualSuggestion[]>(
-    `/items/${itemId}/visual-suggestions`,
-    {},
+  const [page, setPage] = useState(1),
+    [refresh, setRefresh] = useState(0);
+  const result = useResource<SuggestionsData>(
+    `/items/${itemId}/suggestions`,
+    { page, limit: 6, visual: String(enabled) },
     refresh,
   );
-  const processing = result.data?.visualState === "processing";
+  const state = result.data?.visualState;
   useEffect(() => {
-    if (!result.data || result.error) return;
-    // FOUND jobs may finish after this LOST job. Refresh ready/empty results
-    // too, so a panel opened during backfill eventually receives those pairs.
+    if (!enabled || !result.data || result.error || state === "disabled")
+      return;
     const timer = setTimeout(
       () => setRefresh((value) => value + 1),
-      processing ? 10000 : 30000,
+      state === "processing" ? 10000 : 30000,
     );
     return () => clearTimeout(timer);
-  }, [processing, refresh, result.data, result.error]);
-  const suggestions = result.data?.data;
+  }, [enabled, refresh, result.data, result.error, state]);
+  useEffect(() => {
+    if (
+      result.data?.pagination &&
+      page > Math.max(1, result.data.pagination.totalPages)
+    )
+      setPage(Math.max(1, result.data.pagination.totalPages));
+  }, [page, result.data]);
+  const data = result.data?.data;
+  const cards = (entries: Suggestion[]) => (
+    <div className="item-grid matches-grid">
+      {entries.map((entry) => (
+        <div
+          className={
+            entry.reasons.includes("IMAGE")
+              ? "match-card visual-suggestion-card"
+              : "match-card"
+          }
+          key={entry.item.id}
+          data-item-id={entry.item.id}
+        >
+          <ItemCard item={entry.item} />
+          <div className="match-reasons">
+            <div className="suggestion-reasons">
+              {entry.reasons.includes("IMAGE") && (
+                <span className="badge">Giống về hình ảnh</span>
+              )}
+              {entry.reasons.includes("INFORMATION") && (
+                <span className="badge">Trùng thông tin</span>
+              )}
+            </div>
+            {entry.similarityBand && (
+              <p className="similarity-band">
+                {bandLabels[entry.similarityBand]}
+              </p>
+            )}
+            {entry.informationScore !== undefined && (
+              <p>{entry.informationScore}/100 điểm trùng thông tin</p>
+            )}
+            {entry.informationReasons && (
+              <ul>
+                {entry.informationReasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
   return (
     <section
-      className="visual-suggestions"
-      aria-labelledby="visual-suggestions-title"
+      className="unified-suggestions"
+      aria-labelledby="suggestions-title"
     >
       <div className="section-heading">
         <div>
-          <span className="eyebrow">
-            <Icon name="image" /> Gợi ý hình ảnh AI
-          </span>
-          <h2 id="visual-suggestions-title">Vật phẩm có thể tương tự</h2>
-          <p className="muted">
-            Đây là gợi ý dựa trên hình ảnh do AI phân tích, không phải xác nhận
-            hai vật phẩm là một. Hãy kiểm tra thông tin trước khi liên hệ hoặc
-            gửi yêu cầu nhận lại.
-          </p>
+          <h2 id="suggestions-title">Gợi ý cho bạn</h2>
+          <p className="muted">Gợi ý không phải là xác nhận quyền sở hữu.</p>
+          {data && (
+            <p className="muted">
+              {data.totalUnique} kết quả phù hợp từ các nguồn gợi ý.
+            </p>
+          )}
         </div>
       </div>
-      {previewFixture && (
+      {previewFixture && enabled && (
         <p className="visual-suggestions-preview-note" role="note">
           Dữ liệu minh họa: điểm số cố định, không phải kết quả CLIP thực tế.
         </p>
       )}
       {result.loading ? (
-        <Loading />
-      ) : result.error ? (
-        <ErrorState error={result.error} retry={invalidate} />
-      ) : result.data?.visualState === "error" ? (
-        <div role="alert">
-          <p>Chưa thể phân tích ảnh. Vui lòng thử kiểm tra lại sau.</p>
-          <button onClick={invalidate}>Thử tải lại</button>
-        </div>
-      ) : processing ? (
-        <div role="status">
-          <p>Ảnh đang được phân tích. Gợi ý sẽ cập nhật khi xử lý hoàn tất.</p>
-          <button onClick={invalidate}>Kiểm tra lại</button>
-        </div>
-      ) : suggestions?.length ? (
-        <div className="visual-suggestion-grid">
-          {suggestions.slice(0, 3).map((suggestion) => (
-            <article className="visual-suggestion-card" key={suggestion.itemId}>
-              <Link
-                className="visual-suggestion-image"
-                to={`/do-vat/${suggestion.itemId}`}
-                aria-label={`Xem vật phẩm ${suggestion.title}`}
-              >
-                <ItemImage
-                  src={suggestion.thumbnailUrl ?? undefined}
-                  title={suggestion.title}
-                />
-              </Link>
-              <div className="visual-suggestion-content">
-                <span className="visual-suggestion-label">Đồ nhặt được</span>
-                <h3>
-                  <Link to={`/do-vat/${suggestion.itemId}`}>
-                    {suggestion.title}
-                  </Link>
-                </h3>
-                <p className="visual-suggestion-meta">
-                  {suggestion.category} · {suggestion.location}
-                </p>
-                <p className="visual-suggestion-description">
-                  {suggestion.description}
-                </p>
-                <p className="visual-suggestion-score">
-                  <span>Điểm tương đồng hình ảnh</span>
-                  <strong>{suggestion.cosineScore.toFixed(3)}</strong>
-                </p>
-                <Link
-                  className="visual-suggestion-link"
-                  to={`/do-vat/${suggestion.itemId}`}
-                >
-                  Xem bài đăng <span aria-hidden="true">→</span>
-                </Link>
-              </div>
-            </article>
+        <div
+          className="item-grid matches-grid"
+          role="status"
+          aria-label="Đang tải gợi ý"
+        >
+          {[1, 2, 3].map((id) => (
+            <div className="card-skeleton suggestion-skeleton" key={id}>
+              <span />
+              <i />
+              <i />
+            </div>
           ))}
         </div>
+      ) : result.error ? (
+        <ErrorState error={result.error} retry={invalidate} />
       ) : (
-        <EmptyState title="Chưa có gợi ý hình ảnh phù hợp">
-          <p>
-            Khi có ảnh được phân tích, các bài FOUND có điểm tương đồng cao sẽ
-            xuất hiện tại đây.
-          </p>
-        </EmptyState>
+        <>
+          {enabled && state !== "disabled" && (
+            <section
+              className="visual-suggestions"
+              aria-labelledby="visual-suggestions-title"
+            >
+              <h3 id="visual-suggestions-title">Giống về hình ảnh</h3>
+              {state === "processing" ? (
+                <div role="status">
+                  <p>
+                    Ảnh đang được phân tích. Gợi ý sẽ cập nhật khi xử lý hoàn
+                    tất.
+                  </p>
+                  <button className="button secondary" onClick={invalidate}>
+                    Kiểm tra lại
+                  </button>
+                </div>
+              ) : state === "error" ? (
+                <div role="alert">
+                  <p>Chưa thể phân tích ảnh. Vui lòng thử kiểm tra lại sau.</p>
+                  <button className="button secondary" onClick={invalidate}>
+                    Thử tải lại
+                  </button>
+                </div>
+              ) : data?.visual.length ? (
+                cards(data.visual)
+              ) : (
+                <EmptyState title="Chưa có gợi ý hình ảnh phù hợp" />
+              )}
+            </section>
+          )}
+          <section aria-labelledby="information-suggestions-title">
+            <h3 id="information-suggestions-title">Trùng thông tin</h3>
+            {data?.information.length ? (
+              cards(data.information)
+            ) : (
+              <EmptyState
+                title={
+                  data?.visual.length
+                    ? "Các kết quả trùng thông tin đã được gộp ở trên"
+                    : "Chưa có gợi ý đồ vật phù hợp"
+                }
+              />
+            )}
+            <Pagination data={result.data?.pagination} change={setPage} />
+          </section>
+        </>
       )}
     </section>
   );
