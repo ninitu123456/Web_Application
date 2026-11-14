@@ -10,6 +10,7 @@
 | Đăng bài LOST/FOUND, quản lý bài và ảnh | Quản lý tài khoản, danh mục và địa điểm |
 | Tìm kiếm, lọc và xem gợi ý Matching | Kiểm duyệt bài đăng, xử lý báo cáo vi phạm |
 | Gửi Claim, duyệt yêu cầu và xác nhận bàn giao | Giải quyết Claim đang chờ và xem nhật ký nghiệp vụ |
+| Nhắn tin riêng tư realtime, đặt lại mật khẩu qua email | Quản lý theo quyền và trạng thái tài khoản |
 | Xem thông báo và gửi báo cáo vi phạm | Thao tác theo phân quyền và quy tắc tránh xung đột lợi ích |
 
 Matching chấm điểm tương đồng giữa các bài LOST/FOUND; điểm số không phải xác suất xác nhận đúng chủ sở hữu. Claim và bàn giao được quản lý theo trạng thái, quyền truy cập và transaction.
@@ -47,6 +48,8 @@ Copy-Item .env.example .env
 - `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_USER_EMAIL`, `SEED_USER_PASSWORD`: hai tài khoản mẫu riêng để chạy thử.
 - `JWT_SECRET`: secret ngẫu nhiên tối thiểu 32 byte; `JWT_EXPIRES_IN` tính bằng giây.
 - Các biến `CLOUDINARY_*` nếu cần upload ảnh thật.
+
+Các biến SEED_ADMIN_* và SEED_USER_* chỉ dành cho dữ liệu phát triển/disposable. Demo seed/setup bị chặn khi NODE_ENV=production hoặc có marker môi trường Railway/Vercel; không có override production. Không dùng db:setup để vận hành database thật.
 
 Không commit `.env` hoặc credentials. Cách tạo JWT secret và yêu cầu cấu hình chi tiết nằm trong [hướng dẫn Auth](server/AUTH.md) và [hướng dẫn database](database/README.md).
 
@@ -113,6 +116,10 @@ GitHub Actions hiện kiểm tra backend/database, dependency production và cov
 | API hỗ trợ frontend | [Lookup và bài của tôi](server/FRONTEND-API.md) |
 | Notification và Report | [Hợp đồng API](docs/api-contract.md) và [quy tắc nghiệp vụ](docs/business-rules.md) |
 | Bảo mật và kiểm thử | [Cấu hình, coverage và giới hạn](server/SECURITY.md) |
+
+## Chuẩn bị phát hành và dọn dữ liệu demo
+
+Xem [runbook cleanup](docs/DEMO-CLEANUP-RUNBOOK.md) và [kết quả kiểm chứng](docs/PRODUCTION-POLISH-VERIFICATION.md). `npm run db:purge-demo` mặc định chỉ đọc và từ chối target không được xác minh. Mọi ADMIN luôn được bảo vệ. Xóa DB/Cloudinary production cần phê duyệt riêng theo manifest và backup/restore đã kiểm chứng; phần chuẩn bị local không đồng nghĩa dữ liệu production đã được dọn.
 
 ## Giới hạn cần biết
 
