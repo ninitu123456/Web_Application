@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { validateRegister, validateReset, validateForgot } from '../validation/auth.validation.js';
-import { createMailer, matchEmail } from '../services/mail.service.js';
+import { createMailer, matchEmail, validateMailRequest } from '../services/mail.service.js';
 import { retryDelay } from '../services/email-worker.js';
 import { createChatService, chatPage, validateMessage } from '../services/chat.service.js';
 
@@ -67,6 +67,39 @@ test('match email HTML is escaped and retry backoff remains bounded', () => {
   const email = matchEmail({ title: '<img src=x onerror=alert(1)>', ownTitle: 'Ví', score: 50, itemId: '7' }, env.FRONTEND_URL);
   assert.ok(email.html.includes('&lt;img')); assert.ok(!email.html.includes('<img')); assert.ok(email.text.includes('50/100'));
   assert.deepEqual([1, 2, 3, 4, 5].map(retryDelay), [30, 60, 120, 240, 480]);
+});
+
+test('durable requests freeze all wire fields and never persist the authorization secret', async () => {
+  const env = { RESEND_API_KEY: 'private-review-key', EMAIL_FROM: 'sender@example.test', FRONTEND_URL: 'https://example.test' };
+  const calls = [];
+  const mailer = createMailer(env, async (url, options) => { calls.push({ url, ...options }); return Response.json({ id: 'accepted' }); });
+  const request = mailer.prepare({ to: 'recipient@example.test', subject: 'Subject', text: 'Text', html: '<p>Text</p>', messageId: 'stable-job' });
+  assert.ok(!JSON.stringify(request).includes(env.RESEND_API_KEY));
+  const changed = createMailer({ ...env, EMAIL_FROM: 'other@example.test', FRONTEND_URL: 'https://other.example.test' }, async (url, options) => { calls.push({ url, ...options }); return Response.json({ id: 'accepted' }); });
+  await mailer.send({ request }); await changed.send({ request });
+  for (const field of ['url', 'method', 'body']) assert.equal(calls[0][field], calls[1][field]);
+  assert.equal(calls[0].headers['Idempotency-Key'], calls[1].headers['Idempotency-Key']);
+  assert.equal(calls[0].headers['Content-Type'], request.contentType);
+  assert.throws(() => validateMailRequest({ ...request, url: 'https://untrusted.example.test' }, true), e => e.code === 'EMAIL_SNAPSHOT_INVALID');
+  assert.throws(() => validateMailRequest({ ...request, authorization: 'secret' }, true), e => e.code === 'EMAIL_SNAPSHOT_INVALID');
+  assert.throws(() => validateMailRequest({ ...request, body: '{' }, true), e => e.code === 'EMAIL_SNAPSHOT_INVALID');
+  let sends = 0;
+  const guarded = createMailer(env, async () => { sends++; return Response.json({ id: 'unexpected' }); });
+  await assert.rejects(() => guarded.send({ request, beforeSend: async () => false }), e => e.code === 'EMAIL_LEASE_LOST' && e.delivery === 'NOT_SENT');
+  await assert.rejects(() => guarded.send({ request, notAfter: Date.now() - 1 }), e => e.code === 'EMAIL_RETRY_WINDOW_EXPIRED' && e.delivery === 'NOT_SENT');
+  assert.equal(sends, 0);
+});
+
+test('Resend 409 errors distinguish permanent payload conflict from a concurrent request without exposing provider details', async () => {
+  const env = { RESEND_API_KEY: 'private-key', EMAIL_FROM: 'sender@example.test', FRONTEND_URL: 'https://example.test' };
+  for (const [name, code, permanent] of [['invalid_idempotent_request', 'RESEND_IDEMPOTENCY_CONFLICT', true],
+    ['concurrent_idempotent_requests', 'RESEND_IDEMPOTENCY_PENDING', false], ['unknown', 'RESEND_FAILED', false]]) {
+    const mailer = createMailer(env, async () => Response.json({ name, message: 'private provider detail' }, { status: 409 }));
+    await assert.rejects(() => mailer.send({ to: 'recipient@example.test', subject: 'test', text: 'synthetic', messageId: 'job' }), error => {
+      assert.equal(error.code, code); assert.equal(Boolean(error.permanent), permanent); assert.equal(error.delivery, 'UNKNOWN');
+      assert.ok(!JSON.stringify(error).includes('private provider detail')); return true;
+    });
+  }
 });
 test('chat validates identity, cursors, text size and shares rate limits across retries', async () => {
   const clientId = randomUUID();

@@ -22,6 +22,7 @@
     "test:auth:integration": "node --test server/tests/auth/*.integration.js",
     "test:integration": "npm run test:integration:isolated",
     "test:integration:isolated": "node database/scripts/test-isolated.js --all",
+    "test:ai-real-e2e": "node client/scripts/test-ai-real-e2e.mjs",
     "backend:check-db": "node server/scripts/check-db.js",
     "images:cleanup": "node server/scripts/cleanup-images.js",
     "db:init": "node database/scripts/cli.js init",

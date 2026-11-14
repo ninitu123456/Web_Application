@@ -688,9 +688,7 @@ export async function extendedBrowserCheck({
     await expect(
       adminPage
         .getByRole("dialog")
-        .getByText(
-          "Chưa xác định được quyền xử lý. Vui lòng thử lại.",
-        ),
+        .getByText("Chưa xác định được quyền xử lý. Vui lòng thử lại."),
     ).toBeVisible();
     await adminPage
       .getByLabel("Lý do xử lý")

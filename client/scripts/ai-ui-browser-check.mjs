@@ -103,7 +103,11 @@ export async function aiUiBrowserCheck({
       });
       assert.equal(created.status, 201, created.body.message);
       items.push(created.body.data);
-      await query(pool, 'UPDATE items SET private_identifiers=? WHERE item_id=?', ['PRIVATE-AI-UI-DO-NOT-EXPOSE', created.body.data.id]);
+      await query(
+        pool,
+        "UPDATE items SET private_identifiers=? WHERE item_id=?",
+        ["PRIVATE-AI-UI-DO-NOT-EXPOSE", created.body.data.id],
+      );
       const [image] = await query(
         pool,
         "INSERT INTO item_images(item_id,image_url,cloudinary_public_id,created_at) VALUES(?,?,?,UTC_TIMESTAMP())",
@@ -183,14 +187,18 @@ export async function aiUiBrowserCheck({
         panel.getByRole("link", { name: "Xem bài đăng", exact: true }),
       ).toBeVisible();
       if (width === 390 || width === 1440)
-        await panel.screenshot({ path: resolve(artifacts, `ai-ui-panel-${width}.png`) });
+        await panel.screenshot({
+          path: resolve(artifacts, `ai-ui-panel-${width}.png`),
+        });
       if (width === 390 || width === 1440)
         await page.screenshot({
           path: resolve(artifacts, `ai-ui-lost-${width}.png`),
           fullPage: true,
         });
     }
-    await panel.getByRole("link", { name: "Xem bài đăng", exact: true }).click();
+    await panel
+      .getByRole("link", { name: "Xem bài đăng", exact: true })
+      .click();
     await expect(
       page.getByRole("heading", { name: "Nhận lại đồ như thế nào?" }),
     ).toBeVisible();
@@ -288,8 +296,17 @@ export async function aiUiBrowserCheck({
     assert.equal(await demo.deliverNextDemo(), true);
     assert.equal(await demo.deliverNextDemo(), false);
     const notifications = await api("/notifications", { token: owner.token });
-    assert.equal(notifications.body.data.filter(row => row.type === "AI_VISUAL_SIMILAR_ITEM").length, 1);
-    const [[delivered]] = await query(pool, "SELECT COUNT(*) AS n FROM notifications WHERE user_id=? AND type='AI_VISUAL_SIMILAR_ITEM'", [owner.user.id]);
+    assert.equal(
+      notifications.body.data.filter(
+        (row) => row.type === "AI_VISUAL_SIMILAR_ITEM",
+      ).length,
+      1,
+    );
+    const [[delivered]] = await query(
+      pool,
+      "SELECT COUNT(*) AS n FROM notifications WHERE user_id=? AND type='AI_VISUAL_SIMILAR_ITEM'",
+      [owner.user.id],
+    );
     assert.equal(Number(delivered.n), 1);
     await page.goto(url + "/thong-bao");
     await expect(

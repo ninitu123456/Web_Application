@@ -104,7 +104,7 @@ export async function browserCheck({
         .click();
       await expect(page).toHaveURL(url + next);
     }
-    await pageA.goto(url);
+    await pageA.goto(`${url}/kham-pha`);
     assert.notEqual(
       await pageA
         .locator(".skip-link")
@@ -140,7 +140,7 @@ export async function browserCheck({
 
     await pageB.goto(url);
     await pageB.screenshot({
-      path: resolve(artifacts, "mobile-explore.png"),
+      path: resolve(artifacts, "mobile-home.png"),
       fullPage: true,
     });
     assert.ok(
@@ -735,7 +735,15 @@ export async function browserCheck({
       "Browser: desktop/mobile, registration, upload recovery, inactive lookup edit, matching, search, modal keyboard, claim duplicate/privacy, handover, nested refresh, logout and invalid JWT cleanup verified.",
     );
     const { aiUiBrowserCheck } = await import("./ai-ui-browser-check.mjs");
-    await aiUiBrowserCheck({ browser, url, categoryId, locationId, pool, query, artifacts });
+    await aiUiBrowserCheck({
+      browser,
+      url,
+      categoryId,
+      locationId,
+      pool,
+      query,
+      artifacts,
+    });
   } finally {
     await browser?.close();
     await new Promise((done) => {

@@ -39,9 +39,10 @@ function Detail({ item }: { item: Item }) {
   const location = useLocation();
   const from = location.state?.exploreFrom;
   const exploreFrom =
-    typeof from === "string" && (from === "/" || from.startsWith("/?"))
+    typeof from === "string" &&
+    (from === "/kham-pha" || from.startsWith("/kham-pha?"))
       ? from
-      : "/";
+      : "/kham-pha";
   const { user } = useAuth();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -132,7 +133,7 @@ function Detail({ item }: { item: Item }) {
             </div>
           )}
         </div>
-        <div className="detail-info">
+        <div className="detail-info detail-panel">
           <div className="badge-row">
             <StatusBadge status={item.type} group="itemType" />
             <StatusBadge status={item.status} group="item" />
@@ -162,6 +163,7 @@ function Detail({ item }: { item: Item }) {
               <dd>{dateLabel(item.createdAt)}</dd>
             </div>
           </dl>
+          <ItemProgress item={item} />
           <h2>Mô tả đồ vật</h2>
           <p className="description">{item.description}</p>
           {error && (
@@ -247,10 +249,6 @@ function Detail({ item }: { item: Item }) {
               </p>
             </section>
           )}
-          <p className="fine-print">
-            Xác minh thông tin trước khi bàn giao. Không chia sẻ bằng chứng sở
-            hữu trong mô tả công khai.
-          </p>
           {user && (
             <div className="report-actions">
               <ReportButton
@@ -267,20 +265,22 @@ function Detail({ item }: { item: Item }) {
           )}
         </div>
       </div>
-      {!hidden && canShowVisualSuggestions({
-        enabled: import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_ENABLED === "true",
-        owner,
-        type: item.type,
-        status: item.status,
-      }) && (
-        <VisualSuggestions
-          itemId={item.id}
-          previewFixture={
-            import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE ===
-            "true"
-          }
-        />
-      )}
+      {!hidden &&
+        canShowVisualSuggestions({
+          enabled:
+            import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_ENABLED === "true",
+          owner,
+          type: item.type,
+          status: item.status,
+        }) && (
+          <VisualSuggestions
+            itemId={item.id}
+            previewFixture={
+              import.meta.env.VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE ===
+              "true"
+            }
+          />
+        )}
       <div className="detail-tabs">
         <div className="tabs" role="tablist" aria-label="Thông tin liên quan">
           <button
@@ -425,6 +425,46 @@ function Matches({ itemId }: { itemId: number }) {
         </EmptyState>
       )}
       <Pagination data={result.data?.pagination} change={setPage} />
+    </section>
+  );
+}
+
+const PROGRESS = [
+  "Đã đăng bài",
+  "Chờ yêu cầu nhận lại",
+  "Xác minh chủ sở hữu",
+  "Bàn giao",
+];
+function ItemProgress({ item }: { item: Item }) {
+  if (item.type !== "FOUND" || item.status === "CLOSED") return null;
+  const current =
+    { OPEN: 1, CLAIM_PENDING: 2, CLAIMED: 3, RETURNED: 4 }[
+      item.status as "OPEN" | "CLAIM_PENDING" | "CLAIMED" | "RETURNED"
+    ] ?? 1;
+  return (
+    <section className="item-progress" aria-label="Tiến trình bàn giao">
+      <ol className="progress-steps">
+        {PROGRESS.map((label, index) => (
+          <li
+            key={label}
+            className={
+              index < current
+                ? "done"
+                : index === current
+                  ? "current"
+                  : undefined
+            }
+            aria-current={index === current ? "step" : undefined}
+          >
+            <span aria-hidden="true">
+              {index < current && (
+                <Icon name="check" width="13" height="13" strokeWidth="3" />
+              )}
+            </span>
+            {label}
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }

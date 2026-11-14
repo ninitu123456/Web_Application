@@ -2,8 +2,8 @@
   display: grid;
   grid-template-columns: 238px minmax(0, 1fr);
   min-height: 100vh;
-  background: #f7f8f3;
-  color: #26352e;
+  background: var(--paper);
+  color: var(--ink);
 }
 .admin-shell .admin-rail {
   position: sticky;
@@ -12,7 +12,7 @@
   display: flex;
   flex-direction: column;
   padding: 24px 14px 18px;
-  background: linear-gradient(155deg, #184c3b, #103f32);
+  background: var(--ink);
   color: #edf5e8;
   overflow-y: auto;
 }
@@ -22,7 +22,7 @@
   padding: 0 12px;
 }
 .admin-shell .admin-brand span {
-  color: #d6e89d;
+  color: var(--lime);
 }
 .admin-shell .admin-label {
   font-size: 12px;
@@ -42,13 +42,13 @@
   gap: 11px;
   min-height: 48px;
   padding: 12px;
-  border-radius: 9px;
+  border-radius: 12px;
   font-size: 14px;
   line-height: 1.5;
 }
 .admin-rail nav a.active {
-  background: #317354;
-  color: white;
+  background: var(--lime);
+  color: var(--forest);
   font-weight: 600;
 }
 .admin-rail nav a:hover {
@@ -82,7 +82,7 @@
   padding-top: 5px;
 }
 .admin-shell .avatar {
-  color: #184c3b;
+  color: var(--forest);
   flex-shrink: 0;
 }
 .admin-shell .admin-workspace {
@@ -94,7 +94,7 @@
   align-items: center;
   gap: 12px;
   padding: 10px 28px;
-  border-bottom: 1px solid #dfe4da;
+  border-bottom: 1px solid var(--line);
   background: #fcfcf8;
 }
 .admin-shell .admin-breadcrumb {
@@ -140,12 +140,12 @@
 }
 .admin-shell h1 {
   font-size: clamp(27px, 2.6vw, 36px);
-  color: #184c3b;
+  color: var(--forest);
   margin-bottom: 0;
 }
 .admin-shell h2 {
   font-size: 19px;
-  color: #184c3b;
+  color: var(--forest);
   line-height: 1.4;
 }
 .admin-shell h3 {
@@ -191,7 +191,7 @@
   align-items: center;
   gap: 8px;
   min-height: 44px;
-  color: #184c3b;
+  color: var(--forest);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -211,7 +211,7 @@
   color: #526158;
 }
 .admin-shell .stat-card strong {
-  color: #184c3b;
+  color: var(--forest);
   font-weight: 700;
   font-size: 31px;
   margin-top: 6px;
@@ -267,8 +267,8 @@
   padding-bottom: 30px;
   background: repeating-linear-gradient(
     to top,
-    #dfe4da 0,
-    #dfe4da 1px,
+    var(--line) 0,
+    var(--line) 1px,
     transparent 1px,
     transparent 25%
   );
@@ -286,7 +286,7 @@
   width: 100%;
   max-width: 38px;
   min-height: 3px;
-  background: linear-gradient(#397e5e, #184c3b);
+  background: linear-gradient(#397e5e, var(--forest));
   border-radius: 3px 3px 0 0;
   padding: 0;
   position: relative;
@@ -326,7 +326,7 @@
   padding: 12px 0;
   min-height: 44px;
   font-size: 13px;
-  color: #184c3b;
+  color: var(--forest);
 }
 .admin-shell .admin-distribution {
   display: flex;
@@ -360,7 +360,7 @@
 }
 .admin-shell .admin-donut strong {
   font-size: 30px;
-  color: #184c3b;
+  color: var(--forest);
 }
 .admin-shell .admin-chart-legend {
   flex: 1;
@@ -440,7 +440,7 @@
   align-items: center;
   text-decoration: underline;
   white-space: nowrap;
-  color: #184c3b;
+  color: var(--forest);
 }
 .admin-shell .admin-secondary-stats {
   display: flex;
@@ -452,7 +452,7 @@
 }
 .admin-shell .admin-secondary-stats strong {
   margin-left: 8px;
-  color: #184c3b;
+  color: var(--forest);
 }
 .admin-shell .dashboard-grid {
   margin-top: 0;
@@ -460,7 +460,7 @@
 }
 .admin-shell .admin-filters {
   background: white;
-  border: 1px solid #dfe4da;
+  border: 1px solid var(--line);
   padding: 18px 18px 0;
   border-radius: 14px;
   margin: 20px 0;
@@ -537,7 +537,7 @@
   min-height: 44px;
 }
 .admin-shell .admin-record-link strong {
-  color: #184c3b;
+  color: var(--forest);
   line-height: 1.5;
 }
 .admin-shell .admin-record-link span {
@@ -621,7 +621,7 @@
 }
 .claim-inspector .modal-inner > .section-heading h2 {
   font-size: 23px;
-  color: #184c3b;
+  color: var(--forest);
 }
 .claim-inspector .admin-verification-guide {
   background: #f1f5e9;
@@ -638,13 +638,13 @@
   margin-block: 20px;
 }
 .claim-inspector .admin-claim-comparison > section {
-  border: 1px solid #dfe4da;
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 20px;
   min-width: 0;
 }
 .claim-inspector .admin-claim-comparison h3 {
-  color: #184c3b;
+  color: var(--forest);
   font-size: 18px;
 }
 .claim-inspector .admin-claim-comparison h4 {
@@ -694,7 +694,7 @@
   padding: 10px;
 }
 .claim-inspector a {
-  color: #184c3b;
+  color: var(--forest);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -717,7 +717,7 @@
   position: sticky;
   bottom: 0;
   background: white;
-  border-top: 1px solid #dfe4da;
+  border-top: 1px solid var(--line);
   padding: 14px 0 20px;
   z-index: 2;
 }
@@ -730,7 +730,7 @@
 }
 .admin-nav-dialog nav a.active {
   background: #e9f3e0;
-  color: #184c3b;
+  color: var(--forest);
   font-weight: 600;
 }
 @media (max-width: 1200px) {

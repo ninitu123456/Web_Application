@@ -23,6 +23,13 @@ const paths = {
   menu: "M3 6h18M3 12h18M3 18h18",
   check: "m5 12 4 4L19 6",
   list: "M9 5h12M9 12h12M9 19h12M3 5h.01M3 12h.01M3 19h.01",
+  chevron: "m6 9 6 6 6-6",
+  headphones:
+    "M4 15v-3a8 8 0 0 1 16 0v3M4 15h3v6H5a1 1 0 0 1-1-1v-5Zm16 0h-3v6h2a1 1 0 0 0 1-1v-5Z",
+  user: "M16 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 21c1-4 4-6 8-6s7 2 8 6",
+  lock: "M5 11h14v10H5V11Zm3 0V7a4 4 0 0 1 8 0v4",
+  external: "M7 17 17 7M8 7h9v9",
+  flag: "M5 22V4h12l-2 4 2 4H5",
 } as const;
 
 export function Icon({

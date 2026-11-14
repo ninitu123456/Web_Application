@@ -20,13 +20,17 @@ async function execute(args, cwd, env) {
 try {
   if (!process.env.npm_execpath)
     throw new Error("Run npm run test:browser from client/");
-  await execute([process.env.npm_execpath, "run", "build", "--", "--mode", "test"], client, {
-    ...process.env,
-    VITE_API_BASE_URL: "/api",
-    VITE_AI_VISUAL_SUGGESTIONS_ENABLED: "true",
-    VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE: "true",
-    FINDIT_FRONTEND_BROWSER_BUILD: "1",
-  });
+  await execute(
+    [process.env.npm_execpath, "run", "build", "--", "--mode", "test"],
+    client,
+    {
+      ...process.env,
+      VITE_API_BASE_URL: "/api",
+      VITE_AI_VISUAL_SUGGESTIONS_ENABLED: "true",
+      VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE: "true",
+      FINDIT_FRONTEND_BROWSER_BUILD: "1",
+    },
+  );
   await execute(
     [
       "database/scripts/test-isolated.js",

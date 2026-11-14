@@ -84,7 +84,7 @@ export function createItemService(repository, imageStorage, imageOperations, aiV
         if (!await source.close(id)) throw new HttpError(400, 'Trạng thái Item không thể đóng');
         await source.recordClose(identity, item.status);
         return itemDto(await source.findById(id));
-      }, { matching: true });
+      }, { matching: true, adminActor: identity.role === 'ADMIN' ? identity.id : undefined });
     },
     async uploadImages(identity, id, files) {
       open(await owned(identity, id));

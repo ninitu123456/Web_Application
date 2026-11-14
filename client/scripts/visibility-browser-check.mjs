@@ -92,7 +92,7 @@ export async function visibilityBrowserCheck({
     ).toHaveCount(0);
     await page.goto(`${url}/bai-dang-cua-toi`);
     await expect(
-      page.locator(".item-card").filter({ hasText: item.title }),
+      page.locator(".my-row").filter({ hasText: item.title }),
     ).toContainText("Đã gỡ khỏi công khai");
     await adminPage.goto(`${url}/quan-tri/bai-dang?visibility=HIDDEN`);
     await expect(adminPage.getByLabel("Hiển thị", { exact: true })).toHaveValue(

@@ -51,6 +51,20 @@ test('account recovery, match outbox and private realtime chat on real MySQL', {
       sent.push(JSON.parse(options.body));
       return Response.json({ id: randomUUID() });
     });
+    // Every independent delivery scenario gets a new event/job. Recycling a SENT
+    // job by resetting attempts is no longer a valid unsent-email fixture.
+    async function freshEmail() {
+      const ids = [];
+      for (const source of [1, 2]) {
+        const [saved] = await query(pool, `INSERT INTO items(user_id,category_id,location_id,title,description,type,event_date,status,created_at,updated_at)
+          SELECT user_id,category_id,location_id,title,description,type,event_date,'OPEN',UTC_TIMESTAMP(),UTC_TIMESTAMP() FROM items WHERE item_id=?`, [source]);
+        ids.push(String(saved.insertId));
+      }
+      const [match] = await query(pool, "INSERT INTO matches(lost_item_id,found_item_id,match_score,status,created_at) VALUES(?,?,100,'POTENTIAL',UTC_TIMESTAMP())", ids);
+      const [job] = await query(pool, "INSERT INTO email_outbox(user_id,event_key,payload,status,next_attempt_at,created_at) VALUES(?,?,?,'PENDING',UTC_TIMESTAMP(),UTC_TIMESTAMP())",
+        [accounts[0].id, `MATCH:${match.insertId}`, JSON.stringify({ ownTitle: 'Queued fixture', title: 'Queued FOUND', itemId: ids[1], score: 50 })]);
+      return { job_id: job.insertId, lost: ids[0], found: ids[1], match: match.insertId };
+    }
     const reset = createPasswordResetService(pool, mailer, id => { for (const s of io.sockets.sockets.values()) if (s.data.identity.id === id) s.disconnect(true); });
     chat = createChatService(createChatRepository(pool));
     const app = express();
@@ -161,13 +175,54 @@ test('account recovery, match outbox and private realtime chat on real MySQL', {
       await Promise.all([good.tick(), good.tick()]);
       assert.equal(delivered.length, 2); assert.equal((await query(pool, "SELECT * FROM email_outbox WHERE status='SENT'"))[0].length, 2);
       await good.tick(); assert.equal(delivered.length, 2);
-      await query(pool, "UPDATE email_outbox SET status='PROCESSING',attempts=5,lease_until=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 SECOND) WHERE job_id=?", [jobs[0].job_id]);
+      const exhaustedJob = await freshEmail();
+      await query(pool, "UPDATE email_outbox SET status='PROCESSING',attempts=5,lease_until=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 SECOND) WHERE job_id=?", [exhaustedJob.job_id]);
       await good.tick();
-      assert.equal((await query(pool, 'SELECT status FROM email_outbox WHERE job_id=?', [jobs[0].job_id]))[0][0].status, 'FAILED');
-      await query(pool, "UPDATE email_outbox SET status='PENDING',attempts=0,next_attempt_at=UTC_TIMESTAMP() WHERE job_id=?", [jobs[1].job_id]);
+      assert.equal((await query(pool, 'SELECT status FROM email_outbox WHERE job_id=?', [exhaustedJob.job_id]))[0][0].status, 'FAILED');
+      const authJob = await freshEmail();
       await createEmailWorker(pool, { ...mailer, send: async () => { throw Object.assign(new Error('private auth response'), { code: 'RESEND_AUTH', permanent: true }); } }).tick();
-      const [[rejected]] = await query(pool, 'SELECT status,attempts,last_error FROM email_outbox WHERE job_id=?', [jobs[1].job_id]);
+      const [[rejected]] = await query(pool, 'SELECT status,attempts,last_error FROM email_outbox WHERE job_id=?', [authJob.job_id]);
       assert.equal(rejected.status, 'FAILED'); assert.equal(rejected.attempts, 1); assert.equal(rejected.last_error, 'RESEND_AUTH');
+    });
+    await t.test('queued match emails revalidate current lifecycle, threshold and content before delivery', async t => {
+      const delivered = [];
+      const worker = createEmailWorker(pool, { ...mailer, send: async mail => { delivered.push(mail); } });
+      for (const side of ['lost', 'found']) for (const status of ['CLOSED', 'RETURNED']) {
+        await t.test(`${status} ${side} item suppresses a queued email`, async () => {
+          const job = await freshEmail(), itemId = job[side];
+          delivered.length = 0;
+          await query(pool, 'UPDATE items SET status=? WHERE item_id=?', [status, itemId]);
+          try {
+            await worker.tick();
+            assert.equal(delivered.length, 0);
+            const [[result]] = await query(pool, 'SELECT status,last_error FROM email_outbox WHERE job_id=?', [job.job_id]);
+            assert.deepEqual({ ...result }, { status: 'FAILED', last_error: 'ITEM_UNAVAILABLE' });
+          } finally { await query(pool, "UPDATE items SET status='OPEN' WHERE item_id=?", [itemId]); }
+        });
+      }
+      await t.test('a match below the current threshold suppresses a queued email', async () => {
+        const job = await freshEmail();
+        delivered.length = 0;
+        await query(pool, 'UPDATE matches SET match_score=49 WHERE match_id=?', [job.match]);
+        try {
+          await worker.tick();
+          assert.equal(delivered.length, 0);
+          const [[result]] = await query(pool, 'SELECT status,last_error FROM email_outbox WHERE job_id=?', [job.job_id]);
+          assert.deepEqual({ ...result }, { status: 'FAILED', last_error: 'ITEM_UNAVAILABLE' });
+        } finally { await query(pool, 'UPDATE matches SET match_score=100 WHERE match_id=?', [job.match]); }
+      });
+      await t.test('a still eligible email uses the current titles and score', async () => {
+        const job = await freshEmail();
+        delivered.length = 0;
+        await query(pool, "UPDATE items SET title='Current item 1' WHERE item_id=?", [job.lost]);
+        await query(pool, "UPDATE items SET title='Current item 2' WHERE item_id=?", [job.found]);
+        await query(pool, 'UPDATE matches SET match_score=75 WHERE match_id=?', [job.match]);
+        await worker.tick();
+        assert.equal(delivered.length, 1);
+        assert.match(delivered[0].text, /Current item 1/);
+        assert.match(delivered[0].text, /Current item 2/);
+        assert.match(delivered[0].text, /75\/100/);
+      });
     });
     if (process.env.FINDIT_FEATURE_BROWSER === '1') await t.test('desktop and mobile account/chat UI in Chrome', async () => {
       const { featureBrowserCheck } = await import('../../client/scripts/feature-browser-check.mjs');
