@@ -128,7 +128,7 @@ test('Phase 7 real HTTP/JWT/MySQL: authorization, injection, upload, rollback an
       }
       assert.equal((await send(`/api/items/${item.id}/images/${image.insertId}`, owner, { method: 'DELETE' })).status, 404);
       assert.equal(uploadCalls, cloudBefore); assert.deepEqual(await snapshot(), before);
-      assert.equal((await send(`/api/items/${item.id}/matches`, other)).status, 200);
+      assert.equal((await send(`/api/items/${item.id}/matches`, other)).status, 404);
     });
 
     await t.test('SQLi payloads remain values on real MySQL; search dates, tie sorting, pagination and malformed query are bounded', async () => {

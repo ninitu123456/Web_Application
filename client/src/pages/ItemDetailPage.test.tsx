@@ -204,3 +204,23 @@ describe("owner-only suggestions UX", () => {
     },
   );
 });
+
+it.each(["LOST", "FOUND"] as const)(
+  "denies all non-owner roles symmetrically for %s",
+  (type) => {
+    current = { ...item, type };
+    for (const role of ["USER", "ADMIN", null] as const) {
+      mocks.resource.mockClear();
+      mocks.user = role
+        ? { id: 9, fullName: "Other", email: "other@example.test", role }
+        : null;
+      const html = render();
+      expect(html).not.toContain("Gợi ý cho bạn");
+      expect(
+        mocks.resource.mock.calls.some(([path]) =>
+          String(path).endsWith("/suggestions"),
+        ),
+      ).toBe(false);
+    }
+  },
+);

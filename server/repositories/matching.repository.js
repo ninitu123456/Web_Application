@@ -46,6 +46,10 @@ export function createMatchingRepository(pool, execute = (sql, values = []) => q
       const [owners] = await execute('SELECT user_id FROM items WHERE item_id IN (?, ?) ORDER BY user_id', [lostId, foundId]);
       await createNotificationService(createNotificationRepository(pool, execute)).emit('NEW_MATCH', matchId, owners.map((owner) => owner.user_id));
     },
+    async owns(id,userId) {
+      const [[row]]=await execute(`SELECT i.item_id FROM items i JOIN users u ON u.user_id=i.user_id AND u.account_status='ACTIVE' WHERE i.item_id=? AND i.user_id=? AND ${hiddenItemSql()}=0`,[id,userId]);
+      return Boolean(row);
+    },
     list(id, options) {
       return readSnapshot(pool, async (connection) => {
         const run = (sql, values = []) => connection.query({ sql, timeout: databaseTimeout }, values);

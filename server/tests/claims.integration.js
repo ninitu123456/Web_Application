@@ -107,7 +107,8 @@ test('Claim integration: private evidence, state machine, MySQL transactions and
       assertNoEvidence(search, evidence);
       assert.ok(search.json.data.some((item) => item.id === found));
       assert.ok(search.json.pagination.total >= 1);
-      const matches = await request(http, `/api/items/${lost}/matches`, { token: secondToken });
+      assert.equal((await request(http, `/api/items/${lost}/matches`, { token: secondToken })).status,404);
+      const matches = await request(http, `/api/items/${lost}/matches`, { token: ownerToken });
       assertNoEvidence(matches, evidence);
       assert.ok(matches.json.data.some((match) => match.itemId === found && match.score >= 50));
       assert.equal((await query(pool, 'SELECT status FROM items WHERE item_id=?', [found]))[0][0].status, 'CLAIM_PENDING');

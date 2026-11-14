@@ -28,6 +28,15 @@ export function createMatchingService(repository) {
         after = candidates.at(-1).id;
       }
     },
+    // Internal list remains available to transaction/regression tooling; HTTP always calls listForOwner.
+    async listForOwner(identity,id,options={page:1,limit:10}) {
+      if(!identity||!['USER','ADMIN'].includes(identity.role))throw new HttpError(401,'Chưa xác thực');
+      const denied=()=>new HttpError(404,'Không tìm thấy gợi ý');
+      if(!await repository.owns(id,identity.id))throw denied();
+      const result=await this.list(id,options);
+      if(!await repository.owns(id,identity.id))throw denied();
+      return result;
+    },
     async list(id, options = { page: 1, limit: 10 }) {
       const result = await repository.list(id, options);
       if (!result) throw new HttpError(404, 'Không tìm thấy Item');
