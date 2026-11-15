@@ -81,6 +81,8 @@ export async function api<T>(
     query?: Query;
     signal?: AbortSignal;
     auth?: boolean;
+    /** Multipart uploads only: reports the sent fraction (0..1). */
+    onUploadProgress?: (fraction: number) => void;
   } = {},
 ): Promise<Envelope<T>> {
   const requestToken = token;
@@ -97,17 +99,28 @@ export async function api<T>(
     headers["Content-Type"] = "application/json";
   let response: Response;
   try {
-    response = await fetch(`${base}${path}${queryString(options.query)}`, {
-      method: options.method || "GET",
-      headers,
-      signal: options.signal,
-      body:
-        options.body === undefined
-          ? undefined
-          : multipart
-            ? (options.body as FormData)
-            : JSON.stringify(options.body),
-    });
+    const url = `${base}${path}${queryString(options.query)}`;
+    response =
+      multipart && options.onUploadProgress
+        ? await sendWithProgress(
+            url,
+            options.method || "POST",
+            headers,
+            options.body as FormData,
+            options.onUploadProgress,
+            options.signal,
+          )
+        : await fetch(url, {
+            method: options.method || "GET",
+            headers,
+            signal: options.signal,
+            body:
+              options.body === undefined
+                ? undefined
+                : multipart
+                  ? (options.body as FormData)
+                  : JSON.stringify(options.body),
+          });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
     throw new ApiError(0, "", context);
@@ -151,6 +164,44 @@ export async function api<T>(
   if (options.auth !== false && requestToken !== token)
     throw new DOMException("Session changed", "AbortError");
   return result;
+}
+// fetch() cannot report upload progress; XHR can. The result is wrapped in a
+// standard Response so error handling stays identical to the fetch path.
+function sendWithProgress(
+  url: string,
+  method: string,
+  headers: Record<string, string>,
+  body: FormData,
+  onProgress: (fraction: number) => void,
+  signal?: AbortSignal,
+): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(method, url);
+    for (const [name, value] of Object.entries(headers))
+      xhr.setRequestHeader(name, value);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0)
+        onProgress(Math.min(1, event.loaded / event.total));
+    };
+    xhr.onload = () => {
+      onProgress(1);
+      resolve(
+        new Response(xhr.responseText, {
+          status: xhr.status,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    };
+    xhr.onerror = () => reject(new TypeError("Network request failed"));
+    xhr.ontimeout = xhr.onerror;
+    xhr.onabort = () => reject(new DOMException("Aborted", "AbortError"));
+    if (signal) {
+      if (signal.aborted) return xhr.onabort?.(new ProgressEvent("abort"));
+      signal.addEventListener("abort", () => xhr.abort(), { once: true });
+    }
+    xhr.send(body);
+  });
 }
 export function itemDetail(id: number): Promise<Item> {
   let promise = details.get(id);

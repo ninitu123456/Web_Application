@@ -61,7 +61,12 @@ export function ClaimModal({
     }
   }
   return (
-    <Modal title="Yêu cầu nhận đồ" close={close} busy={busy}>
+    <Modal
+      title="Yêu cầu nhận đồ"
+      close={close}
+      busy={busy}
+      dismissible={!proof.trim()}
+    >
       <p className="muted">
         Hãy cung cấp đặc điểm riêng mà chỉ chủ sở hữu biết. Bằng chứng chỉ được
         hiển thị cho bạn, chủ bài và quản trị viên có thẩm quyền.

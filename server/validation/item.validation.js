@@ -22,11 +22,22 @@ function date(value) {
   if (year < 1000 || candidate.getUTCFullYear() !== year || candidate.getUTCMonth() !== month - 1 || candidate.getUTCDate() !== day) invalid();
   return value;
 }
+// Lost/found events cannot happen in the future. Compare against the campus
+// calendar day (UTC+7) and allow one extra day so clients in other zones are
+// never rejected for a date that is "today" where they are.
+export function latestEventDate(now = new Date()) {
+  return new Date(now.getTime() + (7 + 24) * 3600 * 1000).toISOString().slice(0, 10);
+}
+function eventDate(value) {
+  const result = date(value);
+  if (result > latestEventDate()) throw new HttpError(400, 'Ngày xảy ra không được ở tương lai');
+  return result;
+}
 export function validateCreateItem(body) {
   onlyKeys(body, ['title', 'type', 'categoryId', 'locationId', 'eventDate', 'description', 'color']);
   required(body, ['title', 'type', 'categoryId', 'locationId', 'eventDate', 'description']);
   if (!['LOST', 'FOUND'].includes(body.type)) invalid();
-  return { title: string(body.title, 200), type: body.type, categoryId: positiveId(body.categoryId), locationId: positiveId(body.locationId), eventDate: date(body.eventDate), description: string(body.description, 65535), color: body.color === undefined || body.color === null ? null : string(body.color, 80) };
+  return { title: string(body.title, 200), type: body.type, categoryId: positiveId(body.categoryId), locationId: positiveId(body.locationId), eventDate: eventDate(body.eventDate), description: string(body.description, 65535), color: body.color === undefined || body.color === null ? null : string(body.color, 80) };
 }
 export function validateUpdateItem(body) {
   const fields = ['title', 'categoryId', 'locationId', 'eventDate', 'description', 'color'];
@@ -36,7 +47,7 @@ export function validateUpdateItem(body) {
   for (const key of Object.keys(body)) {
     if (key === 'title') result.title = string(body.title, 200);
     if (key === 'categoryId' || key === 'locationId') result[key] = positiveId(body[key]);
-    if (key === 'eventDate') result.eventDate = date(body.eventDate);
+    if (key === 'eventDate') result.eventDate = eventDate(body.eventDate);
     if (key === 'description') result.description = string(body.description, 65535);
     if (key === 'color') result.color = body.color === null ? null : string(body.color, 80);
   }
