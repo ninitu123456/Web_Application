@@ -78,7 +78,10 @@ function Home() {
     () => {
       const mm = gsap.matchMedia();
       mm.add("(prefers-reduced-motion: no-preference)", () => {
+        // Fast intro: the headline, search and quick actions must be usable
+        // within about a second on phones, not after the full choreography.
         const intro = gsap.timeline({ defaults: { ease: "power4.out" } });
+        intro.timeScale(2);
         intro
           .from(".home-title .line", {
             yPercent: 115,
@@ -129,7 +132,7 @@ function Home() {
         if (words.length > 1) {
           gsap.set(words, { yPercent: 110, autoAlpha: 1 });
           gsap.set(words[0], { yPercent: 0 });
-          const rotate = gsap.timeline({ repeat: -1, delay: 2.2 });
+          const rotate = gsap.timeline({ repeat: -1, delay: 1.4 });
           words.forEach((word, index) => {
             const next = words[(index + 1) % words.length];
             rotate
@@ -153,14 +156,17 @@ function Home() {
               );
           });
         }
+        const reveals: gsap.core.Tween[] = [];
         gsap.utils.toArray<HTMLElement>(".reveal").forEach((element) => {
-          gsap.from(element, {
-            y: 50,
-            autoAlpha: 0,
-            duration: 0.9,
-            ease: "power3.out",
-            scrollTrigger: { trigger: element, start: "top 88%", once: true },
-          });
+          reveals.push(
+            gsap.from(element, {
+              y: 28,
+              autoAlpha: 0,
+              duration: 0.6,
+              ease: "power3.out",
+              scrollTrigger: { trigger: element, start: "top 95%", once: true },
+            }),
+          );
         });
         gsap.fromTo(
           ".steps-bar",
@@ -176,14 +182,40 @@ function Home() {
             },
           },
         );
-        gsap.from(".home-steps li", {
-          y: 40,
+        const steps = gsap.from(".home-steps li", {
+          y: 24,
           autoAlpha: 0,
-          duration: 0.8,
-          stagger: 0.12,
+          duration: 0.5,
+          stagger: 0.08,
           ease: "power3.out",
-          scrollTrigger: { trigger: ".home-how", start: "top 60%", once: true },
+          scrollTrigger: { trigger: ".home-how", start: "top 85%", once: true },
         });
+        // Safety net: content already on or above the screen must never stay
+        // invisible if a scroll trigger misses (flick scrolling, late layout
+        // shifts). Elements further down still animate when reached.
+        reveals.push(steps);
+        let pending = 0;
+        const settle = () => {
+          window.clearTimeout(pending);
+          pending = window.setTimeout(() => {
+            for (const tween of reveals) {
+              const target = tween.targets()[0] as HTMLElement | undefined;
+              if (
+                tween.progress() < 1 &&
+                target &&
+                target.getBoundingClientRect().top < window.innerHeight
+              )
+                tween.progress(1);
+            }
+          }, 400);
+        };
+        const first = window.setTimeout(settle, 1200);
+        window.addEventListener("scroll", settle, { passive: true });
+        return () => {
+          window.clearTimeout(first);
+          window.clearTimeout(pending);
+          window.removeEventListener("scroll", settle);
+        };
         gsap.from(".home-cta", {
           scale: 0.92,
           ease: "power3.out",

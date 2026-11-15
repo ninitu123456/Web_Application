@@ -6,6 +6,8 @@ export interface UploadEntry {
   previewUrl: string;
   status: UploadStatus;
   attempt: number;
+  /** Upload progress 0..1 while status is "uploading". */
+  progress?: number;
   image?: { id: number; url: string };
   error?: unknown;
 }
@@ -13,19 +15,30 @@ export type UploadUpdate = {
   key: string;
   attempt: number;
   status: UploadStatus;
+  progress?: number;
   image?: UploadEntry["image"];
   error?: unknown;
 };
 export function updateUpload(entries: UploadEntry[], update: UploadUpdate) {
   return entries.map((entry) =>
-    entry.key !== update.key || update.attempt < entry.attempt
+    entry.key !== update.key ||
+    update.attempt < entry.attempt ||
+    // A late progress event must never move a finished upload back.
+    (update.attempt === entry.attempt &&
+      update.status === "uploading" &&
+      entry.status !== "uploading" &&
+      entry.status !== "pending" &&
+      entry.status !== "failed")
       ? entry
       : { ...entry, ...update },
   );
 }
 export async function runImageUploads(
   entries: UploadEntry[],
-  upload: (file: File) => Promise<{ id: number; url: string }>,
+  upload: (
+    file: File,
+    onProgress: (fraction: number) => void,
+  ) => Promise<{ id: number; url: string }>,
   update: (value: UploadUpdate) => void,
 ) {
   return Promise.all(
@@ -33,12 +46,20 @@ export async function runImageUploads(
       .filter((entry) => ["pending", "failed"].includes(entry.status))
       .map(async (entry) => {
         const attempt = entry.attempt + 1;
-        update({ key: entry.key, attempt, status: "uploading" });
+        update({ key: entry.key, attempt, status: "uploading", progress: 0 });
         try {
-          const image = await upload(entry.file);
+          const image = await upload(entry.file, (progress) =>
+            update({ key: entry.key, attempt, status: "uploading", progress }),
+          );
           if (!Number.isSafeInteger(image?.id) || image.id <= 0 || !image.url)
             throw new Error("Unconfirmed image response");
-          update({ key: entry.key, attempt, status: "saved", image });
+          update({
+            key: entry.key,
+            attempt,
+            status: "saved",
+            progress: 1,
+            image,
+          });
           return { key: entry.key, success: true };
         } catch (error) {
           const status =
@@ -60,9 +81,9 @@ export async function runImageUploads(
   );
 }
 export const uploadLabels: Record<UploadStatus, string> = {
-  pending: "Chờ tải lên khi đăng bài",
+  pending: "Sẵn sàng · tải lên khi đăng bài",
   uploading: "Đang tải lên…",
-  saved: "Đã tải lên",
+  saved: "Đã tải xong",
   failed: "Tải ảnh thất bại",
   uncertain: "Chưa xác định kết quả — kiểm tra ảnh đã lưu",
 };

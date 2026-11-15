@@ -228,6 +228,24 @@ export function ErrorState({
   error: unknown;
   retry?: () => void;
 }) {
+  // A missing resource will not appear by retrying: offer a way out instead.
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    error.status === 404
+  )
+    return (
+      <div className="state error-state" role="alert">
+        <h3>Nội dung không còn tồn tại</h3>
+        <p>
+          {errorText(error)} Có thể bài đã bị xóa, ẩn hoặc đường dẫn chưa đúng.
+        </p>
+        <Link className="button secondary" to="/kham-pha">
+          Về trang Khám phá
+        </Link>
+      </div>
+    );
   return (
     <div className="state error-state" role="alert">
       <h3>Chưa thể tải nội dung</h3>
@@ -276,12 +294,15 @@ export function Modal({
   close,
   busy = false,
   className,
+  dismissible = true,
 }: {
   title: string;
   children: ReactNode;
   close: () => void;
   busy?: boolean;
   className?: string;
+  /** False while the dialog holds unsent input: only explicit buttons close it. */
+  dismissible?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useId();
@@ -304,10 +325,10 @@ export function Modal({
       aria-labelledby={heading}
       onCancel={(event) => {
         event.preventDefault();
-        if (!busy) close();
+        if (!busy && dismissible) close();
       }}
       onClick={(event) => {
-        if (event.target === dialog.current && !busy) close();
+        if (event.target === dialog.current && !busy && dismissible) close();
       }}
     >
       <div className="modal-inner">
