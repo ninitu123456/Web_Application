@@ -9,8 +9,8 @@ FindIt kết nối người làm mất đồ và người nhặt được đồ 
 ## Thành viên nhóm
 
 | Họ tên | MSSV | Vai trò |
-| --- | --- | --- |
-| | | |
+| Nguyễn Ngọc Thiên Tú | 24521911 | Backend Developer |
+| Nguyễn Quốc Đạt| 24520273 | Frontend Developer |
 | | | |
 
 ## Chức năng
