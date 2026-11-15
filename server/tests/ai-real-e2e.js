@@ -49,7 +49,7 @@ import { realAiBrowser } from '../../client/scripts/ai-real-browser-check.mjs';
 test('real CLIP: upload -> jobs -> embeddings -> matching -> owner API -> browser, on disposable MySQL', { timeout: 300000 }, async t => {
   const base = configFromEnv(), name = 'findit_test_' + randomBytes(12).toString('hex');
   const setup = await connect(base, false), workspace = await mkdtemp(resolve(tmpdir(), 'findit-ai-e2e-'));
-  const artifacts = fileURLToPath(new URL('../../.cache/ci-ai-e2e-20261109/ai-real/', import.meta.url));
+  const artifacts = fileURLToPath(new URL('../../.cache/ai-real-e2e/', import.meta.url));
   const originalFetch = globalThis.fetch;
   let pool, http, browser, encoder, created = false;
   try {
