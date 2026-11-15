@@ -1,125 +1,93 @@
-# FindIt — Smart Campus Lost & Found
+# FindIt — Tìm đồ thất lạc trong khuôn viên trường
 
-Ứng dụng hỗ trợ tìm và trả lại đồ thất lạc trong khuôn viên trường, gồm giao diện người dùng, trang quản trị và API backend. Đồ án được thực hiện bởi nhóm 2 thành viên.
+[![Tests](https://github.com/ninitu123456/Web_Application/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/ninitu123456/Web_Application/actions/workflows/tests.yml)
+
+**Website:** https://findit.io.vn
+
+FindIt kết nối người làm mất đồ và người nhặt được đồ trong trường. Người dùng đăng bài kèm ảnh. Hệ thống gợi ý các bài có khả năng trùng khớp theo thông tin và theo hình ảnh (AI). Người nhận đồ gửi yêu cầu kèm bằng chứng, chủ bài xác minh rồi xác nhận bàn giao.
+
+## Thành viên nhóm
+
+| Họ tên | MSSV | Vai trò |
+| --- | --- | --- |
+| | | |
+| | | |
 
 ## Chức năng
 
 | Người dùng | Quản trị viên |
 | --- | --- |
-| Đăng ký, đăng nhập và cập nhật họ tên | Xem thống kê hệ thống |
-| Đăng bài LOST/FOUND, quản lý bài và ảnh | Quản lý tài khoản, danh mục và địa điểm |
-| Tìm kiếm, lọc và xem gợi ý Matching | Kiểm duyệt bài đăng, xử lý báo cáo vi phạm |
-| Gửi Claim, duyệt yêu cầu và xác nhận bàn giao | Giải quyết Claim đang chờ và xem nhật ký nghiệp vụ |
-| Nhắn tin riêng tư realtime, đặt lại mật khẩu qua email | Quản lý theo quyền và trạng thái tài khoản |
-| Xem thông báo và gửi báo cáo vi phạm | Thao tác theo phân quyền và quy tắc tránh xung đột lợi ích |
+| Đăng ký, đăng nhập, quên mật khẩu qua email | Thống kê tổng quan hệ thống |
+| Đăng bài mất đồ / nhặt được đồ kèm tối đa 5 ảnh, tự lưu bản nháp | Quản lý tài khoản: khoá, mở khoá |
+| Tìm kiếm, lọc theo danh mục, địa điểm, thời gian, trạng thái | Kiểm duyệt, ẩn hoặc đóng bài đăng |
+| Gợi ý bài trùng khớp theo thông tin và theo hình ảnh (AI) | Xử lý báo cáo vi phạm |
+| Gửi yêu cầu nhận đồ kèm bằng chứng; chủ bài duyệt và xác nhận bàn giao | Giải quyết tranh chấp yêu cầu nhận đồ |
+| Nhắn tin riêng realtime, thông báo, báo cáo vi phạm | Quản lý danh mục, địa điểm và xem nhật ký hoạt động |
 
-Matching chấm điểm tương đồng giữa các bài LOST/FOUND; điểm số không phải xác suất xác nhận đúng chủ sở hữu. Claim và bàn giao được quản lý theo trạng thái, quyền truy cập và transaction.
+Giao diện tiếng Việt, dùng tốt trên cả điện thoại và máy tính.
 
-## Công nghệ và cấu trúc
+## Công nghệ
 
-| Thành phần | Công nghệ / trách nhiệm |
+| Phần | Công nghệ |
 | --- | --- |
-| `client/` | React, Vite, TypeScript, Tailwind CSS; giao diện và kiểm thử frontend |
-| `server/` | Node.js, Express, JWT, Zod; routes → controllers → services → repositories |
-| `database/` | MySQL 8, schema, migrations, seeds và công cụ vận hành/kiểm thử |
-| `docs/` | Yêu cầu, quy tắc nghiệp vụ, ERD và hợp đồng API |
-| `scripts/` | Công cụ coverage dùng chung |
-| `.github/workflows/` | GitHub Actions kiểm thử backend/database và kiểm tra coverage |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS, GSAP |
+| Backend | Node.js, Express 5, Socket.IO, JWT, bcrypt |
+| Cơ sở dữ liệu | MySQL 8 (migration có kiểm tra checksum) |
+| AI | CLIP (`clip-vit-base-patch32`) qua Transformers.js, chạy CPU trong worker riêng |
+| Lưu trữ và email | Cloudinary (ảnh), Resend (email) |
+| Triển khai | Vercel (frontend), Railway (API, AI worker, MySQL, sao lưu hằng ngày) |
+| Kiểm thử | node:test, Vitest, Playwright, GitHub Actions |
 
-Ảnh được lưu trên Cloudinary; MySQL lưu dữ liệu nghiệp vụ và tham chiếu ảnh. Frontend gọi API Express qua HTTPS và Socket.IO. Bản production chạy tại [findit.io.vn](https://findit.io.vn) (Vercel + Railway), xem [tài liệu triển khai](docs/deployment.md).
+## Cấu trúc repository
 
-## Chạy cục bộ
+```
+client/      Giao diện React (trang người dùng và trang quản trị)
+server/      API Express, chat Socket.IO, worker AI
+database/    Migrations, schema, dữ liệu mẫu và công cụ kiểm thử MySQL
+docs/        Yêu cầu, quy tắc nghiệp vụ, ERD, hợp đồng API, triển khai
+.github/     CI chạy kiểm thử trên mỗi push và pull request
+```
 
-Khuyến nghị Node.js 24, npm và MySQL 8.0.16 trở lên. Các lệnh dưới đây dùng PowerShell trên Windows; trên shell khác dùng `npm` thay cho `npm.cmd` và lệnh sao chép tương ứng.
+## Chạy trên máy
 
-### 1. Cài đặt và cấu hình
+Cần Node.js 24 và MySQL 8.
 
-```powershell
+```bash
 git clone https://github.com/ninitu123456/Web_Application.git
 cd Web_Application
-npm.cmd ci
-# Chỉ sao chép khi chưa có .env:
-Copy-Item .env.example .env
+npm ci
+cp .env.example .env     # điền DB, JWT_SECRET, tài khoản mẫu, Cloudinary
+npm run db:setup         # tạo database, chạy migration và dữ liệu mẫu
+npm run dev              # API: http://127.0.0.1:3001/api
 ```
 
-Điền cấu hình trong `.env` tại gốc:
+Mở terminal thứ hai:
 
-- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME=findit_db`.
-- `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_USER_EMAIL`, `SEED_USER_PASSWORD`: hai tài khoản mẫu riêng để chạy thử.
-- `JWT_SECRET`: secret ngẫu nhiên tối thiểu 32 byte; `JWT_EXPIRES_IN` tính bằng giây.
-- Các biến `CLOUDINARY_*` nếu cần upload ảnh thật.
-
-Các biến SEED_ADMIN_* và SEED_USER_* chỉ dành cho dữ liệu phát triển/disposable. Demo seed/setup bị chặn khi NODE_ENV=production hoặc có marker môi trường Railway/Vercel; không có override production. Không dùng db:setup để vận hành database thật.
-
-Không commit `.env` hoặc credentials. Cách tạo JWT secret và yêu cầu cấu hình chi tiết nằm trong [hướng dẫn Auth](server/AUTH.md) và [hướng dẫn database](database/README.md).
-
-### 2. Khởi tạo database và chạy backend
-
-MySQL phải đang chạy, tài khoản setup có đủ quyền tạo database và áp dụng migrations.
-
-```powershell
-npm.cmd run db:setup
-npm.cmd run dev
-```
-
-API mặc định: `http://127.0.0.1:3001/api`. Kiểm tra readiness tại `http://127.0.0.1:3001/api/health`.
-
-Setup tạo schema và seed nếu chưa có; khi gặp dữ liệu không khớp fixture, lệnh dừng để kiểm tra, không ghi đè. Xem [hướng dẫn database](database/README.md).
-
-### 3. Chạy frontend
-
-Mở terminal thứ hai tại gốc repository:
-
-```powershell
+```bash
 cd client
-npm.cmd ci
-npm.cmd run dev
+npm ci
+npm run dev              # Giao diện: http://localhost:5173
 ```
 
-Mở `http://localhost:5173`. Đăng nhập bằng tài khoản mẫu đã cấu hình hoặc đăng ký tài khoản mới.
-
-Frontend mặc định gọi `http://127.0.0.1:3001/api`. Có thể đặt `VITE_API_BASE_URL` theo [client/.env.example](client/.env.example). Khi đổi origin frontend, cập nhật `CORS_ORIGINS` của backend cho khớp. Xem [hướng dẫn frontend](client/README.md) về build và hosting.
+Trên Windows PowerShell, dùng `npm.cmd` và `Copy-Item .env.example .env`. Chi tiết cấu hình: [backend](server/README.md), [database](database/README.md), [frontend](client/README.md).
 
 ## Kiểm thử
 
-Tại gốc repository:
-
-```powershell
-npm.cmd test
-npm.cmd run test:integration:isolated
-# Hoặc chạy cả hai bước:
-npm.cmd run test:regression
+```bash
+npm test                              # unit và HTTP tests backend, database
+npm run test:integration:isolated     # integration trên MySQL tạm
+cd client && npm test                 # unit tests frontend
+cd client && npm run test:browser     # kiểm thử trình duyệt (Chrome)
 ```
 
-Trong `client/`:
-
-```powershell
-npm.cmd test
-npm.cmd run typecheck
-npm.cmd run format:check
-npm.cmd run build
-# Kiểm thử trình duyệt, cần Chrome hoặc Edge và MySQL executable:
-npm.cmd run test:browser
-```
-
-Integration và browser tests tạo MySQL instance tạm, không dùng dịch vụ MySQL đang cài. Đặt `MYSQLD_PATH` nếu runner không tự tìm thấy executable. Cloudinary được thay bằng storage giả trong các tests này.
-
-GitHub Actions hiện kiểm tra backend/database, dependency production và coverage; frontend được kiểm tra bằng các lệnh riêng ở trên. Xem [bảo mật và coverage](server/SECURITY.md) và [browser tests](client/README.md#kiểm-thử-trình-duyệt-cô-lập).
+Integration và browser tests tự dựng MySQL riêng và giả lập Cloudinary, nên không đụng tới dữ liệu thật. GitHub Actions chạy toàn bộ trên mỗi pull request.
 
 ## Tài liệu
 
-| Nội dung | Tài liệu |
+| Tài liệu | Nội dung |
 | --- | --- |
-| Đặc tả | [Yêu cầu](docs/requirements.md) · [Quy tắc nghiệp vụ](docs/business-rules.md) · [ERD](docs/erd.md) · [Hợp đồng API](docs/api-contract.md) |
-| Cài đặt và vận hành | [Frontend](client/README.md) · [Backend](server/README.md) · [Database](database/README.md) · [Triển khai production](docs/deployment.md) |
-| API theo module | [Auth/User](server/AUTH.md) · [Item và ảnh](server/ITEMS.md) · [Matching](server/MATCHING.md) · [Claim](server/CLAIMS.md) · [Admin](server/ADMIN.md) |
-| API hỗ trợ frontend | [Lookup và bài của tôi](server/FRONTEND-API.md) |
-| Notification và Report | [Hợp đồng API](docs/api-contract.md) và [quy tắc nghiệp vụ](docs/business-rules.md) |
-| Bảo mật và kiểm thử | [Cấu hình, coverage và giới hạn](server/SECURITY.md) |
-
-## Giới hạn cần biết
-
-- Bộ kiểm thử tự động dùng Chrome/Edge và storage ảnh giả lập; Firefox/Safari được kiểm tra thủ công trên website.
-- Có chat riêng tư realtime và đặt lại mật khẩu qua email khi Resend được cấu hình. Chưa có refresh token hoặc trang đổi mật khẩu trong hồ sơ.
-- Bài CLOSED kết thúc hoạt động nghiệp vụ nhưng vẫn có thể được đọc công khai. ADMIN resolve chỉ xử lý Claim PENDING, không hoàn tất bàn giao thay chủ bài.
-- API đang chạy một instance; nếu mở rộng nhiều instance cần rate-limit store dùng chung, xem [bảo mật](server/SECURITY.md).
+| [Yêu cầu](docs/requirements.md) | Mục tiêu, tác nhân, yêu cầu chức năng và phi chức năng |
+| [Quy tắc nghiệp vụ](docs/business-rules.md) | Trạng thái bài đăng, quy trình nhận đồ, phân quyền |
+| [ERD](docs/erd.md) | Thiết kế cơ sở dữ liệu |
+| [Hợp đồng API](docs/api-contract.md) | Toàn bộ endpoint, request, response và mã lỗi |
+| [Triển khai](docs/deployment.md) | Kiến trúc production, AI worker, sao lưu và khôi phục |
