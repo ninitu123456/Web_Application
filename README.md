@@ -26,7 +26,7 @@ Matching chấm điểm tương đồng giữa các bài LOST/FOUND; điểm s�
 | `scripts/` | Công cụ coverage dùng chung |
 | `.github/workflows/` | GitHub Actions kiểm thử backend/database và kiểm tra coverage |
 
-Ảnh được lưu trên Cloudinary; MySQL lưu dữ liệu nghiệp vụ và tham chiếu ảnh. Frontend gọi API Express qua HTTP.
+Ảnh được lưu trên Cloudinary; MySQL lưu dữ liệu nghiệp vụ và tham chiếu ảnh. Frontend gọi API Express qua HTTPS và Socket.IO. Bản production chạy tại [findit.io.vn](https://findit.io.vn) (Vercel + Railway), xem [tài liệu triển khai](docs/deployment.md).
 
 ## Chạy cục bộ
 
@@ -111,19 +111,15 @@ GitHub Actions hiện kiểm tra backend/database, dependency production và cov
 | Nội dung | Tài liệu |
 | --- | --- |
 | Đặc tả | [Yêu cầu](docs/requirements.md) · [Quy tắc nghiệp vụ](docs/business-rules.md) · [ERD](docs/erd.md) · [Hợp đồng API](docs/api-contract.md) |
-| Cài đặt và vận hành | [Frontend](client/README.md) · [Backend](server/README.md) · [Database](database/README.md) |
+| Cài đặt và vận hành | [Frontend](client/README.md) · [Backend](server/README.md) · [Database](database/README.md) · [Triển khai production](docs/deployment.md) |
 | API theo module | [Auth/User](server/AUTH.md) · [Item và ảnh](server/ITEMS.md) · [Matching](server/MATCHING.md) · [Claim](server/CLAIMS.md) · [Admin](server/ADMIN.md) |
 | API hỗ trợ frontend | [Lookup và bài của tôi](server/FRONTEND-API.md) |
 | Notification và Report | [Hợp đồng API](docs/api-contract.md) và [quy tắc nghiệp vụ](docs/business-rules.md) |
 | Bảo mật và kiểm thử | [Cấu hình, coverage và giới hạn](server/SECURITY.md) |
 
-## Chuẩn bị phát hành và dọn dữ liệu demo
-
-Xem [runbook cleanup](docs/DEMO-CLEANUP-RUNBOOK.md) và [kết quả kiểm chứng](docs/PRODUCTION-POLISH-VERIFICATION.md). `npm run db:purge-demo` mặc định chỉ đọc và từ chối target không được xác minh. Mọi ADMIN luôn được bảo vệ. Xóa DB/Cloudinary production cần phê duyệt riêng theo manifest và backup/restore đã kiểm chứng; phần chuẩn bị local không đồng nghĩa dữ liệu production đã được dọn.
-
 ## Giới hạn cần biết
 
-- Chưa kiểm chứng Cloudinary qua mạng thật, Firefox/Safari, thiết bị vật lý hoặc hosting production trong bộ kiểm thử được mô tả.
+- Bộ kiểm thử tự động dùng Chrome/Edge và storage ảnh giả lập; Firefox/Safari được kiểm tra thủ công trên website.
 - Có chat riêng tư realtime và đặt lại mật khẩu qua email khi Resend được cấu hình. Chưa có refresh token hoặc trang đổi mật khẩu trong hồ sơ.
 - Bài CLOSED kết thúc hoạt động nghiệp vụ nhưng vẫn có thể được đọc công khai. ADMIN resolve chỉ xử lý Claim PENDING, không hoàn tất bàn giao thay chủ bài.
-- Trước khi triển khai sau reverse proxy hoặc nhiều instance, cần cấu hình phù hợp cho HTTPS, IP trust và rate-limit store; xem [bảo mật](server/SECURITY.md).
+- API đang chạy một instance; nếu mở rộng nhiều instance cần rate-limit store dùng chung, xem [bảo mật](server/SECURITY.md).

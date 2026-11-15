@@ -1,7 +1,7 @@
 # AI Visual Matching
 
 Production suggestions now have a separate explicit configuration mode. Follow
-[the production runbook](../docs/AI-PRODUCTION-DEPLOYMENT.md) for the exact API,
+[the deployment guide](../docs/deployment.md) for the exact API,
 worker and Vercel variables, migration/backfill order and incident shutdown.
 The development-only commands and isolation guards below still apply in the
 default `AI_VISUAL_MODE=isolated`. Notifications/shadow/demo remain forbidden in
