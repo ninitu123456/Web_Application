@@ -135,4 +135,4 @@ Có thể dùng **Database → Reverse Engineer** để xem quan hệ FK. Đối
 
 ## Isolation bắt buộc
 
-Các suite integration trực tiếp không còn chấp nhận cấu hình MySQL cục bộ. Dùng `db:test:isolated` cho database hoặc `test:integration:isolated` cho toàn bộ backend/database. Shared guard xác minh marker/datadir/port trước khi test ghi dữ liệu; không tự đặt marker. Hướng dẫn và CI hiện hành: [SECURITY.md](../server/SECURITY.md).
+Các suite integration trực tiếp không còn chấp nhận cấu hình MySQL cục bộ. Dùng `db:test:isolated` cho database hoặc `test:integration:isolated` cho toàn bộ backend/database. Shared guard xác minh marker/datadir/port trước khi test ghi dữ liệu; không tự đặt marker. Xem thêm phần kiểm thử trong [README backend](../server/README.md#kiểm-thử).
