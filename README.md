@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/ninitu123456/Web_Application/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/ninitu123456/Web_Application/actions/workflows/tests.yml)
 
-**Website:** https://findit.io.vn
+**Website:** <https://findit.io.vn>
 
 FindIt kết nối người làm mất đồ và người nhặt được đồ trong trường. Người dùng đăng bài kèm ảnh. Hệ thống gợi ý các bài có khả năng trùng khớp theo thông tin và theo hình ảnh (AI). Người nhận đồ gửi yêu cầu kèm bằng chứng, chủ bài xác minh rồi xác nhận bàn giao.
 
@@ -11,14 +11,14 @@ FindIt kết nối người làm mất đồ và người nhặt được đồ 
 | Họ tên | MSSV | Vai trò |
 | --- | --- | --- |
 | Nguyễn Ngọc Thiên Tú | 24521911 | Backend Developer |
-| Nguyễn Quốc Đạt | 24520273 | Frontend Developer | 
+| Nguyễn Quốc Đạt | 24520273 | Frontend Developer |
 
 ## Chức năng
 
 | Người dùng | Quản trị viên |
 | --- | --- |
 | Đăng ký, đăng nhập, quên mật khẩu qua email | Thống kê tổng quan hệ thống |
-| Đăng bài mất đồ / nhặt được đồ kèm tối đa 5 ảnh, tự lưu bản nháp | Quản lý tài khoản: khoá, mở khoá |
+| Đăng bài mất đồ / nhặt được đồ kèm tối đa 5 ảnh, tự lưu bản nháp | Quản lý tài khoản: khóa, mở khóa |
 | Tìm kiếm, lọc theo danh mục, địa điểm, thời gian, trạng thái | Kiểm duyệt, ẩn hoặc đóng bài đăng |
 | Gợi ý bài trùng khớp theo thông tin và theo hình ảnh (AI) | Xử lý báo cáo vi phạm |
 | Gửi yêu cầu nhận đồ kèm bằng chứng; chủ bài duyệt và xác nhận bàn giao | Giải quyết tranh chấp yêu cầu nhận đồ |
@@ -69,7 +69,7 @@ npm ci
 npm run dev              # Giao diện: http://localhost:5173
 ```
 
-Trên Windows PowerShell, dùng `npm.cmd` và `Copy-Item .env.example .env`. Chi tiết cấu hình: [backend](server/README.md), [database](database/README.md), [frontend](client/README.md).
+Trên Windows PowerShell, dùng `npm.cmd` và `Copy-Item .env.example .env`. Chi tiết cấu hình xem README của [backend](server/README.md), [database](database/README.md) và [frontend](client/README.md).
 
 ## Kiểm thử
 
@@ -87,7 +87,8 @@ Integration và browser tests tự dựng MySQL riêng và giả lập Cloudinar
 | Tài liệu | Nội dung |
 | --- | --- |
 | [Yêu cầu](docs/requirements.md) | Mục tiêu, tác nhân, yêu cầu chức năng và phi chức năng |
-| [Quy tắc nghiệp vụ](docs/business-rules.md) | Trạng thái bài đăng, quy trình nhận đồ, phân quyền |
+| [Quy tắc nghiệp vụ](docs/business-rules.md) | Các quy tắc `BR-*`: phân quyền, trạng thái, quy trình nhận đồ |
 | [ERD](docs/erd.md) | Thiết kế cơ sở dữ liệu |
-| [Hợp đồng API](docs/api-contract.md) | Toàn bộ endpoint, request, response và mã lỗi |
+| [Hợp đồng API](docs/api-contract.md) | Toàn bộ endpoint REST và sự kiện Socket.IO |
 | [Triển khai](docs/deployment.md) | Kiến trúc production, AI worker, sao lưu và khôi phục |
+| [Backend](server/README.md), [Database](database/README.md), [Frontend](client/README.md) | Cấu trúc mã nguồn, chạy cục bộ, kiểm thử |

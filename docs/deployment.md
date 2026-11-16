@@ -1,6 +1,8 @@
-# Triển khai FindIt
+# FindIt — Triển khai
 
-Website: **https://findit.io.vn**. Mỗi lần merge vào `main`, GitHub Actions chạy kiểm thử. Khi kiểm thử đạt, Vercel và Railway tự build và triển khai lại.
+Tài liệu mô tả kiến trúc production, biến môi trường, tính năng AI, migration, sao lưu và khôi phục.
+
+Website: **<https://findit.io.vn>**. Mỗi lần merge vào `main`, GitHub Actions chạy kiểm thử. Khi kiểm thử đạt, Vercel và Railway tự build và triển khai lại.
 
 ## Kiến trúc
 
@@ -18,7 +20,7 @@ API và worker dùng chung một commit và một database. Worker không mở c
 
 ## Biến môi trường
 
-Chỉ liệt kê tên biến. Giá trị nằm trong dashboard Vercel/Railway, không commit vào repository. Mẫu cho môi trường local nằm ở `.env.example` và `client/.env.example`.
+Chỉ liệt kê tên biến. Giá trị nằm trong dashboard Vercel và Railway, không commit vào repository. Mẫu cho môi trường local nằm ở `.env.example` và `client/.env.example`.
 
 | Biến | API | Worker | Vercel |
 | --- | --- | --- | --- |
@@ -26,7 +28,7 @@ Chỉ liệt kê tên biến. Giá trị nằm trong dashboard Vercel/Railway, k
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | ✓ | ✓ | |
 | `JWT_SECRET`, `JWT_EXPIRES_IN`, `CORS_ORIGINS`, `FRONTEND_URL` | ✓ | | |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | ✓ | | |
-| Cấu hình Resend/email | ✓ | | |
+| `RESEND_API_KEY`, `EMAIL_FROM` | ✓ | | |
 | `AI_VISUAL_MODE` | `production` | `production` | |
 | `AI_VISUAL_SERVICE_ROLE` | `api` | `worker` | |
 | `AI_VISUAL_MATCHING_ENABLED` | `true` | `true` | |
@@ -41,7 +43,7 @@ Chỉ liệt kê tên biến. Giá trị nằm trong dashboard Vercel/Railway, k
 
 Worker có thêm biến build `ONNXRUNTIME_NODE_INSTALL_CUDA=skip` để không tải thư viện GPU không dùng tới. Biến `VITE_*` được đóng vào bundle công khai nên không bao giờ chứa secret.
 
-## Tính năng AI gợi ý bằng hình ảnh
+## Gợi ý bằng hình ảnh (AI)
 
 - Model: `Xenova/clip-vit-base-patch32` (pretrained, không cần huấn luyện), chạy CPU, vector 512 chiều. Pin revision `4c1807b705b1d015fb032789cc4d221b23025a6f`.
 - Upload ảnh tạo job trong cùng transaction với ảnh. Worker lấy job, sinh embedding, rồi so cosine với các bài loại đối diện (LOST ↔ FOUND).
@@ -57,11 +59,12 @@ npm run ai-visual:backfill -- --rebuild       # tính lại toàn bộ sau khi �
 ```
 
 Tắt khẩn cấp:
+
 1. Dừng worker.
 2. Đặt `AI_VISUAL_MATCHING_ENABLED=false` và `AI_VISUAL_SUGGESTIONS_ENABLED=false` cho API.
 3. Build lại frontend với `VITE_AI_VISUAL_SUGGESTIONS_ENABLED=false`.
 
-Không xoá bảng AI. Bật lại theo thứ tự ngược và chạy `--rebuild`.
+Không xóa bảng AI. Bật lại theo thứ tự ngược và chạy `--rebuild`.
 
 ## Migration
 
@@ -70,6 +73,7 @@ Không xoá bảng AI. Bật lại theo thứ tự ngược và chạy `--rebuil
 ## Sao lưu và khôi phục
 
 Service `db-backup` chạy hằng ngày:
+
 1. Dump `findit_db` (`--single-transaction`, kèm routines, triggers và events).
 2. Khởi động một MySQL tạm và restore bản dump vào đó.
 3. Kiểm tra dữ liệu đã restore để xác nhận bản sao lưu dùng được, rồi mới giữ file trên volume `/backup`.
@@ -77,6 +81,7 @@ Service `db-backup` chạy hằng ngày:
 Log mỗi lần chạy kết thúc bằng `RESTORE_VERIFIED` nếu thành công.
 
 Khôi phục khi cần:
+
 1. Tạm dừng API và worker.
 2. Restore file dump mới nhất vào MySQL.
 3. Chạy `npm run db:migrate` để kiểm tra ledger.

@@ -15,7 +15,7 @@ API REST viết bằng Node.js (ES Modules), Express 5 và MySQL 8, kèm Socket.
 | `scripts/` | Kiểm tra DB, dọn ảnh mồ côi, đo coverage |
 | `tests/` | Unit, HTTP và integration tests |
 
-Các module: Auth/User, Item (bài đăng và ảnh), Matching, Claim, Chat, Notification, Report, Admin, Health.
+Các module: Auth (gồm quên mật khẩu), User, Item (bài đăng và ảnh), Matching và gợi ý AI, Claim, Chat, Notification, Report, Admin, Health.
 
 ## Chạy cục bộ
 
@@ -38,9 +38,9 @@ Kiểm tra: `GET /api/health` trả 200 khi kết nối được database. Serve
 
 ## Các điểm kỹ thuật chính
 
-**Xác thực và phân quyền.** JWT HS256, mật khẩu băm bcrypt. Vai trò và trạng thái tài khoản được đọc lại từ DB ở mỗi request, nên tài khoản bị khoá mất quyền ngay. Có hai vai trò USER và ADMIN; ADMIN không được tự xử lý tranh chấp có liên quan đến chính mình.
+**Xác thực và phân quyền.** JWT HS256, mật khẩu băm bcrypt. Vai trò và trạng thái tài khoản được đọc lại từ DB ở mỗi request, nên tài khoản bị khóa mất quyền ngay. Có hai vai trò `USER` và `ADMIN`; `ADMIN` không được xử lý bài hoặc Claim có liên quan đến chính mình.
 
-**Matching theo thông tin.** Khi tạo hoặc sửa bài, hệ thống chấm điểm với mọi bài loại đối diện (LOST ↔ FOUND):
+**Matching theo thông tin.** Khi tạo hoặc sửa bài, hệ thống chấm điểm với mọi bài loại đối diện (`LOST ↔ FOUND`), xem `BR-MATCH-06` trong [quy tắc nghiệp vụ](../docs/business-rules.md#5-ghép-nối-thông-minh):
 
 ```
 điểm = 0.30 × danh mục + 0.20 × địa điểm + 0.20 × ngày + 0.30 × nội dung
@@ -52,16 +52,17 @@ Kiểm tra: `GET /api/health` trả 200 khi kết nối được database. Serve
 
 Chỉ lưu cặp có điểm ≥ 50. Điểm là độ tương đồng, không phải xác suất đúng chủ.
 
-**Gợi ý bằng hình ảnh (AI).** Mỗi ảnh tải lên tạo một job trong cùng transaction. Worker `ai-visual/` dùng model CLIP (pretrained, chạy CPU) để sinh vector 512 chiều, rồi so cosine với ảnh của các bài loại đối diện. Chủ bài thấy kết quả trong mục "Gợi ý cho bạn". AI chỉ gợi ý, không tự tạo Match hay xác nhận Claim. Cấu hình production: [docs/deployment.md](../docs/deployment.md).
+**Gợi ý bằng hình ảnh (AI).** Mỗi ảnh tải lên tạo một job trong cùng transaction. Worker `ai-visual/` dùng model CLIP (pretrained, chạy CPU) để sinh vector 512 chiều, rồi so cosine với ảnh của các bài loại đối diện. Chủ bài thấy kết quả trong mục "Gợi ý cho bạn". AI chỉ gợi ý, không tự tạo Match hay xác nhận Claim. Cấu hình production xem [triển khai](../docs/deployment.md#gợi-ý-bằng-hình-ảnh-ai).
 
-**Claim và bàn giao.** Người nhận đồ gửi Claim (PENDING) kèm bằng chứng. Chủ bài duyệt (APPROVED) hoặc từ chối (REJECTED), rồi xác nhận đã bàn giao (COMPLETED). Mọi bước chạy trong transaction có khoá dòng, nên một món đồ không thể có hai Claim cùng được duyệt.
+**Claim và bàn giao.** Người nhận đồ gửi Claim (`PENDING`) kèm bằng chứng. Chủ bài duyệt (`APPROVED`) hoặc từ chối (`REJECTED`), rồi xác nhận đã bàn giao (`COMPLETED`). Mọi bước chạy trong transaction có khóa dòng, nên một món đồ không thể có hai Claim cùng được duyệt.
 
-**Ảnh.** Lưu trên Cloudinary với public ID do server sinh (UUID). Kiểm tra MIME và chữ ký byte; tối đa 5 ảnh, 5 MiB mỗi ảnh. Ảnh bị xoá được dọn qua hàng đợi để không còn file mồ côi khi transaction lỗi.
+**Ảnh.** Lưu trên Cloudinary với public ID do server sinh (UUID). Kiểm tra MIME và chữ ký byte; tối đa 5 ảnh, 5 MiB mỗi ảnh. Ảnh bị xóa được dọn qua hàng đợi để không còn file mồ côi khi transaction lỗi.
 
 **Bảo mật.**
+
 - Helmet (security headers, HSTS trên production).
 - CORS theo danh sách origin.
-- Rate limit cho toàn API, đăng nhập, đăng ký và upload.
+- Rate limit cho toàn API, đăng nhập, đăng ký, quên/đặt lại mật khẩu và upload.
 - Giới hạn kích thước body.
 - Lỗi trả về không lộ stack trace hay câu SQL.
 

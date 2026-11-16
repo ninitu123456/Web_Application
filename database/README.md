@@ -1,109 +1,146 @@
-# FindIt — MySQL database
+# FindIt — Database
 
-Database gồm **11 bảng nghiệp vụ, 11 bảng AI Visual, 4 bảng tài khoản/chat** và bảng kỹ thuật `_schema_migrations`, triển khai theo [ERD](../docs/erd.md), [yêu cầu](../docs/requirements.md), [quy tắc nghiệp vụ](../docs/business-rules.md) và [hợp đồng API](../docs/api-contract.md).
+Database MySQL 8 của FindIt, triển khai theo [ERD](../docs/erd.md), [yêu cầu](../docs/requirements.md), [quy tắc nghiệp vụ](../docs/business-rules.md) và [hợp đồng API](../docs/api-contract.md). Thư mục này chứa định nghĩa schema, migration, dữ liệu mẫu, công cụ CLI và bộ kiểm thử.
 
-Có **30 file migration** trong manifest: `001–011` tạo các bảng nghiệp vụ, `012–013` bổ sung indexes/ràng buộc, nhóm AI `014–016` hỗ trợ embeddings và candidates, `017–024` hỗ trợ revision/snapshot/decision/outbox và demo fixture, `025` tạo revision gốc. Năm migration tài khoản/chat gồm `014_session_version.sql`, `015_password_reset_tokens.sql`, `016_email_outbox.sql`, `017_conversations.sql`, `018_messages.sql`. Các tiền tố `014–018` được dùng ở hai nhánh trước khi tích hợp; tên file đầy đủ và checksum là định danh trong ledger, không được đổi số hoặc sửa các file đã công bố.
+## Tổng quan
 
-## Chuẩn bị và cấu hình
+| Thành phần | Nội dung |
+| --- | --- |
+| Bảng | 11 bảng nghiệp vụ, 4 bảng tài khoản và chat, 11 bảng AI, cộng bảng kỹ thuật `_schema_migrations` |
+| `schema.js`, `features-schema.js`, `phase5-schema.js` | Nguồn định nghĩa cấu trúc; `db:build` sinh SQL từ đây |
+| `migrations/` | 30 file SQL áp dụng theo thứ tự trong manifest |
+| `database-schema.sql` | Bản xuất toàn bộ cấu trúc (27 bảng), sinh từ cùng nguồn |
+| `seeds/` | Dữ liệu mẫu cho môi trường dev |
+| `scripts/` | CLI `init`, `migrate`, `seed`, `setup`, `verify`, `build` và runner kiểm thử cô lập |
+| `tests/` | Unit và integration tests |
 
-- Node.js >= 20, npm; khuyến nghị Node.js 24 cho toàn bộ dự án. MySQL >= 8.0.16 để CHECK được thực thi.
-- MySQL phải đang chạy. Trên PowerShell: `Get-Service MySQL80`. Không cần thêm `mysql.exe` vào PATH vì scripts dùng driver Node.js.
-- Tài khoản setup cần quyền tạo database và các quyền CREATE, ALTER, INDEX, SELECT, INSERT, UPDATE, REFERENCES trong `findit_db` để áp dụng đủ migrations và seed. Integration dùng tài khoản riêng do runner tạo trên MySQL instance tạm.
-- Cài dependencies dùng chung bằng lockfile tại gốc repository:
+### Danh sách migration
 
-```powershell
-npm.cmd ci
-# Chỉ sao chép khi chưa có .env:
-Copy-Item .env.example .env
+| Tiền tố | Nội dung |
+| --- | --- |
+| `001`–`011` | 11 bảng nghiệp vụ |
+| `012`–`013` | Index tìm kiếm; hỗ trợ chống trùng thông báo và báo cáo |
+| `014`–`016` (AI) | `item_image_embeddings`, `ai_visual_jobs`, `ai_visual_candidates` |
+| `014`–`018` (tài khoản, chat) | `session_version`, `password_reset_tokens`, `email_outbox`, `conversations`, `messages` |
+| `017`–`024` (AI) | Revision, snapshot, kết quả, thông báo, outbox, chống trùng cảnh báo và đánh dấu dữ liệu demo |
+| `025` | Tạo revision gốc cho danh mục ảnh AI |
+
+Tiền tố `014`–`018` được dùng ở hai nhánh phát triển trước khi gộp. Tên file đầy đủ và checksum mới là định danh trong ledger, nên **không đổi tên, đổi số hay sửa** các file đã phát hành.
+
+## Chuẩn bị
+
+- Node.js 24 (tối thiểu 20) và npm.
+- MySQL 8.0.16 trở lên để CHECK được thực thi. MySQL phải đang chạy; trên Windows kiểm tra bằng `Get-Service MySQL80`. Không cần `mysql.exe` trong PATH vì scripts dùng driver Node.js.
+- Tài khoản setup cần quyền tạo database và các quyền `CREATE`, `ALTER`, `INDEX`, `SELECT`, `INSERT`, `UPDATE`, `REFERENCES` trên `findit_db`.
+
+Cài dependencies từ thư mục gốc repository:
+
+```bash
+npm ci
+cp .env.example .env     # chỉ khi chưa có .env
 ```
 
-Nếu `.env` đã tồn tại, giữ nguyên file đó. Điền các biến sau bằng trình soạn thảo cục bộ:
+Trên Windows PowerShell, dùng `npm.cmd` và `Copy-Item .env.example .env`.
+
+Điền các biến sau trong `.env`:
 
 | Biến | Ý nghĩa |
 | --- | --- |
 | `DB_HOST` | Mặc định `127.0.0.1` |
 | `DB_PORT` | Mặc định `3306` |
 | `DB_USER` | Tài khoản MySQL có quyền setup |
-| `DB_PASSWORD` | Mật khẩu MySQL; phải khai báo, có thể để rỗng nếu server thực sự cho phép |
+| `DB_PASSWORD` | Mật khẩu MySQL; phải khai báo, để rỗng chỉ khi server thật sự cho phép |
 | `DB_NAME` | `findit_db`; CLI từ chối tên khác |
 | `SEED_ADMIN_EMAIL`, `SEED_USER_EMAIL` | Hai email khác nhau cho tài khoản mẫu |
-| `SEED_ADMIN_PASSWORD`, `SEED_USER_PASSWORD` | Mật khẩu mẫu không rỗng, tối đa 72 byte UTF-8 theo giới hạn bcrypt |
+| `SEED_ADMIN_PASSWORD`, `SEED_USER_PASSWORD` | Mật khẩu mẫu không rỗng, tối đa 72 byte UTF-8 (giới hạn của bcrypt) |
 
-`.env` được đọc từ gốc repository; biến môi trường tiến trình có ưu tiên cao hơn. Không commit hoặc chia sẻ `.env`. Mật khẩu mẫu được hash bcrypt với cost 12; không log mật khẩu hoặc hash. Không dùng tài khoản mẫu trong môi trường production.
+`.env` được đọc từ thư mục gốc; biến môi trường của tiến trình được ưu tiên hơn. Không commit `.env`. Mật khẩu mẫu được băm bcrypt cost 12 và không bao giờ được ghi log. Không dùng tài khoản mẫu trên production.
 
-## Khởi tạo và vận hành
+## Khởi tạo
 
-```powershell
-npm.cmd run db:setup
+```bash
+npm run db:setup
 ```
 
-Lệnh này kiểm tra cấu hình, tạo `findit_db` nếu chưa có, chạy migrations, insert seed và xác minh schema/seed. Các lệnh riêng:
+Lệnh này kiểm tra cấu hình, tạo `findit_db` nếu chưa có, chạy migration, thêm dữ liệu mẫu và xác minh schema. Các lệnh riêng lẻ:
 
 | Lệnh | Chức năng |
 | --- | --- |
-| `npm.cmd run db:init` | Tạo database nếu chưa có, không tạo bảng |
-| `npm.cmd run db:migrate` | Chạy migrations chưa hoàn tất; database phải tồn tại |
-| `npm.cmd run db:seed` | Tạo hoặc xác minh dữ liệu mẫu; không ghi đè |
-| `npm.cmd run db:verify` | Kiểm tra schema, lịch sử migration và seed, gồm xác minh mật khẩu |
-| `npm.cmd run db:build` | Sinh migrations SQL và SQL export từ `schema.js` |
+| `npm run db:init` | Tạo database nếu chưa có, không tạo bảng |
+| `npm run db:migrate` | Chạy các migration chưa áp dụng; database phải tồn tại |
+| `npm run db:seed` | Tạo hoặc xác minh dữ liệu mẫu, không ghi đè |
+| `npm run db:verify` | Kiểm tra schema, lịch sử migration và dữ liệu mẫu (gồm cả mật khẩu) |
+| `npm run db:build` | Sinh lại file migration và `database-schema.sql` từ các file `*schema.js` |
 
-Trên shell khác có thể dùng `npm` thay cho `npm.cmd`.
+Trên production chỉ dùng `db:migrate`; `db:setup` và `db:seed` tự từ chối khi `NODE_ENV=production`.
 
-Seed gồm vai trò USER/ADMIN, một tài khoản mỗi vai trò, bốn danh mục, bốn địa điểm UIT và bốn bài LOST/FOUND trạng thái OPEN. Đây là dữ liệu hư cấu; vị trí mẫu có tên tòa A, tòa B, thư viện và khuôn viên UIT. Không seed Claim hoặc luồng nghiệp vụ.
+### Dữ liệu mẫu
 
-Seed tìm vai trò/danh mục/địa điểm theo tên; tài khoản theo email và dấu nhận diện fixture; item theo `private_identifiers` có namespace `findit:sample:v1`. Chạy lại không thêm trùng, không cập nhật tài khoản hoặc item hiện hữu. Nếu tài khoản trùng email không phải fixture, mật khẩu đã thay đổi, hoặc item mẫu đã được chỉnh sửa, script dừng và rollback toàn bộ seed. Không xóa dữ liệu để xử lý xung đột; dùng email fixture riêng khi phù hợp.
+- Gồm hai vai trò `USER`/`ADMIN`, một tài khoản cho mỗi vai trò, bốn danh mục, bốn địa điểm UIT (tòa A, tòa B, thư viện, khuôn viên) và bốn bài `LOST`/`FOUND` trạng thái `OPEN`. Dữ liệu là hư cấu; không có Claim.
+- Seed nhận diện bản ghi theo tên (vai trò, danh mục, địa điểm), theo email và dấu fixture (tài khoản), theo `private_identifiers` có namespace `findit:sample:v1` (bài đăng).
+- Chạy lại không thêm trùng và không cập nhật bản ghi đã có. Nếu email đã thuộc tài khoản không phải fixture, mật khẩu đã đổi, hoặc bài mẫu đã bị sửa, seed dừng và rollback toàn bộ. Không xóa dữ liệu để xử lý xung đột; dùng email fixture khác nếu cần.
 
-## Schema, migration và trách nhiệm backend
+## Schema và migration
 
-- `schema.js` mô tả cấu trúc; `migrations/*.sql` là SQL đã sinh, sắp theo phụ thuộc FK. `database-schema.sql` là bản xuất đầy đủ, dùng cùng nguồn.
-- MySQL dùng InnoDB, `utf8mb4_0900_ai_ci`; PK là BIGINT UNSIGNED AUTO_INCREMENT. Driver trả BIGINT dưới dạng chuỗi để tránh mất độ chính xác. Khi chuyển sang JSON ID dạng số, backend phải kiểm tra giới hạn số an toàn theo API contract.
-- `users.avatar_url` dùng VARCHAR(1000), `contact_info` dùng TEXT, cả hai nullable, theo quyết định bổ sung cho hai kiểu chưa quy định trong ERD.
-- Datetime lưu UTC; kết nối đặt `time_zone='+00:00'` và scripts truyền thời gian tường minh. Không tự cập nhật `updated_at` bằng trigger; backend phải truyền giá trị khi sửa dữ liệu.
-- FK đều RESTRICT khi xóa/cập nhật. Ngoài indexes cho PK, UNIQUE và FK, migrations `012–013` bổ sung indexes phục vụ tìm kiếm và truy vấn Notification/Report. Không có DELETE CASCADE hoặc trigger nghiệp vụ.
-- CHECK bảo vệ điểm match 0–100, hai item khác nhau, và report tham chiếu đúng một đối tượng theo target_type. UNIQUE bảo vệ email, student_code, tên lookup, cặp match và cặp claimant/item.
-- Kiểm tra loại LOST/FOUND của hai phía match, trạng thái hợp lệ, quyền truy cập, Claim chỉ trên FOUND, chống tự Claim và các luồng trạng thái thuộc backend. Xét duyệt Claim phải khóa hàng Item bằng `SELECT ... FOR UPDATE` trong transaction, kiểm tra Claim đã APPROVED/COMPLETED, từ chối Claim cạnh tranh, cập nhật Item/thông báo và audit nguyên tử. Schema không tự bảo đảm chỉ một Claim được duyệt nếu ghi SQL trực tiếp bỏ qua quy trình này.
-- Backend phải bảo vệ `private_identifiers`, `proof_description`, password hash và thông tin riêng tư; database scripts không tạo API.
+- PK kiểu `BIGINT UNSIGNED AUTO_INCREMENT`. Driver trả BIGINT dưới dạng chuỗi để không mất độ chính xác; backend kiểm tra giới hạn số an toàn khi chuyển sang ID dạng số trong JSON.
+- InnoDB, `utf8mb4_0900_ai_ci`. Datetime lưu UTC; kết nối đặt `time_zone='+00:00'`.
+- Không có trigger: backend tự truyền `updated_at` khi sửa dữ liệu. Mọi FK dùng `RESTRICT`, không có `DELETE CASCADE`.
+- CHECK bảo vệ điểm match 0–100, hai bài khác nhau trong một match, báo cáo trỏ đúng một đối tượng theo `target_type`. UNIQUE bảo vệ email, `student_code`, tên danh mục/địa điểm, cặp match và cặp người gửi–bài của Claim.
 
-`_schema_migrations` lưu tên phiên bản, SHA-256, trạng thái running/applied và thời gian UTC. AI visual snapshot tables store pinned generations, results, notification decisions, outbox retries, pair alert deduplication and demo fixture markers; user preference defaults off. Scripts dùng advisory lock theo database để tránh chạy setup/seed đồng thời. DDL MySQL có implicit commit: không tuyên bố rollback được toàn bộ migration. Trạng thái running được lưu trước DDL; lần chạy sau chỉ tiếp tục nếu bảng đã tạo khớp schema đầy đủ, hoặc chưa tồn tại. Checksum sai, bảng lạ, metadata thiếu, bảng đã áp dụng bị mất, constraint/column/index sai đều khiến script dừng để xem xét thủ công.
+`_schema_migrations` lưu tên migration, SHA-256, trạng thái `running`/`applied` và thời gian UTC. Scripts dùng advisory lock theo database để không có hai tiến trình setup hoặc seed chạy cùng lúc.
 
-Các backend có cập nhật catalog revision phải chạy trên schema đã áp dụng đầy đủ migrations `001–025`, đặc biệt `017–025` tạo bảng revision, snapshot và notification mà các cập nhật backend sử dụng. Trước khi chạy phiên bản backend này trên một database, chạy `npm.cmd run db:migrate` với cấu hình trỏ đúng database đó và xác nhận migration `025_ai_visual_catalog_state_seed.sql` đã ở trạng thái applied. Không bỏ qua hay điều kiện hóa các cập nhật revision khi bảng chưa tồn tại; database chưa nâng cấp cần được migrate trước khi chạy backend mới.
+DDL của MySQL tự commit, nên một migration không rollback được hoàn toàn. Runner ghi trạng thái `running` trước khi chạy DDL; lần sau chỉ tiếp tục nếu bảng đã tạo khớp đầy đủ schema hoặc chưa tồn tại. Checksum sai, bảng lạ, thiếu metadata, mất bảng đã áp dụng, hoặc sai cột/index/constraint đều làm runner dừng để xem xét thủ công.
 
-Không sửa migration đã áp dụng rồi chạy `db:build` trên database đang dùng. Thay đổi schema về sau cần migration phiên bản mới và cập nhật runner tương ứng; bộ hiện tại quản lý 25 migrations.
+Quy tắc khi đổi schema:
 
-SQL export tạo `findit_db`, bảng kỹ thuật và 11 bảng nghiệp vụ, không chứa credentials, dữ liệu hoặc bản ghi lịch sử migration. Chỉ import vào database rỗng để tham khảo/khôi phục cấu trúc độc lập. Import tay không được runner tự nhận là migration đã áp dụng; dùng `db:setup` cho cài đặt có quản lý migration.
+- Mọi thay đổi đi bằng một file migration mới, kèm cập nhật manifest.
+- Không sửa migration đã áp dụng rồi chạy `db:build` trên database đang dùng.
+- Trước khi chạy phiên bản backend mới trên một database, chạy `npm run db:migrate` và xác nhận `025_ai_visual_catalog_state_seed.sql` đã ở trạng thái `applied`. Backend cần đủ các bảng revision, snapshot và thông báo của `017`–`025`.
 
-## Kiểm thử và reset test an toàn
+`database-schema.sql` chỉ chứa cấu trúc, không có dữ liệu, credentials hay lịch sử migration. Chỉ import vào database rỗng để tham khảo; runner không nhận bản import tay là đã áp dụng migration. Cài đặt có quản lý luôn dùng `db:setup`.
 
-```powershell
-npm.cmd run db:test
-npm.cmd run db:test:isolated
+### Trách nhiệm của backend
+
+Database không tự kiểm tra các quy tắc sau; backend phải đảm bảo:
+
+- Loại `LOST`/`FOUND` của hai phía match, trạng thái hợp lệ, quyền truy cập, Claim chỉ trên bài `FOUND`, không tự Claim bài của mình.
+- Xét duyệt Claim khóa dòng bài bằng `SELECT ... FOR UPDATE` trong transaction, từ chối Claim cạnh tranh, cập nhật bài, thông báo và nhật ký nguyên tử. Ghi SQL trực tiếp bỏ qua quy trình này có thể tạo hai Claim được duyệt.
+- Bảo vệ `private_identifiers`, `proof_description`, `password_hash` và thông tin riêng tư.
+
+## Kiểm thử
+
+```bash
+npm run db:test              # không cần MySQL
+npm run db:test:isolated     # trên MySQL tạm
 ```
 
-- `db:test`: kiểm tra cấu hình, giới hạn bcrypt, đồng bộ SQL export và cách đối chiếu CHECK; không cần kết nối MySQL.
-- `db:test:isolated`: chạy trên MySQL instance tạm do runner tạo, tạo database `findit_test_<24 ký tự hex>` mới. Kiểm tra migrations, seed/hash, chạy lại không đổi dữ liệu, các bảng và constraints, ENUM/JSON/CHECK, defaults, chặn xóa dữ liệu được tham chiếu, xung đột seed và phục hồi DDL.
-- Mỗi lần chạy tự tạo database rỗng và xóa trong `finally` chỉ khi chính lần chạy đã tạo thành công. Tên database phải khớp tên sở hữu và mẫu test; `findit_db` luôn bị từ chối bởi cơ chế cleanup.
-- Không có lệnh reset `findit_db`. Muốn tái tạo test, chạy lại bộ integration. Nếu tiến trình bị tắt cưỡng bức, database test có thể còn lại; kiểm tra chính xác tên và quyền sở hữu trước khi tự xóa bằng Workbench.
+- `db:test` kiểm tra cấu hình, giới hạn bcrypt, đồng bộ giữa schema và `database-schema.sql`, cách đối chiếu CHECK.
+- `db:test:isolated` tạo database `findit_test_<24 ký tự hex>` trên một MySQL tạm, kiểm tra migration, seed và hash, chạy lại không đổi dữ liệu, bảng và constraint, ENUM/JSON/CHECK, giá trị mặc định, chặn xóa dữ liệu đang được tham chiếu, xung đột seed và phục hồi DDL.
+- `npm run test:integration:isolated` chạy integration của cả backend và database theo cùng cách.
 
-Có thể chạy MySQL test riêng mà không cần credentials của dịch vụ đang dùng:
+Integration tests không chạy trên MySQL đang dùng. Runner tự dựng một instance MySQL tạm:
 
-```powershell
-npm.cmd run db:test:isolated
-```
+1. Tìm `mysqld` theo `MYSQLD_PATH` (đường dẫn tuyệt đối), sau đó trong `PATH`, rồi trong `Program Files\MySQL\MySQL Server*` trên Windows. Không tìm thấy thì dừng và hướng dẫn cấu hình.
+2. Tạo thư mục dữ liệu tạm, chạy trên loopback ở cổng tạm, xác minh `@@datadir`/`@@port`, đặt mật khẩu ngẫu nhiên chỉ giữ trong bộ nhớ.
+3. Chạy test. Guard dùng chung xác minh marker, datadir và port trước mỗi lần ghi dữ liệu.
+4. Dừng đúng tiến trình đã tạo và xóa đúng thư mục dữ liệu tạm. Database test chỉ bị xóa nếu chính lần chạy đó tạo ra; `findit_db` luôn bị từ chối.
 
-Runner ưu tiên `MYSQLD_PATH` (đường dẫn tuyệt đối), sau đó tìm `mysqld` trên `PATH` và các thư mục `MySQL Server` trong `Program Files\MySQL` trên Windows. Nếu không tìm thấy, runner dừng và hướng dẫn cấu hình; không tự kết nối dịch vụ MySQL đang cài. Có thể giải nén bản ZIP portable từ [MySQL Community Archives](https://downloads.mysql.com/archives/community/) mà không cài Windows service:
+Không có lệnh reset `findit_db`. Nếu tiến trình bị tắt ngang, database test có thể còn lại; kiểm tra đúng tên trước khi tự xóa.
+
+Nếu chưa cài MySQL, có thể giải nén bản ZIP từ [MySQL Community Archives](https://downloads.mysql.com/archives/community/) mà không cần cài Windows service:
 
 ```powershell
 $env:MYSQLD_PATH = 'C:\tools\mysql-8.0.44-winx64\bin\mysqld.exe'
 npm.cmd run test:integration:isolated
 ```
 
-Thay đường dẫn bằng nơi thực tế đã giải nén MySQL >= 8.0.16. Biến này phải được đặt trong môi trường terminal; isolated runner không đọc `.env`. Runner khởi tạo data directory tạm, chạy trên loopback ở cổng tạm, xác minh `@@datadir`/`@@port`, đặt mật khẩu ngẫu nhiên trong bộ nhớ rồi chạy integration. Cuối cùng dừng đúng tiến trình đã tạo và xóa đúng thư mục dữ liệu tạm. Binary portable có thể tái sử dụng cho lần chạy sau. Không sửa dịch vụ MySQL hoặc data directory hiện hữu. Nếu môi trường ngăn chạy executable, cần quyền thực thi phù hợp.
+`MYSQLD_PATH` phải đặt trong môi trường terminal; runner không đọc biến này từ `.env`.
 
 ## Kiểm tra bằng MySQL Workbench
 
-1. Tạo/mở kết nối Standard TCP/IP với host, port và username tương ứng `.env`. Nhập mật khẩu cục bộ trong Workbench.
-2. Refresh **Schemas**, mở `findit_db` → **Tables**. Danh sách gồm 11 bảng nghiệp vụ, bảng `_schema_migrations`, và các bảng AI visual được thêm ở migrations `014–024`.
-3. Chạy các truy vấn không chứa thông tin xác minh riêng tư:
+1. Tạo kết nối Standard TCP/IP với host, port và user như trong `.env`; nhập mật khẩu trong Workbench.
+2. Refresh **Schemas**, mở `findit_db` → **Tables**: có 11 bảng nghiệp vụ, 4 bảng tài khoản và chat, 11 bảng AI và `_schema_migrations`.
+3. Chạy các truy vấn (không đụng tới thông tin riêng tư):
 
 ```sql
 USE findit_db;
@@ -117,22 +154,18 @@ SHOW CREATE TABLE matches;
 SHOW CREATE TABLE reports;
 ```
 
-Có thể dùng **Database → Reverse Engineer** để xem quan hệ FK. Đối chiếu thiết kế trong [ERD](../docs/erd.md); chạy các lệnh kiểm thử ở trên để lấy kết quả trên môi trường hiện tại.
+Dùng **Database → Reverse Engineer** để xem sơ đồ quan hệ và đối chiếu với [ERD](../docs/erd.md).
 
 ## Lỗi thường gặp
 
 | Lỗi | Cách xử lý |
 | --- | --- |
-| Missing DB_USER / DB_PASSWORD hoặc SEED_* | Điền `.env`, không đặt credentials trong source code |
-| ECONNREFUSED | Kiểm tra MySQL service, host và port |
-| ER_ACCESS_DENIED_ERROR | Kiểm tra user/password và quyền truy cập host của tài khoản |
-| ER_DBACCESS_DENIED_ERROR / CREATE denied | Cấp quyền setup; bộ integration cần thêm quyền tạo/xóa database test |
-| ER_BAD_DB_ERROR | Chạy `db:init` trước migrate/seed, hoặc dùng `db:setup` |
-| Schema/history/checksum mismatch | Giữ dữ liệu, kiểm tra cấu trúc và migration history; không tự reset, sửa checksum hay đánh dấu applied |
-| Could not acquire setup lock | Chờ tiến trình setup/seed trước kết thúc, kiểm tra session giữ lock |
-| Seed account/item conflict | Kiểm tra fixture đã tồn tại; không ghi đè tài khoản hoặc mật khẩu |
-| PowerShell chặn npm.ps1 | Dùng `npm.cmd` như các ví dụ trên |
-
-## Isolation bắt buộc
-
-Các suite integration trực tiếp không còn chấp nhận cấu hình MySQL cục bộ. Dùng `db:test:isolated` cho database hoặc `test:integration:isolated` cho toàn bộ backend/database. Shared guard xác minh marker/datadir/port trước khi test ghi dữ liệu; không tự đặt marker. Xem thêm phần kiểm thử trong [README backend](../server/README.md#kiểm-thử).
+| Thiếu `DB_USER`, `DB_PASSWORD` hoặc `SEED_*` | Điền `.env`; không đặt credentials trong source code |
+| `ECONNREFUSED` | Kiểm tra MySQL đã chạy, `DB_HOST`, `DB_PORT` |
+| `ER_ACCESS_DENIED_ERROR` | Kiểm tra user, mật khẩu và quyền truy cập từ host |
+| `ER_DBACCESS_DENIED_ERROR` / CREATE denied | Cấp quyền setup cho tài khoản |
+| `ER_BAD_DB_ERROR` | Chạy `db:init` trước `migrate`/`seed`, hoặc dùng `db:setup` |
+| Schema, history hoặc checksum mismatch | Giữ nguyên dữ liệu, kiểm tra cấu trúc và lịch sử migration; không tự reset, sửa checksum hay đánh dấu `applied` |
+| Could not acquire setup lock | Chờ tiến trình setup/seed khác kết thúc |
+| Xung đột tài khoản hoặc bài mẫu | Kiểm tra fixture đã có; không ghi đè tài khoản hay mật khẩu |
+| PowerShell chặn `npm.ps1` | Dùng `npm.cmd` |
