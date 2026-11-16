@@ -4,7 +4,7 @@ Giao diện React 19 + TypeScript + Vite + Tailwind CSS, gọi API Express của
 
 ## Chạy cục bộ
 
-Backend phải đang chạy (xem [server/README.md](../server/README.md)). Sau đó:
+Backend phải đang chạy (xem [README backend](../server/README.md)). Sau đó:
 
 ```bash
 cd client
@@ -39,10 +39,11 @@ Build từ chối khi thiếu URL API, khi URL trỏ tới localhost/IP nội b�
 | `/kham-pha` | Tìm kiếm và lọc theo danh mục, địa điểm, thời gian, trạng thái |
 | `/dang-bai` | Đăng bài 3 bước, tự lưu bản nháp, hiện tiến trình tải ảnh |
 | `/do-vat/:id` | Chi tiết bài, gợi ý trùng khớp (thông tin + hình ảnh), gửi yêu cầu nhận đồ |
+| `/do-vat/:id/sua` | Sửa bài của mình khi còn `OPEN` |
 | `/bai-dang-cua-toi`, `/yeu-cau-cua-toi` | Bài của tôi, yêu cầu nhận đồ đã gửi và tiến trình bàn giao |
 | `/tin-nhan` | Nhắn tin riêng realtime |
 | `/thong-bao`, `/ho-so`, `/bao-cao-cua-toi` | Thông báo, hồ sơ, báo cáo vi phạm đã gửi |
-| `/dang-nhap`, `/dang-ky`, `/quen-mat-khau` | Xác thực và đặt lại mật khẩu qua email |
+| `/dang-nhap`, `/dang-ky`, `/quen-mat-khau`, `/dat-lai-mat-khau` | Xác thực và đặt lại mật khẩu qua email |
 | `/quan-tri/...` | Trang quản trị: thống kê, người dùng, bài đăng, yêu cầu nhận đồ, báo cáo, danh mục/địa điểm, nhật ký |
 
 ## Kiểm thử
