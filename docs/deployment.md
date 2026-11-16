@@ -2,7 +2,13 @@
 
 Tài liệu mô tả kiến trúc production, biến môi trường, tính năng AI, migration, sao lưu và khôi phục.
 
-Website: **<https://findit.io.vn>**. Mỗi lần merge vào `main`, GitHub Actions chạy kiểm thử. Khi kiểm thử đạt, Vercel và Railway tự build và triển khai lại.
+Website: **<https://findit.io.vn>**. Mỗi lần merge vào `main`, GitHub Actions chạy kiểm thử:
+
+- Railway (API và AI worker) bật "Wait for CI": chỉ build và triển khai lại khi toàn bộ kiểm thử đạt.
+- Vercel build frontend ngay khi có commit, không chờ GitHub Actions. Bản build vẫn tự kiểm tra cấu hình `VITE_*` và từ chối khi sai.
+- Nhánh khác `main` chỉ tạo bản Preview trên Vercel. Preview dùng `VITE_API_BASE_URL=/api` nên không gọi tới API và database production.
+
+Toàn bộ service Railway chạy ở vùng US West (California, Mỹ).
 
 ## Kiến trúc
 
@@ -37,7 +43,7 @@ Chỉ liệt kê tên biến. Giá trị nằm trong dashboard Vercel và Railwa
 | `AI_VISUAL_MATCHING_CACHE_DIR` | | `/data/findit-ai/model-cache` | |
 | `AI_VISUAL_MATCHING_CONCURRENCY` | | `1` | |
 | `AI_VISUAL_NOTIFICATION_*` (3 cờ) | `false` | `false` | |
-| `VITE_API_BASE_URL` | | | URL HTTPS của API, kết thúc bằng `/api` |
+| `VITE_API_BASE_URL` | | | Production: URL HTTPS của API, kết thúc bằng `/api`. Preview: `/api` |
 | `VITE_AI_VISUAL_SUGGESTIONS_ENABLED` | | | `true` |
 | `VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE` | | | `false` |
 
@@ -94,3 +100,9 @@ Khôi phục khi cần:
 - `GET /api/health` trả 200.
 - Trang chủ, Khám phá, đăng nhập, đăng bài có ảnh và nhắn tin hoạt động trên cả điện thoại và máy tính.
 - Log worker có heartbeat mỗi 60 giây, và job của ảnh mới chuyển sang hoàn tất.
+
+## Hạn chế hiện tại
+
+- Bản sao lưu nằm trên volume Railway cùng vùng với database, chưa có bản sao ở nơi khác.
+- Ảnh trên Cloudinary không được sao lưu riêng.
+- Server đặt ở Mỹ nên độ trễ với người dùng tại Việt Nam cao hơn. Railway có vùng Singapore; chuyển vùng cần di chuyển volume MySQL và có thời gian gián đoạn.
