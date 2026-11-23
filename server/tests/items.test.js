@@ -258,3 +258,12 @@ test('HTTP item endpoints require auth for writes and reject invalid multipart i
     assert.equal(largeResponse.status, 413);
   } finally { await http.close(); }
 });
+
+test('event dates cannot be in the future (campus day plus one day tolerance)', async () => {
+  const { validateCreateItem, validateUpdateItem, latestEventDate } = await import('../validation/item.validation.js');
+  assert.equal(latestEventDate(new Date('2026-11-15T16:30:00Z')), '2026-11-16');
+  const base = { title: 'Ví da', type: 'LOST', categoryId: 1, locationId: 1, description: 'Ví màu nâu' };
+  assert.equal(validateCreateItem({ ...base, eventDate: '2026-01-31' }).eventDate, '2026-01-31');
+  assert.throws(() => validateCreateItem({ ...base, eventDate: '2999-01-01' }), /tương lai/);
+  assert.throws(() => validateUpdateItem({ eventDate: '9999-12-31' }), /tương lai/);
+});

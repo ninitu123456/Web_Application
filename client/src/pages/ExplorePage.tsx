@@ -40,13 +40,30 @@ function isoDaysAgo(days: number) {
   return now.toISOString().slice(0, 10);
 }
 
+const SEARCH_KEYS = new Set([
+  "keyword",
+  "type",
+  "category",
+  "location",
+  "status",
+  "page",
+  "dateFrom",
+  "dateTo",
+  "sort",
+]);
 export function ExplorePage() {
   const [params, setParams] = useSearchParams();
   const [keyword, setKeyword] = useState(params.get("keyword") || "");
   const [expanded, setExpanded] = useState(false);
   const [searchError, setSearchError] = useState("");
   useEffect(() => setKeyword(params.get("keyword") || ""), [params]);
-  const query: Query = Object.fromEntries(params.entries());
+  // Only forward filters the API understands: shared links often carry
+  // tracking parameters (fbclid, zarsrc, utm_*) that the API rejects.
+  const query: Query = Object.fromEntries(
+    Array.from(params.entries()).filter(
+      ([key, value]) => SEARCH_KEYS.has(key) && value.trim() !== "",
+    ),
+  );
   query.limit = 12;
   const items = useResource<Item[]>("/items", query);
   const categories = useResource<Lookup[]>("/categories");

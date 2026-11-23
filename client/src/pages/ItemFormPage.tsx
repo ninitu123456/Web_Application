@@ -8,7 +8,21 @@ import {
 import { api, ApiError, errorText, invalidate } from "../lib/api";
 import { useResource } from "../lib/hooks";
 import { useAuth } from "../lib/auth";
-import { itemFieldErrors, type ItemFields as Fields } from "../lib/item-form";
+import {
+  campusToday,
+  itemFieldErrors,
+  touchItemField,
+  type ItemFields as Fields,
+} from "../lib/item-form";
+import { compressImage } from "../lib/image-compress";
+import {
+  clearDraft,
+  hasContent,
+  loadDraft,
+  loadDraftPhotos,
+  saveDraft,
+  saveDraftPhotos,
+} from "../lib/item-draft";
 import { ImageCarousel } from "../components/ImageCarousel";
 import {
   reconcileUploadedImages,
@@ -42,6 +56,18 @@ const empty: Fields = {
   description: "",
   color: "",
 };
+function uploadSummary(entries: UploadEntry[]) {
+  const count = (status: UploadEntry["status"]) =>
+    entries.filter((entry) => entry.status === status).length;
+  const parts = [
+    count("saved") && `${count("saved")} ảnh đã tải xong`,
+    count("pending") &&
+      `${count("pending")} ảnh sẵn sàng, sẽ tải lên khi bạn bấm Đăng bài`,
+    count("failed") && `${count("failed")} ảnh tải lỗi`,
+    count("uncertain") && `${count("uncertain")} ảnh cần kiểm tra lại`,
+  ].filter(Boolean);
+  return parts.join(" · ");
+}
 export function ItemFormPage() {
   const { id } = useParams();
   const [params] = useSearchParams();
@@ -70,6 +96,10 @@ export function ItemFormPage() {
       key={id || "new"}
       original={original.data?.data}
       initialType={params.get("type") === "FOUND" ? "FOUND" : "LOST"}
+      explicitType={
+        params.get("type") === "FOUND" || params.get("type") === "LOST"
+      }
+      userId={user?.id}
       navigate={navigate}
     />
   );
@@ -77,10 +107,14 @@ export function ItemFormPage() {
 function ItemForm({
   original,
   initialType,
+  explicitType,
+  userId,
   navigate,
 }: {
   original?: Item;
   initialType: ItemType;
+  explicitType: boolean;
+  userId?: number;
   navigate: ReturnType<typeof useNavigate>;
 }) {
   const [fields, setFields] = useState<Fields>(
@@ -110,6 +144,9 @@ function ItemForm({
   const urls = useRef(new Map<string, string>());
   const [previewSelection, setPreviewSelection] = useState<string>();
   const formRef = useRef<HTMLFormElement>(null);
+  const [preparing, setPreparing] = useState(0);
+  const [restoredAt, setRestoredAt] = useState<number | null>(null);
+  const draftReady = useRef(Boolean(original) || !userId);
   function changeQueue(change: (old: UploadEntry[]) => UploadEntry[]) {
     queue.current = change(queue.current);
     setFiles(queue.current);
@@ -170,6 +207,95 @@ function ItemForm({
     setFields(next.fields);
     setFieldErrors(next.errors);
   };
+  const touch = (key: keyof Fields) => {
+    if (!String(fields[key]).trim()) return;
+    setFieldErrors((errors) => touchItemField(fields, errors, key));
+  };
+  // Restore an unsent draft once, for new posts only.
+  useEffect(() => {
+    if (original || !userId) return;
+    let cancelled = false;
+    const draft = loadDraft(userId);
+    void (async () => {
+      const photos = draft ? await loadDraftPhotos(userId) : [];
+      if (cancelled) return;
+      if (draft && (hasContent(draft.fields) || photos.length)) {
+        setFields(
+          explicitType ? { ...draft.fields, type: initialType } : draft.fields,
+        );
+        setStep(draft.step);
+        if (photos.length) {
+          const entries = photos.map((photo) => {
+            const file = new File([photo.blob], photo.name, {
+              type: photo.type,
+            });
+            const previewUrl = URL.createObjectURL(file);
+            urls.current.set(photo.key, previewUrl);
+            return {
+              key: photo.key,
+              file,
+              previewUrl,
+              status: "pending" as const,
+              attempt: 0,
+            };
+          });
+          changeQueue(() => entries);
+        }
+        setRestoredAt(draft.savedAt);
+      }
+      draftReady.current = true;
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Switching "Báo mất đồ" / "Báo nhặt được" from the menu while on the form.
+  const firstType = useRef(initialType);
+  useEffect(() => {
+    if (original || created || initialType === firstType.current) return;
+    firstType.current = initialType;
+    setFields((old) => ({ ...old, type: initialType }));
+    setStep(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialType]);
+  // Autosave text fields and the wizard step.
+  useEffect(() => {
+    if (original || !userId || created || !draftReady.current) return;
+    const timer = window.setTimeout(() => {
+      if (hasContent(fields) || queue.current.length)
+        saveDraft(userId, fields, step);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [fields, step, files, original, userId, created]);
+  // Autosave chosen photos (pending ones only).
+  useEffect(() => {
+    if (original || !userId || created || !draftReady.current) return;
+    const pending = files.filter((entry) => entry.status === "pending");
+    void saveDraftPhotos(
+      userId,
+      pending.map((entry) => ({
+        key: entry.key,
+        name: entry.file.name,
+        type: entry.file.type,
+        blob: entry.file,
+      })),
+    );
+  }, [files, original, userId, created]);
+  function startOver() {
+    if (userId) void clearDraft(userId);
+    for (const entry of queue.current) {
+      const url = urls.current.get(entry.key);
+      if (url) URL.revokeObjectURL(url);
+      urls.current.delete(entry.key);
+    }
+    changeQueue(() => []);
+    setFields({ ...empty, type: initialType });
+    setFieldErrors({});
+    setStep(1);
+    setRestoredAt(null);
+    setError("");
+  }
   function dropFile(key: string) {
     const url = urls.current.get(key);
     if (url) URL.revokeObjectURL(url);
@@ -203,14 +329,31 @@ function ItemForm({
       setError("Mỗi bài đăng có tối đa 5 ảnh, tính cả ảnh đã lưu.");
       return;
     }
-    const entries = incoming.map((file) => {
-      const key = crypto.randomUUID(),
-        previewUrl = URL.createObjectURL(file);
-      urls.current.set(key, previewUrl);
-      return { key, file, previewUrl, status: "pending" as const, attempt: 0 };
-    });
-    changeQueue((old) => [...old, ...entries]);
     setError("");
+    setPreparing((count) => count + incoming.length);
+    void Promise.all(incoming.map((file) => compressImage(file))).then(
+      (prepared) => {
+        if (!mounted.current) return;
+        setPreparing((count) => Math.max(0, count - incoming.length));
+        const room =
+          5 -
+          (saved?.images.length || 0) -
+          queue.current.filter((entry) => entry.status !== "saved").length;
+        const entries = prepared.slice(0, Math.max(0, room)).map((file) => {
+          const key = crypto.randomUUID(),
+            previewUrl = URL.createObjectURL(file);
+          urls.current.set(key, previewUrl);
+          return {
+            key,
+            file,
+            previewUrl,
+            status: "pending" as const,
+            attempt: 0,
+          };
+        });
+        changeQueue((old) => [...old, ...entries]);
+      },
+    );
   }
   async function refreshSaved(itemId: number) {
     snapshotRequest.current?.abort();
@@ -290,16 +433,18 @@ function ItemForm({
             `/do-vat/${current.id}/sua`,
           );
       }
+      // The post now exists: a leftover draft would only create a duplicate.
+      if (!original && userId && current) void clearDraft(userId);
       if (current && pendingCount) {
         const itemId = current.id;
         const results = await runImageUploads(
           queue.current,
-          async (file) => {
+          async (file, onProgress) => {
             const data = new FormData();
             data.append("images", file);
             const response = await api<{ id: number; url: string }[]>(
               `/items/${itemId}/images`,
-              { method: "POST", body: data },
+              { method: "POST", body: data, onUploadProgress: onProgress },
             );
             return response.data[0];
           },
@@ -333,7 +478,10 @@ function ItemForm({
         }
       }
       invalidate();
-      toast(original ? "Đã lưu thay đổi." : "Bài đăng đã sẵn sàng.");
+      if (!original && userId) void clearDraft(userId);
+      urls.current.forEach((url) => URL.revokeObjectURL(url));
+      urls.current.clear();
+      toast(original ? "Đã lưu thay đổi." : "Đăng bài thành công.");
       navigate(`/do-vat/${current!.id}`, { replace: true });
     } catch (e) {
       setError(errorText(e));
@@ -508,6 +656,21 @@ function ItemForm({
           onSubmit={submit}
           noValidate
         >
+          {wizard && restoredAt !== null && (
+            <div className="draft-notice" role="status">
+              <span>
+                <strong>Đã khôi phục bản nháp</strong> lưu lúc{" "}
+                {new Date(restoredAt).toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}{" "}
+                {new Date(restoredAt).toLocaleDateString("vi-VN")}.
+              </span>
+              <button type="button" className="link-button" onClick={startOver}>
+                Bắt đầu lại
+              </button>
+            </div>
+          )}
           {wizard && (
             <>
               <div className="wizard-heading">
@@ -568,7 +731,9 @@ function ItemForm({
             )}
           </div>
           <fieldset hidden={wizard && step !== 2} disabled={busy || created}>
-            <legend>Thông tin đồ vật</legend>
+            <legend className={wizard ? "sr-only" : undefined}>
+              Thông tin đồ vật
+            </legend>
             {original && (
               <small className="muted">
                 Loại bài đăng được giữ nguyên sau khi tạo.
@@ -580,6 +745,7 @@ function ItemForm({
               error={fieldErrors.title}
               value={fields.title}
               onChange={(e) => set("title", e.target.value)}
+              onBlur={() => touch("title")}
               placeholder="Ví dụ: Nhặt được bình nước màu xanh ở thư viện"
               required
             />
@@ -609,8 +775,9 @@ function ItemForm({
                 error={fieldErrors.eventDate}
                 value={fields.eventDate}
                 onChange={(e) => set("eventDate", e.target.value)}
+                onBlur={() => touch("eventDate")}
                 min="1000-01-01"
-                max="9999-12-31"
+                max={campusToday()}
                 required
               />
               <Input
@@ -627,6 +794,7 @@ function ItemForm({
               error={fieldErrors.description}
               value={fields.description}
               onChange={(e) => set("description", e.target.value)}
+              onBlur={() => touch("description")}
               rows={5}
               required
             />
@@ -696,10 +864,37 @@ function ItemForm({
                       ×
                     </button>
                   )}
-                  <small role={entry.status === "failed" ? "alert" : "status"}>
+                  {entry.status === "uploading" && (
+                    <span
+                      className={`upload-progress${entry.progress ? "" : " indeterminate"}`}
+                      role="progressbar"
+                      aria-label={`Tiến độ tải ảnh ${index + 1}`}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={Math.round((entry.progress || 0) * 100)}
+                    >
+                      <span
+                        style={{
+                          width: `${Math.round((entry.progress || 0) * 100)}%`,
+                        }}
+                      />
+                    </span>
+                  )}
+                  <small
+                    role={entry.status === "failed" ? "alert" : "status"}
+                    className={`upload-state upload-state-${entry.status}`}
+                  >
+                    {(entry.status === "pending" || entry.status === "saved") &&
+                      pendingDeletion !== entry.image?.id && (
+                        <Icon name="check" width="14" height="14" />
+                      )}
                     {pendingDeletion === entry.image?.id
                       ? "Chưa xác định kết quả xóa"
-                      : uploadLabels[entry.status]}
+                      : entry.status === "uploading"
+                        ? entry.progress
+                          ? `Đang tải lên… ${Math.round(entry.progress * 100)}%`
+                          : "Đang tải lên…"
+                        : uploadLabels[entry.status]}
                   </small>
                   {entry.status === "failed" && (
                     <>
@@ -719,6 +914,16 @@ function ItemForm({
                 </div>
               ))}
             </div>
+            {preparing > 0 && (
+              <p className="upload-preparing" role="status">
+                Đang chuẩn bị {preparing} ảnh…
+              </p>
+            )}
+            {files.length > 0 && !busy && preparing === 0 && (
+              <p className="upload-summary" role="status">
+                {uploadSummary(files)}
+              </p>
+            )}
             <Input
               label="Thêm ảnh"
               type="file"

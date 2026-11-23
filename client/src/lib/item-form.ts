@@ -10,6 +10,10 @@ export interface ItemFields {
   description: string;
   color: string;
 }
+/** Today's date on the campus calendar (UTC+7), as YYYY-MM-DD. */
+export function campusToday(now = new Date()) {
+  return new Date(now.getTime() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+}
 export function itemFieldErrors(
   fields: ItemFields,
 ): Partial<Record<keyof ItemFields, string>> {
@@ -23,6 +27,8 @@ export function itemFieldErrors(
           ? "Chọn danh mục hợp lệ."
           : "Chọn địa điểm hợp lệ.";
   if (!validDate(fields.eventDate)) errors.eventDate = "Chọn ngày hợp lệ.";
+  else if (fields.eventDate > campusToday())
+    errors.eventDate = "Ngày xảy ra không được ở tương lai.";
   if (Array.from(fields.color.trim()).length > 80)
     errors.color = "Màu sắc tối đa 80 ký tự.";
   if (!fields.description.trim())
@@ -43,4 +49,17 @@ export function changeItemField(
     ? { ...errors, [key]: itemFieldErrors(next)[key] }
     : errors;
   return { fields: next, errors: validation };
+}
+
+/** Validate a single field when the user leaves it (on blur). */
+export function touchItemField(
+  fields: ItemFields,
+  errors: Partial<Record<keyof ItemFields, string>>,
+  key: keyof ItemFields,
+) {
+  const message = itemFieldErrors(fields)[key];
+  const next = { ...errors };
+  if (message) next[key] = message;
+  else delete next[key];
+  return next;
 }

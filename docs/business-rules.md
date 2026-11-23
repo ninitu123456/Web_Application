@@ -1,481 +1,412 @@
-# FINDIT – QUY TẮC NGHIỆP VỤ (BUSINESS RULES)
+# FindIt — Quy tắc nghiệp vụ
 
-> Tài liệu quy định các ràng buộc nghiệp vụ của FindIt. Mỗi quy tắc có mã `BR-*` để thuận tiện tham chiếu khi phát triển và kiểm thử.
+Tài liệu quy định các ràng buộc nghiệp vụ của FindIt. Mỗi quy tắc có mã `BR-*` cố định để tham chiếu khi phát triển và kiểm thử; quy tắc mới được thêm với số tiếp theo, không đánh số lại quy tắc cũ.
 
-## 1. Quy tắc xác thực (Authentication Rules)
+## 1. Xác thực
 
-### `BR-AUTH-01`
+### `BR-AUTH-01` — Email duy nhất
 
-Mỗi địa chỉ email phải là duy nhất trong hệ thống.
+Mỗi địa chỉ email chỉ thuộc về một tài khoản. Email được chuẩn hóa (bỏ khoảng trắng, chữ thường) trước khi so sánh.
 
-### `BR-AUTH-02`
+### `BR-AUTH-02` — Không lưu mật khẩu thô
 
-Mật khẩu không được lưu trữ dưới dạng văn bản thuần túy (Plain Text).
+Mật khẩu chỉ được lưu dưới dạng băm bcrypt, không bao giờ lưu hay ghi log văn bản thuần.
 
-### `BR-AUTH-03`
+### `BR-AUTH-03` — Vai trò mặc định
 
-Tài khoản mới đăng ký phải được gán vai trò USER theo mặc định.
+Tài khoản mới đăng ký luôn có vai trò `USER`.
 
-### `BR-AUTH-04`
+### `BR-AUTH-04` — Không tự gán ADMIN
 
-Người dùng không được tự gán vai trò ADMIN trong quá trình đăng ký tài khoản.
+Người dùng không thể tự gán vai trò `ADMIN` khi đăng ký.
 
-### `BR-AUTH-05`
+### `BR-AUTH-05` — Đăng nhập
 
-Đăng nhập chỉ thành công khi thông tin xác thực được cung cấp là hợp lệ.
+Đăng nhập chỉ thành công khi email và mật khẩu khớp với một tài khoản `ACTIVE`.
 
-### `BR-AUTH-06`
+### `BR-AUTH-06` — API được bảo vệ
 
-Các API được bảo vệ yêu cầu người dùng phải cung cấp JWT hợp lệ.
+Các API được bảo vệ yêu cầu header `Authorization: Bearer <JWT>` hợp lệ.
 
-### `BR-AUTH-07`
+### `BR-AUTH-07` — Từ chối JWT không hợp lệ
 
-Hệ thống phải từ chối các yêu cầu sử dụng JWT không hợp lệ hoặc đã hết hạn.
+- JWT thiếu, sai chữ ký, hết hạn hoặc thuộc phiên đã bị vô hiệu: `401`.
+- JWT hợp lệ nhưng tài khoản không còn `ACTIVE`: `403`.
 
-## 2. Quy tắc quản lý người dùng (User Rules)
+### `BR-AUTH-08` — Đặt lại mật khẩu
 
-### `BR-USER-01`
+- Yêu cầu quên mật khẩu luôn trả cùng một thông báo, dù email có tồn tại hay không.
+- Liên kết đặt lại chỉ gửi cho tài khoản `ACTIVE`, dùng một lần và hết hạn sau 15 phút. Database chỉ lưu giá trị băm SHA-256 của token.
+- Mỗi tài khoản nhận tối đa một liên kết mới mỗi phút.
 
-Người dùng được phép xem hồ sơ cá nhân của chính mình.
+### `BR-AUTH-09` — Vô hiệu phiên cũ
 
-### `BR-USER-02`
+Đặt lại mật khẩu thành công sẽ tăng `session_version` của tài khoản, làm mọi JWT phát hành trước đó mất hiệu lực.
 
-Người dùng chỉ được phép cập nhật hồ sơ cá nhân của chính mình.
+## 2. Người dùng
 
-### `BR-USER-03`
+### `BR-USER-01` — Xem hồ sơ
 
-Người dùng không được phép cập nhật hồ sơ của người dùng khác.
+Người dùng xem được hồ sơ của chính mình.
 
-### `BR-USER-04`
+### `BR-USER-02` — Sửa hồ sơ của mình
 
-Người dùng không được tự thay đổi vai trò của mình thông qua API cập nhật hồ sơ cá nhân.
+Người dùng chỉ cập nhật được hồ sơ của chính mình.
 
-## 3. Quy tắc phân quyền (Authorization Rules)
+### `BR-USER-03` — Không sửa hồ sơ người khác
 
-### `BR-AUTHZ-01`
+API hồ sơ không cho phép cập nhật hồ sơ của người dùng khác.
 
-Hệ thống hỗ trợ hai vai trò: USER và ADMIN.
+### `BR-USER-04` — Không tự đổi vai trò
 
-### `BR-AUTHZ-02`
+Người dùng không thể đổi vai trò của mình qua API cập nhật hồ sơ.
 
-Chỉ người dùng có vai trò ADMIN mới được phép truy cập các API quản trị.
+## 3. Phân quyền
 
-### `BR-AUTHZ-03`
+### `BR-AUTHZ-01` — Hai vai trò
 
-Khi người dùng có vai trò USER cố gắng truy cập API chỉ dành cho ADMIN, hệ thống phải trả về mã HTTP 403 Forbidden.
+Hệ thống có hai vai trò: `USER` và `ADMIN`.
 
-### `BR-AUTHZ-04` — Kiểm tra quyền ADMIN đang hoạt động
+### `BR-AUTHZ-02` — API quản trị
 
-Các thao tác quản trị đặc quyền chỉ được thực hiện bởi tài khoản `ADMIN` ở trạng thái `ACTIVE`. Quyền truy cập phải được kiểm tra trước khi kiểm tra schema dữ liệu đầu vào; các thao tác thay đổi dữ liệu phải kiểm tra lại quyền trong giao dịch.
+Chỉ `ADMIN` được gọi các API dưới `/api/admin`.
+
+### `BR-AUTHZ-03` — Mã lỗi khi thiếu quyền
+
+`USER` gọi API chỉ dành cho `ADMIN` nhận `403 Forbidden`.
+
+### `BR-AUTHZ-04` — ADMIN phải đang hoạt động
+
+Thao tác quản trị chỉ được thực hiện bởi `ADMIN` ở trạng thái `ACTIVE`. Quyền được kiểm tra trước khi kiểm tra dữ liệu đầu vào; thao tác ghi dữ liệu kiểm tra lại quyền trong transaction.
 
 ### `BR-AUTHZ-05` — Tránh xung đột lợi ích
 
-ADMIN không được dùng quyền quản trị để đóng Item hoặc giải quyết Claim nếu chính ADMIN đó là người tạo Item **hoặc** đã gửi bất kỳ Claim nào cho Item. Một ADMIN khác phải xử lý. Quyền thông thường của chủ bài đăng và hành vi của các endpoint cũ không thay đổi.
+`ADMIN` không được dùng quyền quản trị để đóng, gỡ hiển thị bài hoặc giải quyết Claim nếu chính mình là người tạo bài **hoặc** đã gửi Claim cho bài đó. Một `ADMIN` khác phải xử lý. Quyền thông thường của chủ bài không thay đổi.
 
-## 4. Quy tắc tìm kiếm (Search Rules)
+## 4. Tìm kiếm
 
-### `BR-SEARCH-01`
+### `BR-SEARCH-01` — Bộ lọc tùy chọn
 
-Các bộ lọc tìm kiếm là không bắt buộc.
+Mọi bộ lọc tìm kiếm đều không bắt buộc.
 
-### `BR-SEARCH-02`
+### `BR-SEARCH-02` — Kết hợp bộ lọc
 
-Người dùng có thể kết hợp nhiều bộ lọc trong cùng một yêu cầu tìm kiếm.
+Có thể kết hợp nhiều bộ lọc trong cùng một yêu cầu.
 
-### `BR-SEARCH-03`
+### `BR-SEARCH-03` — Phân trang
 
-Kết quả tìm kiếm phải hỗ trợ chức năng phân trang (Pagination).
+Kết quả tìm kiếm luôn có phân trang.
 
-### `BR-SEARCH-04`
+### `BR-SEARCH-04` — Không có kết quả
 
-Nếu không tìm thấy kết quả phù hợp, hệ thống phải trả về danh sách rỗng thay vì thông báo lỗi.
+Không có bài phù hợp thì trả danh sách rỗng, không trả lỗi.
 
-### `BR-SEARCH-05`
+### `BR-SEARCH-05` — Các tiêu chí lọc
 
-Hệ thống cho phép lọc các bài đăng đồ vật theo:
+Lọc được theo: từ khóa, loại bài (`LOST`/`FOUND`), danh mục, địa điểm, trạng thái bài, khoảng ngày xảy ra.
 
-- Keyword: Từ khóa tìm kiếm.
-- Type: Loại bài đăng (LOST hoặc FOUND).
-- Category: Danh mục đồ vật.
-- Location: Địa điểm.
-- Status: Trạng thái bài đăng.
-- Date Range: Khoảng thời gian.
+### `BR-SEARCH-06` — Sắp xếp
 
-### `BR-SEARCH-06`
+Kết quả sắp xếp được theo thời gian đăng (mới nhất, cũ nhất) hoặc ngày xảy ra (tăng, giảm dần).
 
-Kết quả tìm kiếm có thể được sắp xếp theo các tùy chọn sắp xếp mà hệ thống hỗ trợ.
+### `BR-SEARCH-07` — Chỉ bài công khai
 
-## 5. Quy tắc ghép nối thông minh (Smart Matching Rules)
+Tìm kiếm công khai và tổng số trang chỉ tính các bài đang hiển thị (`PUBLIC`).
 
-### `BR-MATCH-01`
+## 5. Ghép nối thông minh
 
-Chức năng Smart Matching chỉ được phép so sánh bài đăng đồ bị mất (LOST) với bài đăng đồ nhặt được (FOUND).
+### `BR-MATCH-01` — Chỉ LOST với FOUND
 
-### `BR-MATCH-02`
+Chỉ so sánh bài `LOST` với bài `FOUND`.
 
-Hệ thống không được tạo kết quả ghép nối giữa hai bài đăng LOST.
+### `BR-MATCH-02` — Không ghép LOST với LOST
 
-### `BR-MATCH-03`
+Không tạo kết quả ghép nối giữa hai bài `LOST`.
 
-Hệ thống không được tạo kết quả ghép nối giữa hai bài đăng FOUND.
+### `BR-MATCH-03` — Không ghép FOUND với FOUND
 
-### `BR-MATCH-04`
+Không tạo kết quả ghép nối giữa hai bài `FOUND`.
 
-Một bài đăng không được ghép nối với chính nó.
+### `BR-MATCH-04` — Không tự ghép
 
-### `BR-MATCH-05`
+Một bài không được ghép với chính nó.
 
-Các bài đăng có trạng thái CLOSED hoặc RETURNED không được tham gia quá trình ghép nối.
+### `BR-MATCH-05` — Bài không đủ điều kiện
 
-### `BR-MATCH-06`
+Bài `CLOSED`, `RETURNED` hoặc đang bị gỡ hiển thị (`HIDDEN`) không tham gia ghép nối.
 
-Điểm tương đồng phải được tính dựa trên các tiêu chí:
+### `BR-MATCH-06` — Công thức điểm
 
-- Category Similarity: Mức độ tương đồng về danh mục đồ vật.
-- Location Similarity: Mức độ tương đồng về địa điểm.
-- Date Similarity: Mức độ tương đồng về thời gian.
-- Text Similarity: Mức độ tương đồng về nội dung mô tả.
+```
+điểm = 0.30 × danh mục + 0.20 × địa điểm + 0.20 × ngày + 0.30 × nội dung
+```
 
-### `BR-MATCH-07`
+- Danh mục, địa điểm: trùng = 100, khác = 0.
+- Ngày: giảm tuyến tính về 0 khi lệch 30 ngày.
+- Nội dung: độ trùng từ (Jaccard) giữa tiêu đề và mô tả.
 
-Điểm ghép nối phải được biểu diễn trên thang điểm từ 0 đến 100.
+### `BR-MATCH-07` — Thang điểm
 
-### `BR-MATCH-08`
+Điểm nằm trong khoảng 0–100; chỉ lưu cặp có điểm từ 50 trở lên.
 
-Điểm ghép nối càng cao thể hiện mức độ tương đồng giữa bài đăng LOST và FOUND càng lớn.
+### `BR-MATCH-08` — Ý nghĩa điểm
 
-### `BR-MATCH-09`
+Điểm càng cao thì hai bài càng giống nhau. Điểm là độ tương đồng, không phải xác suất đúng chủ.
 
-Mỗi kết quả ghép nối nên bao gồm thông tin giải thích lý do hệ thống đưa ra đề xuất đó.
+### `BR-MATCH-09` — Lý do đề xuất
 
-## 6. Quy tắc thông báo (Notification Rules)
+Mỗi kết quả ghép nối kèm danh sách lý do đề xuất.
 
-### `BR-NOTIFICATION-01`
+### `BR-MATCH-10` — Chỉ chủ bài xem gợi ý
 
-Mỗi thông báo phải thuộc về một người dùng cụ thể.
+Gợi ý ghép nối (theo thông tin và theo hình ảnh) của một bài chỉ trả cho chủ bài. Người khác, kể cả `ADMIN` không phải chủ bài, nhận `404`.
 
-### `BR-NOTIFICATION-02`
+### `BR-MATCH-11` — Gợi ý bằng hình ảnh chỉ để tham khảo
 
-Người dùng chỉ được phép truy cập các thông báo thuộc về tài khoản của chính mình.
+Gợi ý AI so độ tương đồng ảnh để xếp hạng. AI không tự tạo Match, Claim hay xác nhận quyền sở hữu. Tắt AI không làm mất gợi ý theo thông tin.
 
-### `BR-NOTIFICATION-03`
+## 6. Thông báo
 
-Thông báo mới được tạo phải có trạng thái ban đầu là chưa đọc.
+### `BR-NOTIFICATION-01` — Người nhận
 
-### `BR-NOTIFICATION-04`
+Mỗi thông báo thuộc về đúng một người dùng.
 
-Người dùng được phép đánh dấu thông báo của mình là đã đọc.
+### `BR-NOTIFICATION-02` — Chỉ xem thông báo của mình
 
-### `BR-NOTIFICATION-05`
+Người dùng chỉ truy cập được thông báo của chính mình.
 
-Hệ thống phải cung cấp số lượng thông báo chưa đọc của người dùng đã xác thực.
+### `BR-NOTIFICATION-03` — Mặc định chưa đọc
 
-### `BR-NOTIFICATION-06`
+Thông báo mới có trạng thái chưa đọc.
 
-Hệ thống có thể tạo thông báo khi xảy ra các sự kiện:
+### `BR-NOTIFICATION-04` — Đánh dấu đã đọc
 
-- New Match: Phát hiện kết quả ghép nối mới.
-- New Claim: Có yêu cầu nhận lại đồ vật mới.
-- Claim Approved: Yêu cầu nhận đồ được chấp thuận.
-- Claim Rejected: Yêu cầu nhận đồ bị từ chối.
-- Claim Completed: Quá trình nhận lại đồ vật được hoàn tất.
+Người dùng đánh dấu được một hoặc tất cả thông báo của mình là đã đọc.
+
+### `BR-NOTIFICATION-05` — Số chưa đọc
+
+Hệ thống cung cấp số thông báo chưa đọc của người dùng đang đăng nhập.
+
+### `BR-NOTIFICATION-06` — Sự kiện tạo thông báo
+
+| Loại | Sự kiện |
+| --- | --- |
+| `NEW_MATCH` | Có gợi ý ghép nối mới |
+| `NEW_CLAIM` | Có Claim mới cho bài của mình |
+| `CLAIM_APPROVED` | Claim được chấp thuận |
+| `CLAIM_REJECTED` | Claim bị từ chối |
+| `CLAIM_COMPLETED` | Hoàn tất bàn giao |
+
+Mỗi sự kiện chỉ tạo một thông báo cho mỗi người nhận.
 
 ### `BR-NOTIFICATION-07` — Thông báo quyết định quản trị
 
-Các sự kiện thông báo cho chủ bài đăng `ITEM_MODERATED_CLOSED` và `CLAIM_ADMIN_RESOLVED` bổ sung cho những thông báo Claim hiện có. Thông báo phải được ghi trong cùng giao dịch với quyết định và các thay đổi dữ liệu liên quan.
+Các loại `ITEM_MODERATED_CLOSED`, `ITEM_HIDDEN`, `ITEM_RESTORED` và `CLAIM_ADMIN_RESOLVED` báo cho chủ bài khi quản trị viên xử lý. Thông báo được ghi trong cùng transaction với quyết định.
 
-## 7. Quy tắc quản lý đồ vật (Item Rules)
+## 7. Bài đăng đồ vật
 
-### `BR-ITEM-01`
+### `BR-ITEM-01` — Tạo bài
 
-Việc tạo bài đăng đồ vật yêu cầu người dùng phải đăng nhập.
+Phải đăng nhập mới tạo được bài. Bài mới có trạng thái `OPEN` và loại `LOST` hoặc `FOUND`.
 
-Bài đăng mới phải có:
+### `BR-ITEM-02` — Thông tin bắt buộc
 
-- Trạng thái ban đầu là OPEN.
-- Loại bài đăng là LOST hoặc FOUND.
+- Bắt buộc: tiêu đề, loại bài, danh mục, địa điểm, ngày xảy ra, mô tả. Không bắt buộc: màu sắc.
+- Ngày xảy ra không được ở tương lai.
+- Không đổi được loại bài sau khi tạo.
 
-### `BR-ITEM-02`
+### `BR-ITEM-03` — Sửa và đóng bài
 
-Các thông tin bắt buộc khi tạo bài đăng bao gồm:
+- Chỉ chủ bài được sửa hoặc đóng bài của mình.
+- Chỉ sửa nội dung và ảnh khi bài còn `OPEN`.
+- Thao tác kiểm duyệt của `ADMIN` được ghi vào nhật ký hoạt động.
 
-- Tiêu đề (Title).
-- Loại bài đăng (Type).
-- Danh mục (Category).
-- Địa điểm (Location).
-- Ngày xảy ra sự việc (Event Date).
-- Mô tả (Description).
+### `BR-ITEM-04` — Dữ liệu công khai
 
-Loại bài đăng (LOST hoặc FOUND) không được phép thay đổi sau khi tạo.
+Dữ liệu bài trả về công khai không chứa bằng chứng Claim và đặc điểm nhận dạng riêng tư (`private_identifiers`).
 
-### `BR-ITEM-03`
+### `BR-ITEM-05` — Bài đã kết thúc
 
-Chỉ chủ sở hữu bài đăng mới được phép chỉnh sửa hoặc đóng bài đăng của mình.
+Bài `RETURNED` hoặc `CLOSED` không nhận Claim mới và không tham gia ghép nối. Lịch sử liên quan được giữ nguyên.
 
-Việc chỉnh sửa thông thường chỉ được thực hiện khi bài đăng có trạng thái OPEN.
+### `BR-ITEM-06` — ADMIN đóng bài
 
-Quản trị viên (ADMIN) được phép kiểm duyệt bài đăng, nhưng các thao tác kiểm duyệt phải được ghi nhận vào nhật ký hoạt động (Audit Log).
+- `ADMIN` được đóng bài `OPEN` không có Claim đang hoạt động, hoặc bài `FOUND` đang `CLAIM_PENDING` nhất quán với các Claim chờ.
+- Khi đóng bài có Claim `PENDING`, **tất cả** Claim đang chờ chuyển sang `REJECTED` (ghi `reviewed_at`), sau đó bài chuyển `CLOSED`.
+- Đóng bài, cập nhật Claim, nhật ký và thông báo chạy nguyên tử trong một transaction.
+- Giữ nguyên Claim đã từ chối trước đó, bằng chứng, Match và lịch sử.
+- Không đóng khi trạng thái không nhất quán, đã có Claim được chấp thuận, hoặc bài đang `CLAIMED`, `RETURNED`, `CLOSED`.
 
-### `BR-ITEM-04`
+### `BR-ITEM-07` — Ý nghĩa của CLOSED
 
-Dữ liệu bài đăng được trả về công khai không được chứa:
-
-- Bằng chứng xác minh quyền sở hữu trong Claim.
-- Các thông tin nhận dạng riêng tư cần được bảo mật.
-
-### `BR-ITEM-05`
-
-Các bài đăng có trạng thái RETURNED hoặc CLOSED:
-
-- Không được tiếp nhận yêu cầu Claim mới.
-- Không được tham gia quá trình Smart Matching.
-
-Hệ thống phải bảo toàn các bản ghi lịch sử liên quan đến bài đăng.
-
-### `BR-ITEM-06` — ADMIN đóng bài đăng
-
-- ADMIN được đóng Item `OPEN` không có Claim đang hoạt động, hoặc Item `FOUND` ở trạng thái `CLAIM_PENDING` nhất quán với các Claim đang chờ.
-- Khi đóng Item có Claim `PENDING`, hệ thống phải chuyển **tất cả** Claim đang chờ sang `REJECTED`, ghi `reviewed_at` và chuyển Item sang `CLOSED`.
-- Thao tác đóng Item, các cập nhật Claim, nhật ký hoạt động và thông báo phải được thực hiện nguyên tử trong cùng giao dịch.
-- Phải bảo toàn Claim đã bị từ chối trước đó, bằng chứng xác minh, các bản ghi Match và lịch sử liên quan.
-- Không được đóng theo luồng này khi trạng thái không nhất quán, có Claim đã được chấp thuận, hoặc Item ở trạng thái `CLAIMED`, `RETURNED`, `CLOSED`; không thực hiện lại quyết định đã kết thúc.
-
-### `BR-ITEM-07` — Ý nghĩa của trạng thái CLOSED
-
-`CLOSED` **không** đồng nghĩa ẩn hoặc gỡ nội dung công khai. API chi tiết công khai vẫn có thể trả về Item `CLOSED`, và tìm kiếm không lọc trạng thái vẫn có thể bao gồm Item đó. Quy trình ẩn/gỡ bài đăng (takedown) nằm ngoài phạm vi quy tắc đóng bài này.
+`CLOSED` **không** đồng nghĩa với ẩn bài. API chi tiết công khai vẫn trả bài `CLOSED`, và tìm kiếm không lọc trạng thái vẫn có thể bao gồm bài đó. Ẩn bài dùng quy trình riêng ở `BR-ITEM-08`.
 
 ### `BR-ITEM-08` — Gỡ và khôi phục hiển thị
 
-- ADMIN đang hoạt động, không là chủ bài và chưa từng gửi Claim cho bài, được chuyển hiển thị `PUBLIC ↔ HIDDEN`, bắt buộc ghi lý do. Thao tác lặp cùng đích trả 409.
-- Bài `HIDDEN` không xuất hiện trong tìm kiếm, tổng phân trang hoặc Matching; người ngoài truy cập chi tiết hay gửi Claim mới nhận 404. Chỉ chủ bài và ADMIN còn xem được chi tiết qua xác thực; danh sách riêng của chủ bài giữ lịch sử.
-- Gỡ bài không thay đổi trạng thái Item/Claim, bằng chứng, báo cáo, ảnh hoặc lịch sử. Chủ bài vẫn xử lý được Claim/bàn giao đã có; không được sửa nội dung/thêm/xóa ảnh khi đang bị gỡ.
-- Khôi phục giữ trạng thái nghiệp vụ hiện tại, không mở lại bài đã đóng/đã trao lại, và tính lại Matching cho bài còn đủ điều kiện.
-- Nhật ký riêng tư, hiển thị, thời gian cập nhật và thông báo chủ bài phải cùng commit hoặc rollback. Hai thao tác đồng thời phải được tuần tự hóa. Các sự kiện hiển thị là dữ liệu bền vững, không được xóa bởi việc dọn nhật ký thông thường.
+- `ADMIN` thỏa `BR-AUTHZ-05` được chuyển hiển thị `PUBLIC ↔ HIDDEN`, bắt buộc ghi lý do. Chuyển sang đúng trạng thái hiện tại trả `409`.
+- Bài `HIDDEN` không xuất hiện trong tìm kiếm, tổng phân trang hay ghép nối. Người ngoài xem chi tiết hoặc gửi Claim nhận `404`; chỉ chủ bài và `ADMIN` còn xem được.
+- Gỡ bài không đổi trạng thái bài và Claim, không xóa bằng chứng, báo cáo, ảnh hay lịch sử. Chủ bài vẫn xử lý được Claim và bàn giao đang có, nhưng không sửa được nội dung hay ảnh.
+- Khôi phục giữ trạng thái nghiệp vụ hiện tại, không mở lại bài đã đóng hoặc đã trả, và tính lại ghép nối nếu bài còn đủ điều kiện.
+- Nhật ký, thay đổi hiển thị và thông báo chủ bài commit hoặc rollback cùng nhau; hai thao tác đồng thời được tuần tự hóa. Sự kiện `ITEM_HIDDEN`/`ITEM_RESTORED` không bị xóa khi dọn nhật ký.
 
-## 8. Quy tắc yêu cầu nhận lại đồ vật (Claim Rules)
+### `BR-ITEM-09` — Ảnh bài đăng
 
-### `BR-CLAIM-01`
+- Tối đa 5 ảnh mỗi bài, mỗi ảnh tối đa 5 MiB; kiểm tra cả MIME và chữ ký byte.
+- Ảnh lưu trên Cloudinary với public ID do server sinh; database chỉ lưu URL và public ID.
+- Ảnh bị xóa được dọn qua hàng đợi để không còn file mồ côi khi transaction lỗi.
 
-Yêu cầu nhận lại đồ vật (Claim) chỉ được tạo đối với bài đăng FOUND.
+## 8. Yêu cầu nhận đồ (Claim)
 
-Người gửi Claim phải:
+### `BR-CLAIM-01` — Điều kiện gửi Claim
 
-- Đã đăng nhập vào hệ thống.
-- Không phải là người tạo bài đăng đồ vật đó.
+Claim chỉ tạo cho bài `FOUND`. Người gửi phải đăng nhập và không phải chủ bài.
 
-### `BR-CLAIM-02`
+### `BR-CLAIM-02` — Một Claim mỗi người mỗi bài
 
-Mỗi cặp claimant_id và item_id phải là duy nhất.
+- Cặp (`claimant_id`, `item_id`) là duy nhất: mỗi người chỉ gửi một Claim cho một bài.
+- Chỉ bài `FOUND` đang `OPEN` hoặc `CLAIM_PENDING` và đang hiển thị mới nhận Claim mới.
 
-Điều này có nghĩa là một người dùng chỉ được tạo một Claim cho cùng một bài đăng đồ vật.
+### `BR-CLAIM-03` — Bằng chứng sở hữu
 
-Chỉ các bài đăng FOUND có trạng thái OPEN hoặc CLAIM_PENDING mới được tiếp nhận Claim mới.
+Claim bắt buộc có bằng chứng sở hữu. Bằng chứng chỉ hiển thị cho người gửi Claim, chủ bài và `ADMIN`.
 
-### `BR-CLAIM-03`
+### `BR-CLAIM-04` — Người xét duyệt
 
-Người gửi Claim bắt buộc phải cung cấp bằng chứng xác minh quyền sở hữu đồ vật.
+Trong quy trình thông thường, chỉ chủ bài `FOUND` chấp thuận hoặc từ chối Claim `PENDING`. `ADMIN` can thiệp theo `BR-CLAIM-09` và mọi thao tác được ghi nhật ký.
 
-Quyền truy cập bằng chứng chỉ được cấp cho:
+### `BR-CLAIM-05` — Chấp thuận Claim
 
-- Người gửi Claim.
-- Chủ sở hữu bài đăng đồ vật.
-- Quản trị viên có thẩm quyền.
+Mỗi bài `FOUND` có tối đa một Claim `APPROVED` hoặc `COMPLETED`. Khi chấp thuận, trong cùng một transaction:
 
-### `BR-CLAIM-04`
+- Claim được chọn chuyển `APPROVED`.
+- Bài chuyển `CLAIMED`.
+- Các Claim `PENDING` cạnh tranh chuyển `REJECTED`.
 
-Trong quy trình thông thường, chỉ chủ sở hữu bài đăng FOUND mới được phép chấp thuận hoặc từ chối các Claim đang ở trạng thái PENDING.
+### `BR-CLAIM-06` — Hoàn tất bàn giao
 
-Quản trị viên có thể can thiệp để giải quyết tranh chấp, nhưng mọi hành động phải được ghi lại trong nhật ký hoạt động.
+Chỉ Claim `APPROVED` mới hoàn tất được. Khi hoàn tất, trong cùng một transaction: Claim chuyển `COMPLETED`, bài chuyển `RETURNED`.
 
-### `BR-CLAIM-05`
+### `BR-CLAIM-07` — Từ chối Claim
 
-Mỗi bài đăng FOUND chỉ được có tối đa một Claim ở trạng thái APPROVED hoặc COMPLETED.
+Khi từ chối một Claim: nếu không còn Claim chờ, bài trở về `OPEN`; nếu còn, bài giữ `CLAIM_PENDING`.
 
-Khi chấp thuận một Claim, hệ thống phải thực hiện đồng thời các thao tác trong cùng một giao dịch cơ sở dữ liệu (Atomic Transaction):
+### `BR-CLAIM-08` — Không xử lý lặp
 
-- Chuyển Claim được chọn sang trạng thái APPROVED.
-- Chuyển Item sang trạng thái CLAIMED.
-- Từ chối các Claim cạnh tranh khác đang ở trạng thái PENDING.
-
-Các thao tác phải được thực hiện nguyên tử, nghĩa là tất cả cùng thành công hoặc tất cả được hoàn tác nếu xảy ra lỗi.
-
-### `BR-CLAIM-06`
-
-Chỉ Claim có trạng thái APPROVED mới được phép hoàn tất.
-
-Khi hoàn tất quá trình bàn giao, hệ thống phải thực hiện đồng thời:
-
-- Chuyển Claim sang trạng thái COMPLETED.
-- Chuyển Item sang trạng thái RETURNED.
-
-Hai thao tác phải được thực hiện trong cùng một giao dịch cơ sở dữ liệu.
-
-### `BR-CLAIM-07`
-
-Khi một Claim bị từ chối:
-
-- Nếu không còn Claim nào đang chờ xử lý, Item được chuyển về trạng thái OPEN.
-- Nếu vẫn còn Claim khác đang chờ xử lý, Item tiếp tục giữ trạng thái CLAIM_PENDING.
-
-### `BR-CLAIM-08`
-
-Một Claim không được phép chấp thuận hoặc hoàn tất nhiều lần.
-
-Chủ sở hữu bài đăng không được thực hiện các thao tác xét duyệt Claim do chính mình gửi đối với bài đăng của mình.
+Một Claim không được chấp thuận hoặc hoàn tất nhiều lần.
 
 ### `BR-CLAIM-09` — ADMIN giải quyết Claim
 
-- Chỉ giải quyết Claim `PENDING` thuộc Item `FOUND` ở trạng thái `CLAIM_PENDING` nhất quán.
-- Quyết định `APPROVE`: chọn một Claim thành `APPROVED`, chuyển Item thành `CLAIMED` và từ chối mọi Claim `PENDING` cạnh tranh.
-- Quyết định `REJECT`: từ chối Claim được chọn; Item tiếp tục `CLAIM_PENDING` nếu còn Claim chờ xử lý, nếu không thì trở về `OPEN`.
-- Không tự động hoàn tất bàn giao; không đảo ngược Claim `APPROVED`, `REJECTED`, `COMPLETED`; không đặt lại ràng buộc duy nhất giữa người gửi và Item.
-- Mọi cập nhật Claim, Item, audit và thông báo liên quan phải được thực hiện nguyên tử.
+- Chỉ giải quyết Claim `PENDING` của bài `FOUND` đang `CLAIM_PENDING` nhất quán.
+- `APPROVE`: Claim thành `APPROVED`, bài thành `CLAIMED`, mọi Claim `PENDING` cạnh tranh bị từ chối.
+- `REJECT`: Claim thành `REJECTED`; bài giữ `CLAIM_PENDING` nếu còn Claim chờ, nếu không thì về `OPEN`.
+- Không tự hoàn tất bàn giao; không đảo ngược Claim đã `APPROVED`, `REJECTED`, `COMPLETED`.
+- Cập nhật Claim, bài, nhật ký và thông báo chạy nguyên tử.
 
 ### `BR-CLAIM-10` — Lý do quyết định quản trị
 
-Quyết định quản trị đặc quyền yêu cầu `reason` sau khi trim có độ dài từ **1 đến 1.000 Unicode code points**, đồng thời không vượt quá **4.000 byte UTF-8**. Lý do chỉ lưu trong audit của quyết định để ADMIN có quyền xem; không đưa vào Item DTO công khai hoặc nội dung thông báo. Văn bản do ADMIN nhập có thể chứa thông tin cá nhân và phải được xử lý tương ứng.
+`reason` sau khi bỏ khoảng trắng hai đầu dài 1–1.000 ký tự Unicode và không quá 4.000 byte UTF-8. Lý do chỉ lưu trong nhật ký để `ADMIN` xem, không xuất hiện trong dữ liệu bài công khai hay nội dung thông báo.
 
-## 9. Quy tắc báo cáo vi phạm (Report Rules)
+## 9. Báo cáo vi phạm
 
-### `BR-REPORT-01`
+### `BR-REPORT-01` — Gửi báo cáo
 
-Người dùng phải đăng nhập trước khi gửi báo cáo vi phạm.
+Phải đăng nhập để báo cáo. Mỗi báo cáo trỏ tới đúng một đối tượng `ITEM`, `USER` hoặc `CLAIM`, bắt buộc có lý do (tối đa 50 ký tự); mô tả là tùy chọn. Mỗi người chỉ có một báo cáo đang mở (`PENDING`/`REVIEWING`) cho cùng một đối tượng.
 
-Mỗi báo cáo phải xác định chính xác một đối tượng thuộc một trong các loại:
+### `BR-REPORT-02` — Người xử lý
 
-- ITEM: Bài đăng đồ vật.
-- USER: Tài khoản người dùng.
-- CLAIM: Yêu cầu nhận lại đồ vật.
+Chỉ `ADMIN` được đổi trạng thái báo cáo.
 
-Mỗi báo cáo bắt buộc phải có lý do báo cáo.
+### `BR-REPORT-03` — Luồng trạng thái
 
-### `BR-REPORT-02`
-
-Chỉ quản trị viên (ADMIN) mới được phép:
-
-- Thay đổi trạng thái báo cáo.
-- Thực hiện các thao tác kiểm duyệt liên quan đến báo cáo.
-
-### `BR-REPORT-03`
-
-Quy trình chuyển đổi trạng thái báo cáo:
-
+```
 PENDING → REVIEWING → RESOLVED | DISMISSED
+```
 
-**Trong đó:**
+Hệ thống ghi lại `ADMIN` xử lý và thời điểm xử lý.
 
-- PENDING: Đang chờ xử lý.
-- REVIEWING: Đang được xem xét.
-- RESOLVED: Đã được giải quyết.
-- DISMISSED: Báo cáo đã bị bác bỏ.
+### `BR-REPORT-04` — Độc lập với xử lý bài và Claim
 
-Hệ thống phải ghi nhận:
+`ADMIN` không cần có báo cáo trước khi đóng bài hay giải quyết Claim. Các quyết định này **không tự động** đổi trạng thái báo cáo.
 
-- Quản trị viên thực hiện xử lý.
-- Thời điểm xử lý báo cáo.
+## 10. Nhắn tin
 
-### `BR-REPORT-04` — Độc lập với xử lý quản trị Item/Claim
+### `BR-CHAT-01` — Thành viên cuộc trò chuyện
 
-Không bắt buộc phải có Report trước khi ADMIN đóng Item hoặc giải quyết Claim. Các quyết định này **không tự động thay đổi** trạng thái Report.
+Mỗi cuộc trò chuyện gồm đúng hai người dùng khác nhau; mỗi cặp người dùng chỉ có một cuộc trò chuyện. Chỉ thành viên mới đọc và gửi được tin nhắn.
 
-## 10. Quy tắc quản trị và nhật ký hoạt động (Admin and Audit Rules)
+### `BR-CHAT-02` — Nội dung tin nhắn
 
-### `BR-ADMIN-01`
+Tin nhắn dài 1–2.000 ký tự sau khi bỏ khoảng trắng hai đầu và không chứa ký tự điều khiển. Mỗi tin kèm `clientId` (UUID) để gửi lại không tạo bản trùng.
 
-Chỉ người dùng có vai trò ADMIN mới được phép thực hiện các chức năng quản trị:
+### `BR-CHAT-03` — Giới hạn tốc độ
 
-- Quản lý người dùng.
-- Quản lý danh mục đồ vật.
-- Quản lý địa điểm.
-- Kiểm duyệt bài đăng.
-- Giải quyết tranh chấp.
-- Xử lý báo cáo vi phạm.
-- Xem nhật ký hoạt động.
-- Truy cập Dashboard thống kê.
+Mỗi người dùng gửi tối đa 30 tin nhắn mỗi phút; vượt quá trả `429`.
 
-### `BR-ADMIN-02`
+## 11. Quản trị và nhật ký hoạt động
 
-Mọi quyết định kiểm duyệt và thao tác can thiệp đặc quyền vào Claim phải được ghi lại trong bảng nhật ký hoạt động (Activity Log).
+### `BR-ADMIN-01` — Chức năng quản trị
 
-### `BR-ADMIN-03`
+Chỉ `ADMIN` được: quản lý người dùng, danh mục, địa điểm; kiểm duyệt bài; giải quyết tranh chấp Claim; xử lý báo cáo; xem nhật ký hoạt động; xem thống kê.
 
-Hệ thống phải trả về mã HTTP phù hợp:
+### `BR-ADMIN-02` — Ghi nhật ký
 
-- 403 Forbidden: Người dùng có vai trò USER cố gắng truy cập API quản trị.
-- 401 Unauthorized: JWT không hợp lệ.
+Mọi quyết định kiểm duyệt và can thiệp đặc quyền vào Claim được ghi vào `activity_logs`.
 
-### `BR-ADMIN-04` — Dữ liệu nhật ký hoạt động được phép công bố
+### `BR-ADMIN-03` — Mã lỗi
 
-API đọc Business Activity Log chỉ trả về các trường chi tiết đã được cho phép theo từng loại hành động; không trả về JSON thô, bằng chứng sở hữu hoặc dữ liệu nhạy cảm. Nhật ký thao tác ảnh và nhật ký dọn dẹp ảnh không thuộc danh sách sự kiện nghiệp vụ hiển thị qua API này.
+- `401 Unauthorized`: thiếu JWT hoặc JWT không hợp lệ.
+- `403 Forbidden`: `USER` gọi API quản trị, hoặc tài khoản không còn `ACTIVE`.
+
+### `BR-ADMIN-04` — Dữ liệu nhật ký được phép trả về
+
+API nhật ký chỉ trả các trường chi tiết được cho phép theo từng loại hành động; không trả JSON thô, bằng chứng sở hữu hay dữ liệu nhạy cảm. Nhật ký thao tác ảnh (`IMAGE_OPERATION_*`, `IMAGE_CLEANUP_*`) không thuộc nhật ký nghiệp vụ.
 
 ### `BR-ADMIN-05` — Audit quyết định quản trị
 
-Lý do quyết định chỉ được ghi trong nhật ký quyết định; các bản ghi audit con liên kết với quyết định tương ứng. Những thay đổi Claim, Item, audit và thông báo liên quan phải commit hoặc rollback cùng nhau.
+Lý do quyết định chỉ ghi trong bản ghi nhật ký của quyết định; các bản ghi con liên kết tới quyết định đó. Thay đổi Claim, bài, nhật ký và thông báo commit hoặc rollback cùng nhau.
 
-## 11. Quy tắc trạng thái và giao dịch cơ sở dữ liệu (Status and Transaction Rules)
+### `BR-ADMIN-06` — Khóa tài khoản
 
-### `BR-STATUS-01`
+`ADMIN` chuyển tài khoản giữa `ACTIVE` và `SUSPENDED`. Tài khoản bị khóa mất quyền ngay ở request tiếp theo vì vai trò và trạng thái được đọc lại từ database mỗi lần.
 
-LOST và FOUND là loại bài đăng (Item Type), không phải trạng thái bài đăng (Item Status).
+### `BR-ADMIN-07` — Ngừng sử dụng danh mục, địa điểm
 
-### `BR-STATUS-02`
+Danh mục và địa điểm không bị xóa khỏi database; thao tác xóa chỉ đặt `is_active = false` để giữ tham chiếu của bài cũ.
 
-Quy trình chuyển đổi trạng thái của Item:
+## 12. Trạng thái và transaction
 
-Luồng nhận lại đồ vật:
+### `BR-STATUS-01` — Loại khác trạng thái
 
-OPEN → CLAIM_PENDING → CLAIMED → RETURNED
+`LOST` và `FOUND` là loại bài, không phải trạng thái bài.
 
-Luồng đóng bài đăng:
+### `BR-STATUS-02` — Luồng trạng thái bài
 
-OPEN → CLOSED
+```
+Nhận lại đồ:      OPEN → CLAIM_PENDING → CLAIMED → RETURNED
+Hết Claim chờ:    CLAIM_PENDING → OPEN
+Đóng bài:         OPEN → CLOSED
+ADMIN đóng bài:   OPEN | CLAIM_PENDING → CLOSED   (xem BR-ITEM-06)
+```
 
-Trường hợp không còn Claim đang chờ xử lý:
+### `BR-STATUS-03` — Luồng trạng thái Match
 
-CLAIM_PENDING → OPEN
-
-Trong các trường hợp đặc biệt, quản trị viên có thể đóng bài đăng và phải ghi lại thao tác này vào nhật ký hoạt động.
-
-### `BR-STATUS-03`
-
-Quy trình chuyển đổi trạng thái của Match:
-
+```
 POTENTIAL → CONFIRMED | REJECTED
+```
 
-**Trong đó:**
+Chỉ ghép bài khác loại (`LOST` với `FOUND`); mỗi cặp bài chỉ có một bản ghi.
 
-- POTENTIAL: Kết quả ghép nối tiềm năng.
-- CONFIRMED: Kết quả ghép nối đã được xác nhận.
-- REJECTED: Kết quả ghép nối bị từ chối.
+### `BR-STATUS-04` — Luồng trạng thái Claim
 
-Quy tắc bổ sung:
+```
+Được chấp thuận:  PENDING → APPROVED → COMPLETED
+Bị từ chối:       PENDING → REJECTED
+```
 
-- Chỉ ghép nối các bài đăng có loại đối lập (LOST với FOUND).
-- Mỗi cặp bài đăng được ghép nối phải là duy nhất, không được tạo bản ghi trùng lặp.
+### `BR-STATUS-05` — Dùng transaction
 
-### `BR-STATUS-04`
+Các thao tác sau chạy trong transaction có khóa dòng (`SELECT ... FOR UPDATE`) để tránh race condition:
 
-Quy trình chuyển đổi trạng thái của Claim:
-
-Trường hợp được chấp thuận:
-
-PENDING → APPROVED → COMPLETED
-
-Trường hợp bị từ chối:
-
-PENDING → REJECTED
-
-### `BR-STATUS-05`
-
-Hệ thống phải sử dụng giao dịch cơ sở dữ liệu (Database Transaction) để bảo vệ tính toàn vẹn dữ liệu khi thực hiện:
-
-- Chấp thuận Claim.
-- Xử lý các Claim cạnh tranh cho cùng một đồ vật.
-- Cập nhật trạng thái Item.
-- Tạo và cập nhật các thông báo liên quan.
-
-Việc sử dụng Transaction nhằm ngăn ngừa các tình huống xung đột dữ liệu do nhiều yêu cầu được xử lý đồng thời (Race Condition).
-
----
-
-
+- Chấp thuận Claim và từ chối Claim cạnh tranh.
+- Cập nhật trạng thái bài.
+- Tạo thông báo và nhật ký liên quan.

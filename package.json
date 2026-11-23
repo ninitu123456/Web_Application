@@ -41,8 +41,6 @@
     "test:coverage:integration": "node server/scripts/test-coverage.js integration",
     "test:coverage:combined": "node server/scripts/test-coverage.js combined",
     "audit:production": "npm audit --omit=dev",
-    "db:purge-demo": "node database/scripts/purge-demo-data.js",
-    "db:purge-demo:assets": "node database/scripts/purge-demo-assets.js",
     "test:browser:runtime": "node database/scripts/test-isolated.js --full-runtime-browser"
   },
   "dependencies": {

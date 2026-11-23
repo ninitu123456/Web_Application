@@ -27,6 +27,8 @@ export function MessagesPage() {
     bottom = useRef<HTMLDivElement>(null),
     current = useRef(selected);
   const newest = useRef("");
+  // Unsent text is kept per conversation while the page stays open.
+  const drafts = useRef(new Map<string, string>());
   current.current = selected;
   useEffect(() => {
     const controller = new AbortController();
@@ -57,7 +59,7 @@ export function MessagesPage() {
     setMessages([]);
     setOlder(false);
     newest.current = "";
-    setText("");
+    setText(drafts.current.get(selected) || "");
     setError("");
     pending.current = null;
   }, [selected]);
@@ -167,7 +169,8 @@ export function MessagesPage() {
           ? previous
           : [...previous, result.data],
       );
-      setText("");
+      drafts.current.delete(id);
+      if (current.current === id) setText("");
       pending.current = null;
     } catch (e) {
       if (current.current === id) setError(errorText(e));
@@ -333,10 +336,25 @@ export function MessagesPage() {
                 <textarea
                   id="chat-message"
                   value={text}
-                  onChange={(e) => setText(e.target.value)}
+                  onChange={(e) => {
+                    setText(e.target.value);
+                    drafts.current.set(selected, e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    // Enter sends on desktop; Shift+Enter adds a new line.
+                    if (
+                      e.key === "Enter" &&
+                      !e.shiftKey &&
+                      !e.nativeEvent.isComposing &&
+                      window.matchMedia("(pointer: fine)").matches
+                    ) {
+                      e.preventDefault();
+                      e.currentTarget.form?.requestSubmit();
+                    }
+                  }}
                   placeholder="Nhập tin nhắn…"
                   rows={2}
-                  maxLength={4000}
+                  maxLength={2000}
                   disabled={sending}
                 />
                 <Button disabled={sending || !text.trim()}>

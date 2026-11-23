@@ -1,301 +1,153 @@
-# YÊU CẦU BACKEND – DỰ ÁN FINDIT
+# FindIt — Yêu cầu hệ thống
 
-### 1. Vai trò người dùng (User Roles)
+Tài liệu mô tả mục tiêu, tác nhân, yêu cầu chức năng và phi chức năng của FindIt. Ràng buộc chi tiết cho từng chức năng nằm trong [quy tắc nghiệp vụ](business-rules.md); endpoint cụ thể nằm trong [hợp đồng API](api-contract.md).
 
-Hệ thống hỗ trợ hai vai trò chính:
+## 1. Mục tiêu
 
-- USER – Người dùng thông thường.
-- ADMIN – Quản trị viên.
+FindIt giúp sinh viên và cán bộ trong khuôn viên trường tìm lại đồ thất lạc. Người làm mất đồ và người nhặt được đồ cùng đăng bài, hệ thống gợi ý các bài có khả năng trùng khớp, người nhận đồ chứng minh quyền sở hữu và chủ bài xác nhận bàn giao.
 
-#### 1.1. USER – Người dùng
+## 2. Tác nhân
 
-Người dùng có thể:
-
-- Đăng ký tài khoản.
-- Đăng nhập vào hệ thống.
-- Xem và cập nhật thông tin cá nhân.
-- Tạo bài đăng đồ bị mất (LOST) và đồ nhặt được (FOUND).
-- Tìm kiếm các bài đăng đồ bị mất và đồ nhặt được.
-- Xem các gợi ý ghép nối đồ vật từ hệ thống.
-- Gửi yêu cầu nhận lại đồ vật (Claim).
-- Xem các thông báo liên quan đến hoạt động của mình.
-
-#### 1.2. ADMIN – Quản trị viên
-
-Quản trị viên có tất cả quyền của người dùng thông thường và được bổ sung các quyền:
-
-- Quản lý tài khoản người dùng.
-- Kiểm duyệt các bài đăng đồ vật.
-- Quản lý danh mục đồ vật.
-- Quản lý các địa điểm trong khuôn viên trường.
-- Xử lý các báo cáo vi phạm.
-- Xem thống kê hoạt động của hệ thống.
-
-### 2. Yêu cầu xác thực (Authentication Requirements)
-
-Hệ thống phải cho phép người dùng:
-
-- Đăng ký tài khoản mới.
-- Đăng nhập bằng thông tin tài khoản.
-- Nhận JWT (JSON Web Token) sau khi đăng nhập thành công.
-- Sử dụng JWT để truy cập các API yêu cầu xác thực.
-Quy tắc nghiệp vụ:
-
-- Tài khoản đăng ký thông thường phải được gán vai trò USER.
-- Người dùng không được tự gán vai trò ADMIN trong quá trình đăng ký.
-
-### 3. Yêu cầu quản lý người dùng (User Requirements)
-
-Người dùng đã đăng nhập có thể:
-
-- Xem thông tin hồ sơ cá nhân.
-- Cập nhật những thông tin cá nhân được hệ thống cho phép.
-Quy tắc nghiệp vụ:
-
-- Người dùng không được chỉnh sửa hồ sơ của người dùng khác.
-- Người dùng không được tự thay đổi vai trò của mình thông qua API cập nhật hồ sơ.
-
-### 4. Yêu cầu tìm kiếm (Search Requirements)
-
-Hệ thống phải cho phép người dùng tìm kiếm các bài đăng đồ bị mất (LOST) và đồ nhặt được (FOUND).
-
-Chức năng tìm kiếm phải hỗ trợ:
-
-- Từ khóa (Keyword): Tìm kiếm theo từ khóa.
-- Loại đồ vật (Item Type): Lọc theo đồ bị mất hoặc đồ nhặt được.
-- Danh mục (Category): Lọc theo danh mục đồ vật.
-- Địa điểm (Location): Lọc theo địa điểm.
-- Trạng thái (Status): Lọc theo trạng thái bài đăng.
-- Khoảng thời gian (Date Range): Lọc theo khoảng ngày.
-- Sắp xếp (Sorting): Sắp xếp kết quả tìm kiếm.
-- Phân trang (Pagination): Chia kết quả thành nhiều trang.
-Quy tắc nghiệp vụ:
-
-- Người dùng có thể kết hợp nhiều bộ lọc trong cùng một yêu cầu tìm kiếm.
-- Nếu không có bài đăng nào phù hợp, hệ thống phải trả về danh sách rỗng thay vì thông báo lỗi.
-
-### 5. Yêu cầu ghép nối thông minh (Smart Matching Requirements)
-
-Hệ thống phải cung cấp chức năng ghép nối thông minh giữa các bài đăng đồ bị mất và đồ nhặt được.
-
-#### 5.1. Nguyên tắc ghép nối
-
-Hệ thống chỉ được phép so sánh:
-
-- LOST ↔ FOUND: Đồ bị mất với đồ nhặt được.
-Hệ thống không được phép so sánh:
-
-- LOST ↔ LOST: Hai bài đăng đồ bị mất.
-- FOUND ↔ FOUND: Hai bài đăng đồ nhặt được.
-
-#### 5.2. Tiêu chí tính điểm tương đồng
-
-Điểm ghép nối được tính dựa trên:
-
-- Category Similarity: Mức độ tương đồng về danh mục.
-- Location Similarity: Mức độ tương đồng về địa điểm.
-- Date Similarity: Mức độ tương đồng về thời gian.
-- Text Similarity: Mức độ tương đồng về nội dung mô tả.
-
-#### 5.3. Kết quả ghép nối
-
-Mỗi kết quả ghép nối phải bao gồm:
-
-- Điểm tương đồng (Match Score).
-- Thông tin của bài đăng đồ vật được ghép nối.
-- Lý do giải thích tại sao hệ thống đề xuất ghép nối hai bài đăng.
-Quy tắc nghiệp vụ:
-
-Các bài đăng có trạng thái không hợp lệ để ghép nối, chẳng hạn như CLOSED hoặc RETURNED, không được tham gia quá trình Smart Matching.
-
-### 6. Yêu cầu thông báo (Notification Requirements)
-
-Hệ thống phải cung cấp chức năng thông báo cho người dùng.
-
-#### 6.1. Các sự kiện tạo thông báo
-
-Thông báo có thể được tạo khi:
-
-- Hệ thống phát hiện một kết quả Smart Matching mới.
-- Có yêu cầu nhận lại đồ vật (Claim) mới được gửi.
-- Yêu cầu nhận đồ được chấp thuận.
-- Yêu cầu nhận đồ bị từ chối.
-- Quá trình nhận lại đồ vật được hoàn tất.
-
-#### 6.2. Chức năng quản lý thông báo
-
-Người dùng có thể:
-
-- Xem danh sách thông báo của mình.
-- Đánh dấu một thông báo là đã đọc.
-- Đánh dấu tất cả thông báo là đã đọc.
-- Xem số lượng thông báo chưa đọc.
-Quy tắc nghiệp vụ:
-
-Người dùng chỉ được phép truy cập các thông báo thuộc về tài khoản của chính mình.
-
-### 7. Yêu cầu quản lý đồ vật (Item Management Requirements)
-
-#### 7.1. Tạo bài đăng
-
-Người dùng đã xác thực (USER hoặc ADMIN) có thể tạo bài đăng:
-
-- LOST: Đồ vật bị mất.
-- FOUND: Đồ vật nhặt được.
-Thông tin bắt buộc:
-
-- title: Tiêu đề bài đăng.
-- type: Loại bài đăng.
-- categoryId: Mã danh mục.
-- locationId: Mã địa điểm.
-- eventDate: Ngày xảy ra sự việc.
-- description: Mô tả đồ vật.
-Thông tin không bắt buộc:
-
-- color: Màu sắc.
-- Hình ảnh đồ vật.
-- Các đặc điểm nhận dạng riêng biệt.
-
-#### 7.2. Quy tắc quản lý bài đăng
-
-- Bài đăng mới được tạo phải có trạng thái ban đầu là OPEN.
-- Không được thay đổi loại bài đăng (LOST hoặc FOUND) sau khi tạo.
-- Người dùng có thể xem công khai và tìm kiếm các bài đăng.
-- Bằng chứng xác minh quyền sở hữu phải được bảo mật và không được xuất hiện trong dữ liệu trả về công khai.
-- Chỉ chủ sở hữu bài đăng mới được chỉnh sửa hoặc đóng bài đăng của mình.
-- Việc chỉnh sửa thông thường chỉ được phép khi bài đăng có trạng thái OPEN.
-- Quản trị viên có quyền kiểm duyệt bài đăng.
-- Bài đăng có trạng thái RETURNED không được tiếp nhận yêu cầu Claim mới.
-- Khi xóa bài đăng, hệ thống sử dụng cơ chế xóa mềm (Soft Delete) hoặc đóng bài theo quy trình kiểm duyệt nhằm bảo toàn lịch sử hoạt động và dữ liệu Claim.
-
-### 8. Yêu cầu nhận lại đồ vật (Claim Requirements)
-
-#### 8.1. Gửi yêu cầu nhận đồ
-
-Người dùng đã xác thực có thể gửi yêu cầu nhận lại một đồ vật thuộc bài đăng FOUND, nếu bài đăng đó đủ điều kiện tiếp nhận Claim.
-
-Quy tắc nghiệp vụ:
-
-- Người dùng không được gửi Claim cho bài đăng do chính mình tạo.
-- Mỗi người dùng chỉ được có một Claim cho cùng một bài đăng FOUND.
-- Người gửi Claim phải cung cấp bằng chứng hoặc thông tin chứng minh quyền sở hữu đồ vật.
-- Bằng chứng xác minh chỉ được phép hiển thị cho:
-- Người gửi Claim.
-- Chủ sở hữu bài đăng FOUND.
-- Quản trị viên có thẩm quyền.
-
-#### 8.2. Xét duyệt yêu cầu
-
-Chủ sở hữu bài đăng FOUND có quyền xem xét các Claim đang ở trạng thái PENDING và thực hiện:
-
-- APPROVED: Chấp thuận yêu cầu.
-- REJECTED: Từ chối yêu cầu.
-Quản trị viên có thể giải quyết các tranh chấp liên quan đến Claim và phải ghi lại lịch sử xử lý (Audit Log).
-
-#### 8.3. Hoàn tất nhận lại đồ vật
-
-- Mỗi bài đăng FOUND chỉ được có tối đa một Claim đã được chấp thuận hoặc đang trong quá trình bàn giao.
-- Khi quá trình bàn giao đồ vật thành công, Claim được chuyển sang trạng thái COMPLETED.
-- Bài đăng đồ vật tương ứng được chuyển sang trạng thái RETURNED.
-
-### 9. Yêu cầu báo cáo vi phạm (Report Requirements)
-
-#### 9.1. Gửi báo cáo
-
-Người dùng đã xác thực có thể gửi báo cáo vi phạm đối với một trong các đối tượng:
-
-- ITEM: Bài đăng đồ vật.
-- USER: Tài khoản người dùng.
-- CLAIM: Yêu cầu nhận lại đồ vật.
-Mỗi báo cáo phải bao gồm:
-
-- Đối tượng bị báo cáo.
-- Lý do báo cáo.
-Người dùng có thể cung cấp thêm phần mô tả chi tiết nếu cần thiết.
-
-#### 9.2. Xử lý báo cáo
-
-Quản trị viên có quyền:
-
-- Xem và kiểm tra các báo cáo.
-- Giải quyết báo cáo vi phạm.
-- Bác bỏ các báo cáo không hợp lệ.
-Hệ thống phải lưu lại:
-
-- Kết quả xử lý báo cáo.
-- Quản trị viên thực hiện xử lý.
-
-### 10. Yêu cầu quản trị hệ thống (Admin Requirements)
-
-Quản trị viên (ADMIN) có trách nhiệm quản lý và giám sát toàn bộ hệ thống.
-
-Các chức năng quản trị bao gồm:
-
-- User Management: Quản lý tài khoản người dùng.
-- Category Management: Quản lý danh mục đồ vật.
-- Location Management: Quản lý các địa điểm trong khuôn viên trường.
-- Item Moderation: Kiểm duyệt các bài đăng.
-- Claim Dispute Management: Xử lý tranh chấp liên quan đến yêu cầu nhận đồ.
-- Report Management: Xem và xử lý báo cáo vi phạm.
-- Activity Logs: Theo dõi lịch sử hoạt động của hệ thống.
-- Dashboard: Xem thống kê tổng hợp.
-Quy tắc nghiệp vụ:
-
-- Mọi thao tác quản trị đều phải được kiểm tra quyền truy cập (Authorization).
-- Các thao tác quản trị phải được ghi nhận vào nhật ký hoạt động (Audit Log).
-- Dữ liệu thống kê trên Dashboard phải được tổng hợp từ các bản ghi thực tế trong cơ sở dữ liệu.
-
-### 11. Yêu cầu trạng thái và dữ liệu (Status and Data Requirements)
-
-#### 11.1. Loại bài đăng (Item Type)
-
-| Trạng thái | Ý nghĩa |
+| Tác nhân | Mô tả |
 | --- | --- |
-| LOST | Đồ vật bị mất |
-| FOUND | Đồ vật nhặt được |
+| Khách | Chưa đăng nhập. Xem và tìm kiếm bài đăng công khai. |
+| `USER` | Người dùng đã đăng nhập. Đăng bài, gửi Claim, nhắn tin, báo cáo vi phạm. |
+| `ADMIN` | Quản trị viên. Có mọi quyền của `USER`, cộng thêm các chức năng quản trị ở mục 3.10. |
 
-#### 11.2. Trạng thái bài đăng (Item Status)
+Tài khoản đăng ký mới luôn là `USER`; không ai được tự gán vai trò `ADMIN`.
 
-| Trạng thái | Ý nghĩa |
+## 3. Yêu cầu chức năng
+
+### 3.1. Xác thực
+
+- Đăng ký tài khoản bằng họ tên, email và mật khẩu (nhập hai lần để xác nhận).
+- Đăng nhập bằng email và mật khẩu, nhận JWT để gọi các API cần xác thực.
+- Quên mật khẩu: nhận liên kết đặt lại qua email; liên kết dùng một lần và hết hạn sau 15 phút.
+- Sau khi đặt lại mật khẩu, mọi phiên đăng nhập cũ của tài khoản bị vô hiệu.
+
+### 3.2. Hồ sơ người dùng
+
+- Xem hồ sơ của chính mình.
+- Cập nhật họ tên. Không thể đổi vai trò hoặc sửa hồ sơ người khác qua API hồ sơ.
+
+### 3.3. Bài đăng đồ vật
+
+- Người dùng đã đăng nhập tạo bài `LOST` (đồ bị mất) hoặc `FOUND` (đồ nhặt được).
+- Thông tin bắt buộc: tiêu đề, loại bài, danh mục, địa điểm, ngày xảy ra (không ở tương lai), mô tả. Không bắt buộc: màu sắc.
+- Đính kèm tối đa 5 ảnh, mỗi ảnh tối đa 5 MiB. Biểu mẫu đăng bài tự lưu bản nháp trên trình duyệt.
+- Bài mới có trạng thái `OPEN`. Không đổi được loại bài sau khi tạo.
+- Chỉ chủ bài được sửa (khi bài còn `OPEN`) hoặc đóng bài của mình.
+- Hệ thống không xóa bài; bài được đóng hoặc bị quản trị viên gỡ hiển thị để giữ lịch sử Claim, báo cáo và nhật ký.
+
+### 3.4. Tìm kiếm
+
+- Tìm theo từ khóa; lọc theo loại bài, danh mục, địa điểm, trạng thái và khoảng ngày.
+- Sắp xếp theo thời gian đăng hoặc ngày xảy ra; có phân trang.
+- Các bộ lọc là tùy chọn và kết hợp được với nhau. Không có kết quả thì trả danh sách rỗng, không báo lỗi.
+
+### 3.5. Gợi ý trùng khớp
+
+- **Theo thông tin:** khi bài được tạo hoặc sửa, hệ thống chấm điểm 0–100 với các bài loại đối diện (`LOST ↔ FOUND`) dựa trên danh mục, địa điểm, ngày xảy ra và nội dung. Mỗi kết quả có điểm và lý do đề xuất.
+- **Theo hình ảnh (AI):** ảnh tải lên được chuyển thành vector bằng model CLIP; hệ thống so độ tương đồng với ảnh của các bài loại đối diện.
+- Chỉ chủ bài xem được gợi ý cho bài của mình. Gợi ý chỉ để tham khảo, không tự xác nhận quyền sở hữu hay tạo Claim.
+- Bài `CLOSED`, `RETURNED` hoặc đang bị gỡ hiển thị không tham gia ghép nối.
+
+### 3.6. Yêu cầu nhận đồ (Claim)
+
+- Người dùng gửi Claim cho bài `FOUND` của người khác, kèm bằng chứng sở hữu. Mỗi người chỉ có một Claim cho một bài.
+- Bằng chứng chỉ hiển thị với người gửi Claim, chủ bài và quản trị viên.
+- Chủ bài chấp thuận (`APPROVED`) hoặc từ chối (`REJECTED`) Claim đang chờ, rồi xác nhận đã bàn giao (`COMPLETED`). Khi hoàn tất, bài chuyển sang `RETURNED`.
+- Mỗi bài `FOUND` có tối đa một Claim được chấp thuận hoặc đã hoàn tất.
+
+### 3.7. Nhắn tin
+
+- Hai người dùng nhắn tin riêng với nhau theo thời gian thực (Socket.IO), có REST API dự phòng.
+- Xem danh sách cuộc trò chuyện, lịch sử tin nhắn, số tin chưa đọc và đánh dấu đã đọc.
+
+### 3.8. Thông báo
+
+- Thông báo khi có gợi ý trùng khớp mới, Claim mới, Claim được chấp thuận, bị từ chối hoặc hoàn tất, và khi quản trị viên xử lý bài hoặc Claim liên quan.
+- Xem danh sách, số chưa đọc, đánh dấu một hoặc tất cả là đã đọc, mở thẳng tới nội dung liên quan.
+- Người dùng chỉ truy cập được thông báo của chính mình.
+
+### 3.9. Báo cáo vi phạm
+
+- Người dùng báo cáo một bài đăng (`ITEM`), tài khoản (`USER`) hoặc Claim (`CLAIM`), kèm lý do và mô tả tùy chọn.
+- Xem lại các báo cáo mình đã gửi.
+
+### 3.10. Quản trị
+
+| Chức năng | Mô tả |
 | --- | --- |
-| OPEN | Bài đăng đang hoạt động |
-| CLAIM_PENDING | Bài đăng có yêu cầu nhận đồ đang chờ xử lý |
-| CLAIMED | Đã có yêu cầu nhận đồ được chấp thuận |
-| RETURNED | Đồ vật đã được bàn giao thành công |
-| CLOSED | Bài đăng đã đóng |
+| Thống kê | Số liệu tổng hợp từ dữ liệu thực trong database |
+| Người dùng | Xem danh sách, khóa (`SUSPENDED`) và mở khóa (`ACTIVE`) tài khoản |
+| Bài đăng | Xem danh sách, đóng bài, gỡ hoặc khôi phục hiển thị |
+| Claim | Giải quyết tranh chấp: chấp thuận hoặc từ chối Claim đang chờ |
+| Báo cáo | Xem xét, giải quyết hoặc bác bỏ báo cáo vi phạm |
+| Danh mục, địa điểm | Thêm, sửa, ngừng sử dụng |
+| Nhật ký | Xem nhật ký hoạt động nghiệp vụ |
 
-#### 11.3. Trạng thái ghép nối (Match Status)
+Mọi thao tác quản trị phải kiểm tra quyền và được ghi vào nhật ký hoạt động. Quản trị viên không được xử lý bài hoặc Claim mà chính mình có liên quan.
 
-| Trạng thái | Ý nghĩa |
+## 4. Yêu cầu phi chức năng
+
+| Nhóm | Yêu cầu |
 | --- | --- |
-| POTENTIAL | Kết quả ghép nối tiềm năng |
-| CONFIRMED | Kết quả ghép nối đã được xác nhận |
-| REJECTED | Kết quả ghép nối đã bị từ chối |
+| Giao diện | Tiếng Việt; dùng tốt trên điện thoại và máy tính |
+| Bảo mật | Mật khẩu băm bằng bcrypt; JWT kiểm tra lại vai trò và trạng thái tài khoản ở mỗi request; rate limit cho API, đăng nhập, đăng ký, quên mật khẩu và upload; lỗi trả về không lộ stack trace hay câu SQL |
+| Riêng tư | Bằng chứng Claim, đặc điểm nhận dạng riêng và lý do quyết định quản trị không xuất hiện trong dữ liệu công khai |
+| Toàn vẹn dữ liệu | Thao tác Claim và quản trị chạy trong transaction có khóa dòng; không dùng xóa dây chuyền |
+| Vận hành | Migration có kiểm tra checksum; sao lưu database hằng ngày và tự kiểm tra bản sao lưu; endpoint `GET /api/health` cho healthcheck |
+| Kiểm thử | Unit, integration và browser tests chạy tự động trên GitHub Actions cho mỗi push và pull request |
 
-#### 11.4. Trạng thái yêu cầu nhận đồ (Claim Status)
+## 5. Trạng thái và quy ước dữ liệu
 
-| Trạng thái | Ý nghĩa |
+### 5.1. Loại bài đăng
+
+| Giá trị | Ý nghĩa |
 | --- | --- |
-| PENDING | Đang chờ xét duyệt |
-| APPROVED | Đã được chấp thuận |
-| REJECTED | Đã bị từ chối |
-| COMPLETED | Đã hoàn tất bàn giao |
+| `LOST` | Đồ bị mất |
+| `FOUND` | Đồ nhặt được |
 
-#### 11.5. Trạng thái báo cáo (Report Status)
+### 5.2. Trạng thái bài đăng
 
-| Trạng thái | Ý nghĩa |
+| Giá trị | Ý nghĩa |
 | --- | --- |
-| PENDING | Đang chờ xử lý |
-| REVIEWING | Đang được xem xét |
-| RESOLVED | Đã được giải quyết |
-| DISMISSED | Báo cáo đã bị bác bỏ |
+| `OPEN` | Đang hoạt động |
+| `CLAIM_PENDING` | Có Claim đang chờ xử lý |
+| `CLAIMED` | Đã có Claim được chấp thuận, chờ bàn giao |
+| `RETURNED` | Đã bàn giao thành công |
+| `CLOSED` | Đã đóng |
 
-#### 11.6. Yêu cầu cơ sở dữ liệu
+Hiển thị (`PUBLIC` / `HIDDEN`) là thuộc tính riêng, không phải trạng thái bài đăng.
 
-- Hệ thống sử dụng MySQL làm hệ quản trị cơ sở dữ liệu.
-- Cơ sở dữ liệu gồm 11 bảng được định nghĩa trong tài liệu erd.md.
-- Tên các trường dữ liệu trong API sử dụng quy tắc camelCase.
-Ví dụ: categoryId, locationId, eventDate.
+### 5.3. Trạng thái ghép nối
 
-- Tên các cột trong cơ sở dữ liệu sử dụng quy tắc snake_case.
-Ví dụ: category_id, location_id, event_date.
+| Giá trị | Ý nghĩa |
+| --- | --- |
+| `POTENTIAL` | Ghép nối tiềm năng |
+| `CONFIRMED` | Đã xác nhận |
+| `REJECTED` | Đã bị từ chối |
+
+### 5.4. Trạng thái Claim
+
+| Giá trị | Ý nghĩa |
+| --- | --- |
+| `PENDING` | Đang chờ xét duyệt |
+| `APPROVED` | Đã được chấp thuận |
+| `REJECTED` | Đã bị từ chối |
+| `COMPLETED` | Đã hoàn tất bàn giao |
+
+### 5.5. Trạng thái báo cáo
+
+| Giá trị | Ý nghĩa |
+| --- | --- |
+| `PENDING` | Đang chờ xử lý |
+| `REVIEWING` | Đang được xem xét |
+| `RESOLVED` | Đã giải quyết |
+| `DISMISSED` | Đã bác bỏ |
+
+### 5.6. Quy ước đặt tên
+
+- Cơ sở dữ liệu MySQL 8, thiết kế trong [ERD](erd.md).
+- Trường trong API dùng camelCase (`categoryId`, `eventDate`); cột trong database dùng snake_case (`category_id`, `event_date`).
