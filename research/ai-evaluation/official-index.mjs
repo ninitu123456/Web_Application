@@ -1,0 +1,12 @@
+import {writeFile} from 'node:fs/promises';
+import {resolve} from 'node:path';
+import {CACHE,RESULTS,setup,saveJson,sha256} from './common.mjs';
+await setup();
+const url='https://vlomonaco.github.io/core50/data/paths.pkl';
+const r=await fetch(url,{signal:AbortSignal.timeout(60000)});
+if(!r.ok)throw new Error(`HTTP ${r.status}`);
+const bytes=Buffer.from(await r.arrayBuffer());
+if(bytes.length>20_000_000)throw new Error('Index too large');
+await writeFile(resolve(CACHE,'official-paths.pkl'),bytes);
+await saveJson(resolve(RESULTS,'official_index_source.json'),{url,bytes:bytes.length,sha256:sha256(bytes)});
+console.log('Official paths index',bytes.length);

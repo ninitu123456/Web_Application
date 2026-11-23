@@ -1,0 +1,142 @@
+{
+  "status": "PASS",
+  "fullInferencePasses": 2,
+  "imagesPerPass": 200,
+  "comparedPairs": 7500,
+  "maxEmbeddingDifference": 0,
+  "maxSimilarityDifference": 0,
+  "retrievalMetricsIdentical": true,
+  "rankingIdentical": true,
+  "datasetManifestSha256": "df00ef72399b9b57abb7037dc7e081429e9091f64d98d15cbddb0a72f3880840",
+  "modelWeightsSha256": "583fd1110a514667812fee7d684952aaf82a99b959760c8d7dca7e0ab9839299",
+  "firstPass": {
+    "at": "2026-11-23T01:15:24.602Z",
+    "performance": {
+      "initializationMs": 235.8562,
+      "initializationWallMs": 236.41809999999998,
+      "initializationDownloadExcluded": true,
+      "warmupImages": 3,
+      "measuredImages": 200,
+      "measuredQueries": 150,
+      "repetitions": 1,
+      "inference": {
+        "count": 200,
+        "mean": 46.63768749999999,
+        "p50": 40.6232,
+        "p95": 92.58330000000024,
+        "min": 30.982899999999972,
+        "max": 115.65450000000055
+      },
+      "embedding": {
+        "count": 200,
+        "mean": 49.67561850000005,
+        "p50": 43.970000000001164,
+        "p95": 97.79820000000018,
+        "min": 32.79850000000033,
+        "max": 118.85900000000038
+      },
+      "retrieval": {
+        "count": 150,
+        "mean": 0.06183266666672656,
+        "p50": 0.0522000000000844,
+        "p95": 0.09900000000016007,
+        "min": 0.03499999999985448,
+        "max": 0.6260000000002037
+      },
+      "queryEndToEnd": {
+        "count": 150,
+        "mean": 54.17891266666669,
+        "p50": 46.84130000000005,
+        "p95": 102.20579999999973,
+        "min": 32.88889999999992,
+        "max": 118.98959999999988
+      },
+      "observedPeakRssBytes": 474890240,
+      "processMaxRssBytes": 474968064,
+      "warmups": [
+        {
+          "iteration": 0,
+          "inferenceMs": 42.10979999999995,
+          "embeddingMs": 51.02109999999993
+        },
+        {
+          "iteration": 1,
+          "inferenceMs": 33.396799999999985,
+          "embeddingMs": 36.36019999999996
+        },
+        {
+          "iteration": 2,
+          "inferenceMs": 33.57280000000003,
+          "embeddingMs": 35.64250000000004
+        }
+      ],
+      "timingNotes": "inference_ms is the production extractor timer: preprocessing + ONNX + output normalization; not isolated ONNX kernel time. embedding_ms also includes local file read/decode and persisted embedding conversion. query_e2e_ms measures embed + cosine and sort against 50 cached gallery vectors; excludes model startup, external storage, DB, HTTP and UI."
+    }
+  },
+  "secondPass": {
+    "at": "2026-11-23T01:17:17.400Z",
+    "performance": {
+      "initializationMs": 305.56600000000003,
+      "initializationWallMs": 306.37569999999994,
+      "initializationDownloadExcluded": true,
+      "warmupImages": 3,
+      "measuredImages": 200,
+      "measuredQueries": 150,
+      "repetitions": 1,
+      "inference": {
+        "count": 200,
+        "mean": 52.538526499999996,
+        "p50": 41.21339999999964,
+        "p95": 106.64729999999963,
+        "min": 31.48129999999992,
+        "max": 116.62089999999989
+      },
+      "embedding": {
+        "count": 200,
+        "mean": 55.529172500000044,
+        "p50": 44.701499999999214,
+        "p95": 109.80199999999968,
+        "min": 33.33169999999973,
+        "max": 120.06710000000021
+      },
+      "retrieval": {
+        "count": 150,
+        "mean": 0.0653606666667747,
+        "p50": 0.052400000000488944,
+        "p95": 0.09570000000030632,
+        "min": 0.03709999999955471,
+        "max": 0.9936999999999898
+      },
+      "queryEndToEnd": {
+        "count": 150,
+        "mean": 61.32966199999991,
+        "p50": 48.808100000000195,
+        "p95": 110.66930000000048,
+        "min": 38.55479999999989,
+        "max": 120.17730000000029
+      },
+      "observedPeakRssBytes": 476520448,
+      "processMaxRssBytes": 476536832,
+      "warmups": [
+        {
+          "iteration": 0,
+          "inferenceMs": 48.43960000000004,
+          "embeddingMs": 52.299400000000105
+        },
+        {
+          "iteration": 1,
+          "inferenceMs": 37.08389999999986,
+          "embeddingMs": 39.96220000000005
+        },
+        {
+          "iteration": 2,
+          "inferenceMs": 35.122100000000046,
+          "embeddingMs": 37.08029999999985
+        }
+      ],
+      "timingNotes": "inference_ms is the production extractor timer: preprocessing + ONNX + output normalization; not isolated ONNX kernel time. embedding_ms also includes local file read/decode and persisted embedding conversion. query_e2e_ms measures embed + cosine and sort against 50 cached gallery vectors; excludes model startup, external storage, DB, HTTP and UI."
+    }
+  },
+  "reportedPass": 2,
+  "selectionPolicy": "Second full pass designated before running; not selected by speed"
+}

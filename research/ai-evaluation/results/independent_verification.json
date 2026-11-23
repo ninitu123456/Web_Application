@@ -1,0 +1,18 @@
+{
+  "status": "PASS",
+  "checkedImages": 200,
+  "checkedPairs": 7500,
+  "checkedQueries": 150,
+  "metricCsvJsonAgreement": true,
+  "metricSummaryAgreement": true,
+  "latencyCsvJsonAgreement": true,
+  "histogramBinAgreement": true,
+  "deterministicSelection": true,
+  "productionSourcesUnchanged": true,
+  "maxSavedCosineDifference": 0,
+  "chartSha256": {
+    "recall_at_k.png": "9659dcf232e547fb6cfc2177bdd9976a28f3acbe9216e5961f55181124ac0e00",
+    "retrieval_examples.png": "afe4b68af4c0fa23ba5ca04ba57215899f7f0787762b03688323364956544bdb",
+    "similarity_distribution.png": "ec9360ac07f4fb179751e27c5ddb42de2edc2036487719ab45c1f09a7b898bc3"
+  }
+}

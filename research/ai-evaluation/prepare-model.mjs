@@ -1,0 +1,10 @@
+import { resolve } from 'node:path';
+import { performance } from 'node:perf_hooks';
+import { createClipEncoder } from '../../server/ai-visual/clip-encoder.js';
+import {CACHE,RESULTS,saveJson,setup} from './common.mjs';
+await setup();
+const started=performance.now();
+const encoder=await createClipEncoder({cacheDir:resolve(CACHE,'model')});
+console.log('Pinned production CLIP ready',encoder.initializationMs);
+await saveJson(resolve(RESULTS,'model_preparation.json'),{elapsedMs:performance.now()-started,initializationIncludingPossibleDownloadMs:encoder.initializationMs,excludedFromWarmLatency:true});
+await encoder.dispose();

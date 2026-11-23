@@ -1,0 +1,451 @@
+{
+  "available": {
+    "Top 1 correct": 59,
+    "Correct in Top 3, not Top 1": 38,
+    "Missed Top 3": 53
+  },
+  "selection": "First query ID in each new category, then fill to 3; group defined by ground-truth rank",
+  "examples": [
+    {
+      "group": "Top 1 correct",
+      "query_id": "o01_s07",
+      "correct_rank": 1,
+      "top3": [
+        {
+          "query_id": "o01_s07",
+          "query_object_id": 1,
+          "query_category_id": 1,
+          "query_session_id": 7,
+          "gallery_id": "o01_s01",
+          "gallery_object_id": 1,
+          "gallery_category_id": 1,
+          "gallery_session_id": "1",
+          "rank": 1,
+          "similarity": 0.9097835148801026,
+          "correct": true,
+          "correct_rank": 1
+        },
+        {
+          "query_id": "o01_s07",
+          "query_object_id": 1,
+          "query_category_id": 1,
+          "query_session_id": 7,
+          "gallery_id": "o02_s01",
+          "gallery_object_id": 2,
+          "gallery_category_id": 1,
+          "gallery_session_id": "1",
+          "rank": 2,
+          "similarity": 0.8718268619789832,
+          "correct": false,
+          "correct_rank": 1
+        },
+        {
+          "query_id": "o01_s07",
+          "query_object_id": 1,
+          "query_category_id": 1,
+          "query_session_id": 7,
+          "gallery_id": "o05_s01",
+          "gallery_object_id": 5,
+          "gallery_category_id": 1,
+          "gallery_session_id": "1",
+          "rank": 3,
+          "similarity": 0.8605023830824863,
+          "correct": false,
+          "correct_rank": 1
+        }
+      ]
+    },
+    {
+      "group": "Top 1 correct",
+      "query_id": "o06_s07",
+      "correct_rank": 1,
+      "top3": [
+        {
+          "query_id": "o06_s07",
+          "query_object_id": 6,
+          "query_category_id": 2,
+          "query_session_id": 7,
+          "gallery_id": "o06_s01",
+          "gallery_object_id": 6,
+          "gallery_category_id": 2,
+          "gallery_session_id": "1",
+          "rank": 1,
+          "similarity": 0.9286942133462768,
+          "correct": true,
+          "correct_rank": 1
+        },
+        {
+          "query_id": "o06_s07",
+          "query_object_id": 6,
+          "query_category_id": 2,
+          "query_session_id": 7,
+          "gallery_id": "o09_s01",
+          "gallery_object_id": 9,
+          "gallery_category_id": 2,
+          "gallery_session_id": "1",
+          "rank": 2,
+          "similarity": 0.8661221147508377,
+          "correct": false,
+          "correct_rank": 1
+        },
+        {
+          "query_id": "o06_s07",
+          "query_object_id": 6,
+          "query_category_id": 2,
+          "query_session_id": 7,
+          "gallery_id": "o46_s01",
+          "gallery_object_id": 46,
+          "gallery_category_id": 10,
+          "gallery_session_id": "1",
+          "rank": 3,
+          "similarity": 0.8577406259327328,
+          "correct": false,
+          "correct_rank": 1
+        }
+      ]
+    },
+    {
+      "group": "Top 1 correct",
+      "query_id": "o11_s03",
+      "correct_rank": 1,
+      "top3": [
+        {
+          "query_id": "o11_s03",
+          "query_object_id": 11,
+          "query_category_id": 3,
+          "query_session_id": 3,
+          "gallery_id": "o11_s01",
+          "gallery_object_id": 11,
+          "gallery_category_id": 3,
+          "gallery_session_id": "1",
+          "rank": 1,
+          "similarity": 0.899697750496566,
+          "correct": true,
+          "correct_rank": 1
+        },
+        {
+          "query_id": "o11_s03",
+          "query_object_id": 11,
+          "query_category_id": 3,
+          "query_session_id": 3,
+          "gallery_id": "o26_s01",
+          "gallery_object_id": 26,
+          "gallery_category_id": 6,
+          "gallery_session_id": "1",
+          "rank": 2,
+          "similarity": 0.8694648458892583,
+          "correct": false,
+          "correct_rank": 1
+        },
+        {
+          "query_id": "o11_s03",
+          "query_object_id": 11,
+          "query_category_id": 3,
+          "query_session_id": 3,
+          "gallery_id": "o27_s01",
+          "gallery_object_id": 27,
+          "gallery_category_id": 6,
+          "gallery_session_id": "1",
+          "rank": 3,
+          "similarity": 0.8445341139297455,
+          "correct": false,
+          "correct_rank": 1
+        }
+      ]
+    },
+    {
+      "group": "Correct in Top 3, not Top 1",
+      "query_id": "o01_s03",
+      "correct_rank": 2,
+      "top3": [
+        {
+          "query_id": "o01_s03",
+          "query_object_id": 1,
+          "query_category_id": 1,
+          "query_session_id": 3,
+          "gallery_id": "o02_s01",
+          "gallery_object_id": 2,
+          "gallery_category_id": 1,
+          "gallery_session_id": "1",
+          "rank": 1,
+          "similarity": 0.8886826191121538,
+          "correct": false,
+          "correct_rank": 2
+        },
+        {
+          "query_id": "o01_s03",
+          "query_object_id": 1,
+          "query_category_id": 1,
+          "query_session_id": 3,
+          "gallery_id": "o01_s01",
+          "gallery_object_id": 1,
+          "gallery_category_id": 1,
+          "gallery_session_id": "1",
+          "rank": 2,
+          "similarity": 0.8691105040625557,
+          "correct": true,
+          "correct_rank": 2
+        },
+        {
+          "query_id": "o01_s03",
+          "query_object_id": 1,
+          "query_category_id": 1,
+          "query_session_id": 3,
+          "gallery_id": "o04_s01",
+          "gallery_object_id": 4,
+          "gallery_category_id": 1,
+          "gallery_session_id": "1",
+          "rank": 3,
+          "similarity": 0.862126436468688,
+          "correct": false,
+          "correct_rank": 2
+        }
+      ]
+    },
+    {
+      "group": "Correct in Top 3, not Top 1",
+      "query_id": "o06_s10",
+      "correct_rank": 3,
+      "top3": [
+        {
+          "query_id": "o06_s10",
+          "query_object_id": 6,
+          "query_category_id": 2,
+          "query_session_id": 10,
+          "gallery_id": "o48_s01",
+          "gallery_object_id": 48,
+          "gallery_category_id": 10,
+          "gallery_session_id": "1",
+          "rank": 1,
+          "similarity": 0.8567036886266834,
+          "correct": false,
+          "correct_rank": 3
+        },
+        {
+          "query_id": "o06_s10",
+          "query_object_id": 6,
+          "query_category_id": 2,
+          "query_session_id": 10,
+          "gallery_id": "o09_s01",
+          "gallery_object_id": 9,
+          "gallery_category_id": 2,
+          "gallery_session_id": "1",
+          "rank": 2,
+          "similarity": 0.852877333274018,
+          "correct": false,
+          "correct_rank": 3
+        },
+        {
+          "query_id": "o06_s10",
+          "query_object_id": 6,
+          "query_category_id": 2,
+          "query_session_id": 10,
+          "gallery_id": "o06_s01",
+          "gallery_object_id": 6,
+          "gallery_category_id": 2,
+          "gallery_session_id": "1",
+          "rank": 3,
+          "similarity": 0.8479247771649916,
+          "correct": true,
+          "correct_rank": 3
+        }
+      ]
+    },
+    {
+      "group": "Correct in Top 3, not Top 1",
+      "query_id": "o11_s10",
+      "correct_rank": 3,
+      "top3": [
+        {
+          "query_id": "o11_s10",
+          "query_object_id": 11,
+          "query_category_id": 3,
+          "query_session_id": 10,
+          "gallery_id": "o30_s01",
+          "gallery_object_id": 30,
+          "gallery_category_id": 6,
+          "gallery_session_id": "1",
+          "rank": 1,
+          "similarity": 0.8675849505794937,
+          "correct": false,
+          "correct_rank": 3
+        },
+        {
+          "query_id": "o11_s10",
+          "query_object_id": 11,
+          "query_category_id": 3,
+          "query_session_id": 10,
+          "gallery_id": "o27_s01",
+          "gallery_object_id": 27,
+          "gallery_category_id": 6,
+          "gallery_session_id": "1",
+          "rank": 2,
+          "similarity": 0.8621610775079449,
+          "correct": false,
+          "correct_rank": 3
+        },
+        {
+          "query_id": "o11_s10",
+          "query_object_id": 11,
+          "query_category_id": 3,
+          "query_session_id": 10,
+          "gallery_id": "o11_s01",
+          "gallery_object_id": 11,
+          "gallery_category_id": 3,
+          "gallery_session_id": "1",
+          "rank": 3,
+          "similarity": 0.8553132038626567,
+          "correct": true,
+          "correct_rank": 3
+        }
+      ]
+    },
+    {
+      "group": "Missed Top 3",
+      "query_id": "o03_s03",
+      "correct_rank": 10,
+      "top3": [
+        {
+          "query_id": "o03_s03",
+          "query_object_id": 3,
+          "query_category_id": 1,
+          "query_session_id": 3,
+          "gallery_id": "o04_s01",
+          "gallery_object_id": 4,
+          "gallery_category_id": 1,
+          "gallery_session_id": "1",
+          "rank": 1,
+          "similarity": 0.8815478196270213,
+          "correct": false,
+          "correct_rank": 10
+        },
+        {
+          "query_id": "o03_s03",
+          "query_object_id": 3,
+          "query_category_id": 1,
+          "query_session_id": 3,
+          "gallery_id": "o02_s01",
+          "gallery_object_id": 2,
+          "gallery_category_id": 1,
+          "gallery_session_id": "1",
+          "rank": 2,
+          "similarity": 0.8540963055903784,
+          "correct": false,
+          "correct_rank": 10
+        },
+        {
+          "query_id": "o03_s03",
+          "query_object_id": 3,
+          "query_category_id": 1,
+          "query_session_id": 3,
+          "gallery_id": "o30_s01",
+          "gallery_object_id": 30,
+          "gallery_category_id": 6,
+          "gallery_session_id": "1",
+          "rank": 3,
+          "similarity": 0.85400160109049,
+          "correct": false,
+          "correct_rank": 10
+        }
+      ]
+    },
+    {
+      "group": "Missed Top 3",
+      "query_id": "o06_s03",
+      "correct_rank": 45,
+      "top3": [
+        {
+          "query_id": "o06_s03",
+          "query_object_id": 6,
+          "query_category_id": 2,
+          "query_session_id": 3,
+          "gallery_id": "o47_s01",
+          "gallery_object_id": 47,
+          "gallery_category_id": 10,
+          "gallery_session_id": "1",
+          "rank": 1,
+          "similarity": 0.8680816429868405,
+          "correct": false,
+          "correct_rank": 45
+        },
+        {
+          "query_id": "o06_s03",
+          "query_object_id": 6,
+          "query_category_id": 2,
+          "query_session_id": 3,
+          "gallery_id": "o30_s01",
+          "gallery_object_id": 30,
+          "gallery_category_id": 6,
+          "gallery_session_id": "1",
+          "rank": 2,
+          "similarity": 0.8648680951372614,
+          "correct": false,
+          "correct_rank": 45
+        },
+        {
+          "query_id": "o06_s03",
+          "query_object_id": 6,
+          "query_category_id": 2,
+          "query_session_id": 3,
+          "gallery_id": "o28_s01",
+          "gallery_object_id": 28,
+          "gallery_category_id": 6,
+          "gallery_session_id": "1",
+          "rank": 3,
+          "similarity": 0.8502405076552267,
+          "correct": false,
+          "correct_rank": 45
+        }
+      ]
+    },
+    {
+      "group": "Missed Top 3",
+      "query_id": "o12_s03",
+      "correct_rank": 6,
+      "top3": [
+        {
+          "query_id": "o12_s03",
+          "query_object_id": 12,
+          "query_category_id": 3,
+          "query_session_id": 3,
+          "gallery_id": "o11_s01",
+          "gallery_object_id": 11,
+          "gallery_category_id": 3,
+          "gallery_session_id": "1",
+          "rank": 1,
+          "similarity": 0.8667650148940222,
+          "correct": false,
+          "correct_rank": 6
+        },
+        {
+          "query_id": "o12_s03",
+          "query_object_id": 12,
+          "query_category_id": 3,
+          "query_session_id": 3,
+          "gallery_id": "o26_s01",
+          "gallery_object_id": 26,
+          "gallery_category_id": 6,
+          "gallery_session_id": "1",
+          "rank": 2,
+          "similarity": 0.8511509399699291,
+          "correct": false,
+          "correct_rank": 6
+        },
+        {
+          "query_id": "o12_s03",
+          "query_object_id": 12,
+          "query_category_id": 3,
+          "query_session_id": 3,
+          "gallery_id": "o15_s01",
+          "gallery_object_id": 15,
+          "gallery_category_id": 3,
+          "gallery_session_id": "1",
+          "rank": 3,
+          "similarity": 0.8335808961074942,
+          "correct": false,
+          "correct_rank": 6
+        }
+      ]
+    }
+  ]
+}
