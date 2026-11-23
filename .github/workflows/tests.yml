@@ -9,6 +9,9 @@ env:
   # Coverage artifacts require the exact same runtime in every job. A moving
   # major can resolve to different patch releases across hosted runners.
   COVERAGE_NODE_VERSION: '24.22.2'
+  # onnxruntime-node@1.21.0 bundles CPU binaries; CI does not need the optional
+  # CUDA download, whose upstream release asset is unavailable.
+  ONNXRUNTIME_NODE_INSTALL_CUDA: 'skip'
 jobs:
   frontend:
     runs-on: ubuntu-24.04
