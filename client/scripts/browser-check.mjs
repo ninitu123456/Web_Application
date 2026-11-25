@@ -499,7 +499,7 @@ export async function browserCheck({
       .getByRole("link")
       .click();
     await expect(
-      pageB.getByRole("button", { name: "Đây có thể là đồ của tôi →" }),
+      pageB.getByRole("button", { name: "Gửi yêu cầu nhận lại" }),
     ).toBeVisible();
     await pageB
       .getByRole("link", { name: "← Khám phá đồ vật", exact: true })
@@ -515,7 +515,7 @@ export async function browserCheck({
     );
     await pageB.goto(`${url}/do-vat/${itemId}`);
     await pageB
-      .getByRole("button", { name: "Đây có thể là đồ của tôi →" })
+      .getByRole("button", { name: "Gửi yêu cầu nhận lại" })
       .click();
     await expect(pageB.getByRole("dialog")).toBeVisible();
     await pageB.keyboard.press("Tab");
@@ -527,7 +527,7 @@ export async function browserCheck({
     await pageB.keyboard.press("Escape");
     await expect(pageB.getByRole("dialog")).toHaveCount(0);
     await pageB
-      .getByRole("button", { name: "Đây có thể là đồ của tôi →" })
+      .getByRole("button", { name: "Gửi yêu cầu nhận lại" })
       .click();
     await expect(pageB.getByRole("dialog")).toContainText(
       "Bằng chứng chỉ được hiển thị cho bạn, chủ bài và quản trị viên có thẩm quyền.",
@@ -582,7 +582,7 @@ export async function browserCheck({
     ).toBeVisible();
     // Duplicate is rejected and produces a useful error in the modal.
     await pageB
-      .getByRole("button", { name: "Đây có thể là đồ của tôi →" })
+      .getByRole("button", { name: "Gửi yêu cầu nhận lại" })
       .click();
     await pageB.getByLabel("Bằng chứng sở hữu").fill(proof);
     await pageB

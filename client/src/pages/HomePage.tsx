@@ -1,28 +1,18 @@
-import {
-  useRef,
-  useState,
-  type FormEvent,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import { Icon } from "../components/Icon";
-import { Button, EmptyState, ErrorState, ItemCard } from "../components/ui";
+import { ItemArt, RobotMascot } from "../components/Illustrations";
+import { EmptyState, ErrorState, ItemCard } from "../components/ui";
+import { AI_BANNER, HERO_CARDS, HERO_STATS } from "../content/marketing";
 import { invalidate } from "../lib/api";
 import { useResource } from "../lib/hooks";
-import type { Item, Lookup } from "../lib/types";
+import type { Item } from "../lib/types";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
-const ROTATING_WORDS = [
-  "chiếc ví",
-  "tai nghe",
-  "chìa khóa",
-  "thẻ sinh viên",
-  "bình nước",
-];
 // Old bookmarks used "/" for Explore filters; keep them working.
 const EXPLORE_PARAMS = [
   "keyword",
@@ -36,6 +26,28 @@ const EXPLORE_PARAMS = [
   "page",
 ];
 type Tab = "" | "LOST" | "FOUND";
+const TABS: [Tab, string][] = [
+  ["", "Tất cả"],
+  ["LOST", "Bị mất"],
+  ["FOUND", "Nhặt được"],
+];
+const STEPS = [
+  {
+    icon: "image",
+    title: "Đăng tin",
+    text: "Người nhặt được đăng ảnh, nơi và thời gian nhặt. Người mất đồ tìm trước, chưa thấy thì đăng tin báo mất.",
+  },
+  {
+    icon: "sparkle",
+    title: "AI ghép cặp",
+    text: "Hệ thống so khớp hình ảnh và thông tin giữa tin Bị mất và Nhặt được, rồi báo cho hai bên.",
+  },
+  {
+    icon: "shield",
+    title: "Xác minh & trao trả",
+    text: "Người nhận chứng minh quyền sở hữu. Hai bên nhắn tin, hẹn gặp và xác nhận khi đã trao đồ.",
+  },
+] as const;
 
 export function HomePage() {
   const location = useLocation();
@@ -45,19 +57,69 @@ export function HomePage() {
   return <Home />;
 }
 
+function CampusBackdrop() {
+  return (
+    <svg
+      className="hero-campus"
+      viewBox="0 0 900 520"
+      preserveAspectRatio="xMidYMax slice"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="hero-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#CFE2FF" />
+          <stop offset="1" stopColor="#EEF5FF" />
+        </linearGradient>
+        <linearGradient id="hero-bd" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#B9CBE6" />
+          <stop offset="1" stopColor="#D9E5F6" />
+        </linearGradient>
+        <filter id="hero-blur">
+          <feGaussianBlur stdDeviation="2.2" />
+        </filter>
+      </defs>
+      <rect width="900" height="520" fill="url(#hero-sky)" />
+      <g filter="url(#hero-blur)" opacity=".85">
+        <rect x="430" y="170" width="300" height="250" fill="url(#hero-bd)" />
+        <path d="M420 175l160-60 160 60z" fill="#AFC3E2" />
+        {Array.from({ length: 24 }, (_, i) => (
+          <rect
+            key={i}
+            x={450 + (i % 6) * 48}
+            y={205 + Math.floor(i / 6) * 52}
+            width="26"
+            height="32"
+            rx="3"
+            fill="#E9F1FC"
+          />
+        ))}
+        <rect x="740" y="230" width="160" height="190" fill="#C4D4EC" />
+        {[
+          [400, 380, 60],
+          [350, 410, 48],
+          [790, 390, 55],
+          [860, 400, 50],
+          [470, 430, 40],
+        ].map(([x, y, r]) => (
+          <circle key={`${x}${y}`} cx={x} cy={y} r={r} fill="#9FC5A8" />
+        ))}
+      </g>
+      <path d="M0 470 Q 450 430 900 470 V520 H0z" fill="#F3F7FF" />
+    </svg>
+  );
+}
+
 function Home() {
   const root = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const [keyword, setKeyword] = useState("");
   const [searchError, setSearchError] = useState("");
   const [tab, setTab] = useState<Tab>("");
-  const latest = useResource<Item[]>("/items", { limit: 8 });
   const recent = useResource<Item[]>(
     "/items",
-    tab ? { limit: 4, type: tab } : { limit: 4 },
+    tab ? { limit: 8, type: tab } : { limit: 8 },
   );
-  const categories = useResource<Lookup[]>("/categories");
-  const ticker = latest.data?.data ?? [];
+  const items = recent.data?.data ?? [];
 
   function search(event: FormEvent) {
     event.preventDefault();
@@ -72,550 +134,356 @@ function Home() {
     );
   }
 
-  // Intro, ambient and scroll animations. Everything lives in one context
-  // scoped to this page, so unmounting reverts tweens and ScrollTriggers.
   const { contextSafe } = useGSAP(
     () => {
       const mm = gsap.matchMedia();
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        // Fast intro: the headline, search and quick actions must be usable
-        // within about a second on phones, not after the full choreography.
         const intro = gsap.timeline({ defaults: { ease: "power4.out" } });
-        intro.timeScale(2);
         intro
           .from(".home-title .line", {
-            yPercent: 115,
-            duration: 1.1,
+            yPercent: 110,
+            duration: 0.9,
             stagger: 0.12,
           })
           .from(
-            ".home-kicker, .home-lead, .home-search, .home-quick",
-            { y: 26, autoAlpha: 0, duration: 0.8, stagger: 0.1 },
-            "-=0.7",
+            ".hero-chip, .home-lead, .home-search, .hero-entry, .hero-stats",
+            { y: 24, autoAlpha: 0, duration: 0.7, stagger: 0.08 },
+            "-=0.6",
           )
           .from(
-            ".hero-tag, .hero-safe",
-            {
-              y: 80,
-              autoAlpha: 0,
-              duration: 1,
-              stagger: 0.14,
-              ease: "back.out(1.5)",
-            },
+            ".hero-robot",
+            { y: 60, autoAlpha: 0, duration: 1, ease: "back.out(1.4)" },
             "-=0.9",
           )
           .from(
-            ".match-line path",
+            ".hero-float",
             {
-              attr: { "stroke-dashoffset": 400 },
-              duration: 1.1,
-              ease: "power2.inOut",
+              scale: 0.4,
+              autoAlpha: 0,
+              duration: 0.8,
+              stagger: 0.12,
+              ease: "back.out(1.8)",
             },
-            "-=0.4",
+            "-=0.6",
           )
-          .from(
-            ".match-pill",
-            { scale: 0.3, autoAlpha: 0, duration: 0.7, ease: "back.out(2.2)" },
-            "-=0.35",
-          );
-        gsap.utils.toArray<HTMLElement>(".hero-tag").forEach((tag, index) => {
-          gsap.to(tag, {
-            y: "+=14",
-            duration: 2.6 + index * 0.5,
+          .from(".hero-hand", { autoAlpha: 0, x: 20, duration: 0.6 }, "-=0.3");
+        // Ambient motion: robot and cards float out of phase, orbit turns.
+        gsap.to(".hero-robot", {
+          y: -14,
+          duration: 2.6,
+          ease: "sine.inOut",
+          yoyo: true,
+          repeat: -1,
+        });
+        gsap.utils.toArray<HTMLElement>(".hero-float").forEach((card, i) => {
+          gsap.to(card, {
+            y: i % 2 ? 12 : -12,
+            rotation: `+=${i % 2 ? -3 : 3}`,
+            duration: 2.4 + i * 0.5,
             ease: "sine.inOut",
             yoyo: true,
             repeat: -1,
-            delay: 1.8 + index * 0.3,
+            delay: i * 0.4,
           });
         });
-        const words = gsap.utils.toArray<HTMLElement>(".rotator span");
-        if (words.length > 1) {
-          gsap.set(words, { yPercent: 110, autoAlpha: 1 });
-          gsap.set(words[0], { yPercent: 0 });
-          const rotate = gsap.timeline({ repeat: -1, delay: 1.4 });
-          words.forEach((word, index) => {
-            const next = words[(index + 1) % words.length];
-            rotate
-              .to(
-                word,
-                { yPercent: -110, duration: 0.6, ease: "power3.in" },
-                "+=1.6",
-              )
-              .fromTo(
-                next,
-                { yPercent: 110 },
-                {
-                  yPercent: 0,
-                  duration: 0.7,
-                  ease: "power3.out",
-                  // fromTo renders its start state at creation by default; the
-                  // last step targets words[0] and would hide it on load.
-                  immediateRender: false,
-                },
-                "<0.25",
+        gsap.to(".hero-orbit", {
+          rotation: 360,
+          transformOrigin: "50% 50%",
+          duration: 60,
+          ease: "none",
+          repeat: -1,
+        });
+        gsap.utils.toArray<HTMLElement>(".stat-value").forEach((element) => {
+          const target = Number(element.dataset.value);
+          const counter = { value: 0 };
+          gsap.to(counter, {
+            value: target,
+            duration: 1.8,
+            delay: 0.6,
+            ease: "power2.out",
+            onUpdate: () => {
+              element.textContent = Math.round(counter.value).toLocaleString(
+                "vi-VN",
               );
-          });
-        }
-        const reveals: gsap.core.Tween[] = [];
-        gsap.utils.toArray<HTMLElement>(".reveal").forEach((element) => {
-          reveals.push(
-            gsap.from(element, {
-              y: 28,
-              autoAlpha: 0,
-              duration: 0.6,
-              ease: "power3.out",
-              scrollTrigger: { trigger: element, start: "top 95%", once: true },
-            }),
-          );
-        });
-        gsap.fromTo(
-          ".steps-bar",
-          { scaleX: 0 },
-          {
-            scaleX: 1,
-            ease: "none",
-            scrollTrigger: {
-              trigger: ".home-how",
-              start: "top 70%",
-              end: "bottom 60%",
-              scrub: 0.6,
             },
-          },
-        );
-        const steps = gsap.from(".home-steps li", {
-          y: 24,
-          autoAlpha: 0,
-          duration: 0.5,
-          stagger: 0.08,
-          ease: "power3.out",
-          scrollTrigger: { trigger: ".home-how", start: "top 85%", once: true },
+          });
         });
-        // Safety net: content already on or above the screen must never stay
-        // invisible if a scroll trigger misses (flick scrolling, late layout
-        // shifts). Elements further down still animate when reached.
-        reveals.push(steps);
-        let pending = 0;
-        const settle = () => {
-          window.clearTimeout(pending);
-          pending = window.setTimeout(() => {
-            for (const tween of reveals) {
-              const target = tween.targets()[0] as HTMLElement | undefined;
-              if (
-                tween.progress() < 1 &&
-                target &&
-                target.getBoundingClientRect().top < window.innerHeight
-              )
-                tween.progress(1);
-            }
-          }, 400);
-        };
-        const first = window.setTimeout(settle, 1200);
-        window.addEventListener("scroll", settle, { passive: true });
-        return () => {
-          window.clearTimeout(first);
-          window.clearTimeout(pending);
-          window.removeEventListener("scroll", settle);
-        };
-        gsap.from(".home-cta", {
-          scale: 0.92,
+        gsap.utils.toArray<HTMLElement>(".reveal").forEach((element) => {
+          gsap.from(element, {
+            y: 40,
+            autoAlpha: 0,
+            duration: 0.8,
+            ease: "power3.out",
+            scrollTrigger: { trigger: element, start: "top 85%" },
+          });
+        });
+        gsap.from(".how-card", {
+          y: 50,
+          autoAlpha: 0,
+          duration: 0.8,
+          stagger: 0.12,
           ease: "power3.out",
-          scrollTrigger: {
-            trigger: ".home-cta",
-            start: "top 90%",
-            end: "top 50%",
-            scrub: 0.8,
-          },
+          scrollTrigger: { trigger: ".how-grid", start: "top 80%" },
         });
       });
-      document.fonts?.ready.then(() => ScrollTrigger.refresh());
     },
     { scope: root },
   );
 
-  // Infinite ticker once its content exists.
+  // Recent cards stagger in whenever the filter changes.
   useGSAP(
     () => {
-      if (!ticker.length) return;
-      const mm = gsap.matchMedia();
-      mm.add("(prefers-reduced-motion: no-preference)", () => {
-        gsap.to(".marquee-track", {
-          xPercent: -50,
-          duration: Math.max(24, ticker.length * 5),
-          ease: "none",
-          repeat: -1,
-        });
-      });
-    },
-    { scope: root, dependencies: [ticker.length], revertOnUpdate: true },
-  );
-
-  // Cards enter in a stagger whenever the selected tab's list arrives.
-  useGSAP(
-    () => {
-      if (!recent.data?.data.length) return;
-      const mm = gsap.matchMedia();
-      mm.add("(prefers-reduced-motion: no-preference)", () => {
-        gsap.from(".home-recent .item-card", {
-          y: 40,
+      if (!items.length) return;
+      gsap.matchMedia().add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.from(".recent-grid .item-card", {
+          y: 30,
           autoAlpha: 0,
-          duration: 0.7,
-          stagger: 0.08,
+          duration: 0.6,
+          stagger: 0.07,
           ease: "power3.out",
-          clearProps: "transform,opacity,visibility",
         });
       });
     },
-    { scope: root, dependencies: [recent.data], revertOnUpdate: true },
+    { scope: root, dependencies: [tab, items.length] },
   );
 
-  // Magnetic call-to-action that follows the pointer a little.
-  const magnet = useRef<HTMLAnchorElement>(null);
-  const moveMagnet = contextSafe((event: ReactPointerEvent) => {
-    const element = magnet.current;
-    if (!element || matchMedia("(prefers-reduced-motion: reduce)").matches)
-      return;
-    const box = element.getBoundingClientRect();
-    gsap.to(element, {
-      x: (event.clientX - box.left - box.width / 2) * 0.35,
-      y: (event.clientY - box.top - box.height / 2) * 0.35,
-      duration: 0.5,
+  const parallax = contextSafe((event: React.PointerEvent<HTMLElement>) => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const box = event.currentTarget.getBoundingClientRect();
+    const x = (event.clientX - box.left) / box.width - 0.5;
+    const y = (event.clientY - box.top) / box.height - 0.5;
+    gsap.to(".hero-stage", {
+      x: x * 18,
+      y: y * 14,
+      duration: 0.8,
       ease: "power3.out",
-      overwrite: "auto",
-    });
-  });
-  const resetMagnet = contextSafe(() => {
-    gsap.to(magnet.current, {
-      x: 0,
-      y: 0,
-      duration: 0.6,
-      ease: "elastic.out(1, 0.5)",
-      overwrite: "auto",
     });
   });
 
   return (
-    <div ref={root} className="home">
-      <section className="home-hero">
-        <div className="home-hero-copy">
-          <span className="home-kicker">
-            <span>Mới</span>Gợi ý trùng khớp bằng hình ảnh
-          </span>
-          <h1 className="home-title">
-            <span className="mask">
-              <span className="line">Lạc mất</span>
+    <div className="home" ref={root}>
+      <section className="v3-wrap home-hero-wrap">
+        <div className="home-hero glass" onPointerMove={parallax}>
+          <CampusBackdrop />
+          <div className="hero-fade" />
+          <div className="hero-copy">
+            <span className="hero-chip">
+              <Icon name="sparkle" width="14" height="14" /> Ghép cặp đồ thất
+              lạc bằng AI
             </span>
-            <span className="mask">
-              <span className="line">
-                <span className="rotator">
-                  {ROTATING_WORDS.map((word, index) => (
-                    <span key={word} aria-hidden={index > 0 || undefined}>
-                      {word}
-                    </span>
-                  ))}
-                </span>
-                ?
+            <h1 className="home-title">
+              <span className="line-mask">
+                <span className="line">Mất đồ?</span>
               </span>
-            </span>
-            <span className="mask">
-              <span className="line muted-line">Cùng tìm lại.</span>
-            </span>
-          </h1>
-          <p className="home-lead">
-            FindIt kết nối người mất đồ và người nhặt được trong khuôn viên
-            trường. Đăng bài một phút, nhận gợi ý trùng khớp, bàn giao khi đã
-            xác minh đúng chủ.
-          </p>
-          <form className="home-search" onSubmit={search} role="search">
-            <label className="home-search-field">
-              <Icon name="search" width="22" height="22" />
-              <span className="visually-hidden">Bạn đang tìm gì?</span>
+              <span className="line-mask">
+                <span className="line gradient-text">Tìm lại ngay.</span>
+              </span>
+            </h1>
+            <p className="home-lead">
+              Nền tảng tìm đồ thất lạc thông minh dành cho cộng đồng sinh viên
+              trong khuôn viên trường.
+            </p>
+            <form className="home-search" onSubmit={search} role="search">
+              <label className="sr-only" htmlFor="home-keyword">
+                Bạn đang tìm gì?
+              </label>
+              <Icon name="search" width="20" height="20" />
               <input
-                type="search"
-                placeholder="Tìm ví, tai nghe, thẻ sinh viên…"
+                id="home-keyword"
                 value={keyword}
-                maxLength={400}
-                aria-invalid={Boolean(searchError)}
-                aria-describedby={searchError ? "home-search-error" : undefined}
                 onChange={(event) => setKeyword(event.target.value)}
+                placeholder="Tìm ví, tai nghe, thẻ sinh viên…"
+                aria-invalid={Boolean(searchError)}
               />
-            </label>
-            <Button>Tìm kiếm</Button>
-          </form>
-          {searchError && (
-            <small id="home-search-error" className="error-text">
-              {searchError}
-            </small>
-          )}
-          <div className="home-quick">
-            <Link className="quick-lost" to="/dang-bai?type=LOST">
-              <Icon name="search" width="18" height="18" />
-              Tôi bị mất đồ
-            </Link>
-            <Link className="quick-found" to="/dang-bai?type=FOUND">
-              <Icon name="box" width="18" height="18" />
-              Tôi nhặt được đồ
-            </Link>
-          </div>
-        </div>
-        <div className="home-visual" aria-hidden="true">
-          <div className="home-visual-bg" />
-          <svg
-            className="match-line"
-            viewBox="0 0 440 520"
-            preserveAspectRatio="none"
-          >
-            <path
-              d="M150 190 C 300 200, 120 330, 270 360"
-              fill="none"
-              stroke="#d4f36b"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeDasharray="400"
-              strokeDashoffset="0"
-            />
-          </svg>
-          <div className="hero-tag hero-tag-a">
-            <div className="hero-tag-art">
-              <Icon
-                name="headphones"
-                width="54"
-                height="54"
-                strokeWidth="1.1"
-              />
+              <button className="button primary" type="submit">
+                Tìm kiếm
+              </button>
+            </form>
+            {searchError && (
+              <small className="error-text" role="alert">
+                {searchError}
+              </small>
+            )}
+            <div className="hero-entries">
+              <Link className="hero-entry" to="/dang-bai/tim-truoc">
+                <span className="entry-icon lost">
+                  <Icon name="search" />
+                </span>
+                <span>
+                  <strong>Tôi bị mất đồ</strong>
+                  <small>Tìm trong đồ nhặt được trước</small>
+                </span>
+              </Link>
+              <Link className="hero-entry" to="/dang-bai?type=FOUND">
+                <span className="entry-icon found">
+                  <Icon name="box" />
+                </span>
+                <span>
+                  <strong>Tôi nhặt được đồ</strong>
+                  <small>Đăng tin để trả lại chủ</small>
+                </span>
+              </Link>
             </div>
-            <div className="hero-tag-body">
-              <span className="badge status-lost">Đồ bị mất</span>
-              <strong>Tai nghe không dây, hộp trắng</strong>
-              <small>Tòa B · sáng thứ Năm</small>
+            <div className="hero-stats glass">
+              {HERO_STATS.map((stat) => (
+                <div key={stat.label}>
+                  <Icon name={stat.icon} width="30" height="30" />
+                  <div>
+                    <strong>
+                      <span className="stat-value" data-value={stat.value}>
+                        {stat.value.toLocaleString("vi-VN")}
+                      </span>
+                      {stat.suffix}
+                    </strong>
+                    <small>{stat.label}</small>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="hero-tag hero-tag-b">
-            <div className="hero-tag-art">
-              <Icon
-                name="headphones"
-                width="54"
-                height="54"
-                strokeWidth="1.1"
-              />
+          <div className="hero-visual" aria-hidden="true">
+            <div className="hero-stage">
+              <svg className="hero-orbit" viewBox="0 0 560 460">
+                <ellipse
+                  cx="290"
+                  cy="230"
+                  rx="230"
+                  ry="150"
+                  fill="none"
+                  stroke="rgba(255,255,255,.95)"
+                  strokeWidth="2.5"
+                  strokeDasharray="2 10"
+                  strokeLinecap="round"
+                  transform="rotate(-18 290 230)"
+                />
+              </svg>
+              <RobotMascot className="hero-robot" />
+              {HERO_CARDS.map((card) => (
+                <div className={`hero-float ${card.className}`} key={card.name}>
+                  <ItemArt kind={card.kind} surface={card.surface} />
+                  <strong>{card.name}</strong>
+                  <small className={card.type === "LOST" ? "lost" : "found"}>
+                    {card.type === "LOST" ? "Bị mất" : "Nhặt được"}
+                  </small>
+                </div>
+              ))}
             </div>
-            <div className="hero-tag-body">
-              <span className="badge status-found">Đồ nhặt được</span>
-              <strong>Nhặt được tai nghe ở hành lang</strong>
-              <small>Tòa B · thứ Năm</small>
-            </div>
-          </div>
-          <div className="match-pill">
-            <Icon name="check" width="16" height="16" strokeWidth="2.4" />
-            Có thể trùng khớp
-          </div>
-          <div className="hero-safe">
-            <span>
-              <Icon name="shield" width="16" height="16" />
-            </span>
-            Xác minh chủ trước khi bàn giao
+            <p className="hero-hand">
+              Làm mất đồ?
+              <br />
+              Tìm ngay tại đây!
+            </p>
           </div>
         </div>
       </section>
 
-      {ticker.length > 0 && (
-        <section className="marquee" aria-label="Bài đăng mới nhất">
-          <div className="marquee-track">
-            {[0, 1].map((copy) =>
-              ticker.map((item) => (
-                <span
-                  key={`${copy}-${item.id}`}
-                  aria-hidden={copy === 1 || undefined}
-                >
-                  <span className={`badge status-${item.type.toLowerCase()}`}>
-                    {item.type === "LOST" ? "Bị mất" : "Nhặt được"}
-                  </span>
-                  {item.title}
-                  {item.location?.name ? ` · ${item.location.name}` : ""}
-                  <span className="star" aria-hidden="true">
-                    ✳
-                  </span>
-                </span>
-              )),
-            )}
-          </div>
-        </section>
-      )}
+      <section className="v3-wrap home-section how" aria-labelledby="how-title">
+        <div className="section-center reveal">
+          <div className="eyebrow">CÁCH HOẠT ĐỘNG</div>
+          <h2 id="how-title" className="home-h2">
+            Ba bước để đồ về đúng chủ
+          </h2>
+        </div>
+        <ol className="how-grid">
+          {STEPS.map((step, index) => (
+            <li className="how-card v3-card" key={step.title}>
+              <span className="how-icon">
+                <Icon name={step.icon} width="26" height="26" />
+              </span>
+              <small>BƯỚC 0{index + 1}</small>
+              <h3>{step.title}</h3>
+              <p>{step.text}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
 
-      <section
-        className="home-section home-recent"
-        aria-labelledby="recent-title"
-      >
-        <div className="home-recent-head reveal">
+      <section className="v3-wrap home-section" aria-labelledby="recent-title">
+        <div className="section-row reveal">
           <div>
-            <span className="home-eyebrow">VỪA ĐĂNG</span>
+            <div className="eyebrow">MỚI CẬP NHẬT</div>
             <h2 id="recent-title" className="home-h2">
-              Có thể là đồ của bạn
+              Đồ thất lạc gần đây
             </h2>
           </div>
-          <div>
-            <div className="tabs" role="group" aria-label="Lọc loại bài">
-              {(
-                [
-                  ["", "Tất cả"],
-                  ["LOST", "Đồ bị mất"],
-                  ["FOUND", "Đồ nhặt được"],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={tab === value ? "active" : ""}
-                  aria-pressed={tab === value}
-                  onClick={() => setTab(value)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <Link
-              className="button secondary"
-              to={tab ? `/kham-pha?type=${tab}` : "/kham-pha"}
-            >
-              Xem tất cả <Icon name="arrow" width="16" height="16" />
-            </Link>
+          <div className="seg" role="group" aria-label="Lọc loại tin">
+            {TABS.map(([value, label]) => (
+              <button
+                key={label}
+                aria-pressed={tab === value}
+                onClick={() => setTab(value)}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
         {recent.loading ? (
-          <div className="item-grid" role="status" aria-label="Đang tải đồ vật">
-            {Array.from({ length: 4 }, (_, index) => (
-              <div key={index} className="card-skeleton">
-                <span />
-                <div>
-                  <i />
-                  <i />
-                  <i />
-                </div>
-              </div>
+          <div className="item-grid recent-grid four" aria-busy="true">
+            {Array.from({ length: 4 }, (_, i) => (
+              <div className="skeleton-card" key={i} />
             ))}
           </div>
         ) : recent.error ? (
           <ErrorState error={recent.error} retry={invalidate} />
-        ) : recent.data?.data.length ? (
-          <div className="item-grid">
-            {recent.data.data.map((item) => (
-              <ItemCard key={item.id} item={item} />
+        ) : items.length ? (
+          <div className="item-grid recent-grid four">
+            {items.map((item) => (
+              <ItemCard item={item} key={item.id} />
             ))}
           </div>
         ) : (
-          <EmptyState title="Chưa có bài đăng nào">
-            <p>Hãy là người đầu tiên đăng bài để cộng đồng cùng giúp.</p>
-            <Link className="button secondary" to="/dang-bai">
-              Đăng bài ↗
-            </Link>
+          <EmptyState title="Chưa có tin nào">
+            Hãy là người đầu tiên đăng tin.{" "}
+            <Link to="/dang-bai">Đăng tin ngay</Link>
           </EmptyState>
         )}
-      </section>
-
-      {Boolean(categories.data?.data.length) && (
-        <section className="home-cats reveal" aria-labelledby="cats-title">
-          <h2 id="cats-title">Tìm theo danh mục</h2>
-          {categories.data!.data.slice(0, 10).map((category) => (
-            <Link
-              key={category.id}
-              className="chip"
-              to={`/kham-pha?category=${category.id}`}
-            >
-              {category.name}
-            </Link>
-          ))}
-        </section>
-      )}
-
-      <section className="home-dark home-how" aria-labelledby="how-title">
-        <div className="home-dark-inner">
-          <div className="home-how-head reveal">
-            <h2 id="how-title">
-              Từ lúc mất đến lúc nhận lại, <em>bốn bước</em>.
-            </h2>
-            <p>
-              Mỗi bước đều có thông báo, nên bạn không phải vào kiểm tra liên
-              tục.
-            </p>
-          </div>
-          <div className="steps-track" aria-hidden="true">
-            <div className="steps-bar" />
-          </div>
-          <ol className="home-steps">
-            {[
-              [
-                "Đăng bài",
-                "Chọn mất hay nhặt được, thêm ảnh, nơi và thời điểm. Giữ lại đặc điểm riêng để xác minh.",
-              ],
-              [
-                "Nhận gợi ý",
-                "Hệ thống so khớp danh mục, địa điểm, thời gian và nội dung giữa bài mất và bài nhặt được.",
-              ],
-              [
-                "Gửi yêu cầu nhận lại",
-                "Mô tả đặc điểm chỉ chủ mới biết. Người đăng bài xem xét rồi hai bên nhắn tin hẹn gặp.",
-              ],
-              [
-                "Bàn giao",
-                "Gặp nhau trao đồ và xác nhận trên FindIt. Bài đăng chuyển sang đã trao trả.",
-              ],
-            ].map(([title, text], index) => (
-              <li key={title} className={index === 3 ? "final" : undefined}>
-                <b aria-hidden="true">0{index + 1}</b>
-                <h3>{title}</h3>
-                <p>{text}</p>
-              </li>
-            ))}
-          </ol>
-          <div className="home-safety">
-            <div className="reveal">
-              <Icon name="shield" width="40" height="40" strokeWidth="1.6" />
-              <h3>Chỉ trao khi đúng chủ</h3>
-              <p>
-                Người nhận phải mô tả đặc điểm riêng; người đăng bài duyệt từng
-                yêu cầu trước khi đồng ý gặp.
-              </p>
-            </div>
-            <div className="reveal">
-              <Icon name="message" width="40" height="40" strokeWidth="1.6" />
-              <h3>Nhắn tin ngay trong FindIt</h3>
-              <p>
-                Hẹn giờ, chỗ bàn giao mà không cần đưa số điện thoại cho người
-                lạ.
-              </p>
-            </div>
-            <div className="reveal">
-              <Icon name="flag" width="40" height="40" strokeWidth="1.6" />
-              <h3>Báo cáo bài sai phạm</h3>
-              <p>
-                Quản trị viên xem xét báo cáo và gỡ bài lừa đảo khỏi trang công
-                khai.
-              </p>
-            </div>
-          </div>
+        <div className="section-center">
+          <Link className="button secondary pill" to="/kham-pha">
+            Xem tất cả trong Khám phá{" "}
+            <Icon name="arrow" width="16" height="16" />
+          </Link>
         </div>
       </section>
 
-      <section className="home-cta-wrap">
-        <div className="home-cta">
-          <div>
-            <h2>Vừa nhặt được đồ của ai đó?</h2>
+      <section className="v3-wrap home-section">
+        <div className="ai-banner reveal">
+          <div className="ai-copy">
+            <span className="ai-chip">
+              <Icon name="sparkle" width="14" height="14" /> AI ghép cặp
+            </span>
+            <h2>
+              Đăng một lần,
+              <br />
+              AI tìm giúp bạn mỗi ngày.
+            </h2>
             <p>
-              Đăng bài để chủ nhân nhận được thông báo gợi ý trùng khớp sớm
-              nhất.
+              Khi có tin mới giống đồ của bạn, FindIt báo ngay kèm mức độ trùng
+              khớp.
             </p>
+            <Link className="button light" to="/dang-bai/tim-truoc">
+              Bắt đầu tìm đồ <Icon name="arrow" width="16" height="16" />
+            </Link>
           </div>
-          <Link
-            ref={magnet}
-            className="magnet"
-            to="/dang-bai?type=FOUND"
-            onPointerMove={moveMagnet}
-            onPointerLeave={resetMagnet}
-          >
-            <Icon name="plus" width="28" height="28" strokeWidth="2" />
-            Đăng đồ
-            <br />
-            nhặt được
-          </Link>
+          <div className="ai-pair" aria-hidden="true">
+            <div className="ai-card one">
+              <ItemArt
+                kind={AI_BANNER.lost.kind}
+                surface={AI_BANNER.lost.surface}
+              />
+              <strong>{AI_BANNER.lost.title}</strong>
+              <span className="badge status-lost">Bị mất</span>
+            </div>
+            <div className="ai-card two">
+              <ItemArt
+                kind={AI_BANNER.found.kind}
+                surface={AI_BANNER.found.surface}
+              />
+              <strong>{AI_BANNER.found.title}</strong>
+              <span className="badge status-found">Nhặt được</span>
+            </div>
+            <span className="ai-score">{AI_BANNER.score}</span>
+          </div>
         </div>
       </section>
     </div>

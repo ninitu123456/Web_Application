@@ -1,4 +1,5 @@
 import { Icon } from "./Icon";
+import { ItemArt, artFor } from "./Illustrations";
 import { statusLabel, type StatusGroup } from "../lib/display-labels";
 import {
   createContext,
@@ -130,19 +131,26 @@ export function dateLabel(value: string) {
     timeZone: "Asia/Ho_Chi_Minh",
   }).format(new Date(value));
 }
-export function ItemImage({ src, title }: { src?: string; title: string }) {
+export function ItemImage({
+  src,
+  title,
+  category,
+}: {
+  src?: string;
+  title: string;
+  category?: string | null;
+}) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [src]);
   return src && !failed ? (
     <img src={src} alt={title} loading="lazy" onError={() => setFailed(true)} />
   ) : (
     <div
-      className="image-fallback"
       role="img"
       aria-label={`${title} — chưa có ảnh`}
+      className="image-fallback"
     >
-      <Icon name="image" width="40" height="40" />
-      <small>Chưa có hình ảnh</small>
+      <ItemArt kind={artFor(category)[0]} surface={artFor(category)[1]} />
     </div>
   );
 }
@@ -162,7 +170,11 @@ export function ItemCard({ item }: { item: Item }) {
         tabIndex={-1}
         aria-hidden="true"
       >
-        <ItemImage src={item.images[0]?.url} title={item.title} />
+        <ItemImage
+          src={item.images[0]?.url}
+          title={item.title}
+          category={item.category?.name}
+        />
         <StatusBadge status={item.type} group="itemType" />
         <span className="card-punch" />
       </Link>

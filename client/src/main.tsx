@@ -34,8 +34,15 @@ import {
 } from "./pages/admin/ReportsPage";
 import { AdminLookupsPage } from "./pages/admin/LookupsPage";
 import { AdminActivityPage } from "./pages/admin/ActivityPage";
+import "@fontsource/be-vietnam-pro/400.css";
+import "@fontsource/be-vietnam-pro/500.css";
+import "@fontsource/be-vietnam-pro/600.css";
+import "@fontsource/be-vietnam-pro/700.css";
+import "@fontsource/be-vietnam-pro/800.css";
+import "@fontsource/caveat/700.css";
 import "./styles.css";
 import "./redesign.css";
+import "./v3.css";
 // The home page bundles GSAP; load it on demand so other pages stay light.
 const HomePage = lazy(() =>
   import("./pages/HomePage").then((module) => ({ default: module.HomePage })),

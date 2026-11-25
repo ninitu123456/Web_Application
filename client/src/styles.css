@@ -1,35 +1,34 @@
-@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
 :root {
   font-family: "Be Vietnam Pro", Arial, sans-serif;
-  color: #14201a;
-  background: #f5f4ee;
+  color: #0f1b3d;
+  background: #eef4ff;
   font-size: 16px;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   /* FindIt 2.0 tokens */
-  --paper: #f5f4ee;
+  --paper: #eef4ff;
   --card: #ffffff;
-  --ink: #14201a;
-  --muted: #5d665f;
-  --line: #e3e2d9;
-  --line-strong: #d3d2c7;
-  --surface: #efeee6;
-  --forest: #0f3d2e;
-  --forest-2: #1d5a44;
-  --lime: #d4f36b;
-  --lime-ink: #1f4a10;
-  --amber: #ffe7a8;
-  --amber-ink: #6e4508;
-  --danger: #a3361a;
+  --ink: #0f1b3d;
+  --muted: #5b6b8c;
+  --line: #e6ecf8;
+  --line-strong: #dce5f5;
+  --surface: #f1f6ff;
+  --forest: #1d6bff;
+  --forest-2: #145cf0;
+  --lime: #dce8ff;
+  --lime-ink: #0b4bd8;
+  --amber: #fef0c7;
+  --amber-ink: #b54708;
+  --danger: #d92d20;
   --green: var(--forest);
-  --green-light: #eef4e4;
-  --radius: 20px;
+  --green-light: #e3edff;
+  --radius: 22px;
   --radius-lg: 28px;
-  --shadow: 0 1px 2px rgb(20 32 26 / 4%);
-  --shadow-lift: 0 18px 40px -18px rgb(20 32 26 / 28%);
+  --shadow: 0 12px 30px -20px rgb(29 75 180 / 28%);
+  --shadow-lift: 0 26px 50px -24px rgb(29 75 180 / 40%);
 }
 * {
   box-sizing: border-box;
@@ -80,7 +79,7 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 summary:focus-visible {
-  outline: 3px solid #2f7a57;
+  outline: 3px solid #1d6bff;
 }
 button,
 input,
@@ -137,7 +136,7 @@ img {
   align-items: center;
   padding: 10px 18px;
   border-radius: 100px;
-  background: #f5f5f3;
+  background: #f5f8ff;
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.06em;
@@ -361,7 +360,7 @@ textarea::placeholder {
 input:disabled,
 select:disabled,
 textarea:disabled {
-  background: #f5f5f3;
+  background: #f5f8ff;
   color: #686868;
 }
 textarea {
@@ -374,7 +373,7 @@ input[type="file"] {
 input[type="file"]::file-selector-button {
   border: 0;
   border-radius: 100px;
-  background: #e7e7e2;
+  background: #e3e9f4;
   padding: 7px 12px;
   margin-right: 10px;
   cursor: pointer;
@@ -430,7 +429,7 @@ fieldset > small {
 }
 .notice {
   padding: 16px 20px;
-  background: #f2f5ed;
+  background: #eef4ff;
   border: 1px solid #e0e7d6;
   border-radius: 16px;
   font-size: 15px;
@@ -727,7 +726,7 @@ dialog .modal-inner > .section-heading .icon-button {
   justify-content: space-between;
   padding: 18px 22px;
   border-radius: 18px;
-  background: #172617;
+  background: #0f1b3d;
   color: #fff;
   box-shadow: 0 8px 30px #0002;
   font-size: 15px;
@@ -878,7 +877,7 @@ dialog .modal-inner > .section-heading .icon-button {
 }
 .notification-row.unread {
   border-color: #cbdcc4;
-  background: #fbfdf9;
+  background: #f8fbff;
 }
 .notification-row p {
   margin: 14px 0 8px;
@@ -1335,7 +1334,7 @@ textarea:focus-visible {
   min-width: 0;
 }
 .chat-heading {
-  border-bottom: 1px solid #dbe3da;
+  border-bottom: 1px solid #dce5f5;
   padding-bottom: 0.75rem;
 }
 .chat-heading h2 {
@@ -1375,7 +1374,7 @@ textarea:focus-visible {
   display: flex;
   align-items: end;
   gap: 0.75rem;
-  border-top: 1px solid #dbe3da;
+  border-top: 1px solid #dce5f5;
   padding-top: 1rem;
 }
 .chat-compose textarea {
@@ -1643,8 +1642,8 @@ textarea {
 }
 .type-choices label.selected {
   background: #eef5dc;
-  border-color: #619443;
-  box-shadow: inset 0 0 0 1px #619443;
+  border-color: #1d6bff;
+  box-shadow: inset 0 0 0 1px #1d6bff;
 }
 .type-choices input {
   position: absolute;
@@ -1656,7 +1655,7 @@ textarea {
   accent-color: var(--green);
 }
 .type-choices label:focus-within {
-  outline: 3px solid #2f7a57;
+  outline: 3px solid #1d6bff;
   outline-offset: 3px;
 }
 .image-editor {
@@ -1689,7 +1688,7 @@ textarea {
   cursor: pointer;
 }
 .upload-field:focus-within {
-  outline: 3px solid #2f7a57;
+  outline: 3px solid #1d6bff;
   outline-offset: 4px;
 }
 .upload-field:has(input:disabled) {

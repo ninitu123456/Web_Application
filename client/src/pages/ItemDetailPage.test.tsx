@@ -119,7 +119,7 @@ describe("redesigned item detail with AI integration", () => {
     expect(html).toContain("LOST reverse suggestion");
     expect(html).toContain("Giống về hình ảnh");
     expect(html).toContain("Yêu cầu nhận được");
-    expect(html).not.toContain("Đây có thể là đồ của tôi");
+    expect(html).not.toContain("Gửi yêu cầu nhận lại");
   });
   it("keeps owner AI suggestions, official matches tab, detail link and explore navigation together", () => {
     const html = render();
@@ -147,8 +147,8 @@ describe("redesigned item detail with AI integration", () => {
     current = { ...item, type: "FOUND" };
     mocks.user = { ...mocks.user!, id: 9 };
     const html = render();
-    expect(html).toContain("Nhận lại đồ như thế nào?");
-    expect(html).toContain("Đây có thể là đồ của tôi");
+    expect(html).toContain("Đây là đồ của bạn?");
+    expect(html).toContain("Gửi yêu cầu nhận lại");
     expect(html).toContain("Nhắn tin");
     expect(html).not.toContain("visual-suggestions-title");
   });

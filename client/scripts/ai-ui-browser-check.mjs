@@ -201,7 +201,7 @@ export async function aiUiBrowserCheck({
       page.getByRole("heading", { name: "Nhận lại đồ như thế nào?" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Đây có thể là đồ của tôi →" }),
+      page.getByRole("button", { name: "Gửi yêu cầu nhận lại" }),
     ).toBeVisible();
     await expect(panel).toHaveCount(0);
     await page.screenshot({

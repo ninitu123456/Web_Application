@@ -112,7 +112,7 @@ h3 {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: rgb(245 244 238 / 88%);
+  background: rgb(255 255 255 / 72%);
   backdrop-filter: saturate(1.4) blur(12px);
   border-bottom: 1px solid var(--line);
 }
@@ -341,7 +341,7 @@ h3 {
 .footer {
   margin-top: 96px;
   background: var(--ink);
-  color: #b9c2bb;
+  color: #c3cee2;
   font-size: 14px;
 }
 .footer-inner {
@@ -377,7 +377,7 @@ h3 {
   font-weight: 600;
 }
 .footer nav a {
-  color: #b9c2bb;
+  color: #c3cee2;
 }
 .footer nav a:hover {
   color: var(--lime);
@@ -409,8 +409,8 @@ h3 {
   font-weight: 600;
   line-height: 1.3;
   white-space: nowrap;
-  background: #efefea;
-  color: #4f554f;
+  background: #eef2f8;
+  color: #4a5878;
 }
 .status-lost {
   background: var(--amber);
@@ -429,7 +429,7 @@ h3 {
   background: currentColor;
 }
 .status-open {
-  background: #eef4e4;
+  background: #e3edff;
   color: #2f5a24;
 }
 .status-claim_pending,
@@ -452,8 +452,8 @@ h3 {
   color: #9c3636;
 }
 .status-closed {
-  background: #efefea;
-  color: #4f554f;
+  background: #eef2f8;
+  color: #4a5878;
 }
 
 /* ---------- Section heading, tabs, pagination ---------- */
@@ -571,7 +571,7 @@ h3 {
   height: 14px;
   border-radius: 50%;
   background: var(--paper);
-  box-shadow: inset 0 0 0 3px rgb(20 32 26 / 12%);
+  box-shadow: inset 0 0 0 3px rgb(15 27 61 / 12%);
 }
 .card-content {
   flex: 1;
@@ -620,7 +620,7 @@ h3 {
 .card-bottom {
   margin-top: auto;
   padding-top: 12px;
-  border-top: 1px dashed #dcdbd0;
+  border-top: 1px dashed #dce5f5;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -690,7 +690,7 @@ h3 {
 .card-skeleton > span,
 .card-skeleton i {
   display: block;
-  background: linear-gradient(90deg, #efeee6, #f7f6f0, #efeee6);
+  background: linear-gradient(90deg, #f1f6ff, #f7f6f0, #f1f6ff);
   background-size: 200% 100%;
   animation: skeleton 1.4s ease-in-out infinite;
 }
@@ -796,7 +796,7 @@ h3 {
   border-radius: 22px;
   background: var(--card);
   border: 1px solid var(--line);
-  box-shadow: 0 24px 50px -24px rgb(20 32 26 / 25%);
+  box-shadow: 0 24px 50px -24px rgb(15 27 61 / 25%);
 }
 .home-search-field {
   flex: 1 1 240px;
@@ -907,7 +907,7 @@ h3 {
   border-radius: 12px;
   display: grid;
   place-items: center;
-  color: rgb(20 32 26 / 60%);
+  color: rgb(15 27 61 / 60%);
 }
 .hero-tag-a .hero-tag-art {
   background: #f6ecd2;
@@ -958,7 +958,7 @@ h3 {
   padding: 10px 14px 10px 10px;
   border-radius: 16px;
   background: rgb(255 255 255 / 12%);
-  color: #e9f4d2;
+  color: #e3edff;
   font-size: 13px;
 }
 .hero-safe span {
@@ -973,7 +973,7 @@ h3 {
 .marquee {
   overflow: hidden;
   background: var(--forest);
-  color: #e9f4d2;
+  color: #e3edff;
 }
 .marquee-track {
   display: flex;
@@ -1101,7 +1101,7 @@ h3 {
   max-width: 380px;
   font-size: 16px;
   line-height: 1.7;
-  color: #b9cdbf;
+  color: #bcd2f7;
 }
 .steps-track {
   position: relative;
@@ -1153,7 +1153,7 @@ h3 {
   margin: 0;
   font-size: 15px;
   line-height: 1.7;
-  color: #b9cdbf;
+  color: #bcd2f7;
 }
 .home-steps li.final {
   background: var(--lime);
@@ -1164,7 +1164,7 @@ h3 {
   color: var(--forest);
 }
 .home-steps li.final p {
-  color: #2c4a22;
+  color: #0b4bd8;
 }
 .home-safety {
   margin-top: 16px;
@@ -1231,7 +1231,7 @@ h3 {
   max-width: 460px;
   font-size: 17px;
   line-height: 1.7;
-  color: #2c4a22;
+  color: #0b4bd8;
 }
 .magnet {
   flex-shrink: 0;
@@ -1296,7 +1296,7 @@ h3 {
 /* The inner inputs drop their outline; show the ring on the whole bar. */
 .search-bar:has(input:focus-visible),
 .home-search:has(input:focus-visible) {
-  outline: 3px solid #2f7a57;
+  outline: 3px solid #1d6bff;
   outline-offset: 2px;
 }
 .search-bar .field {
@@ -1379,7 +1379,7 @@ h3 {
   background: var(--card);
   color: var(--ink);
   font-weight: 600;
-  box-shadow: 0 1px 3px rgb(20 32 26 / 12%);
+  box-shadow: 0 1px 3px rgb(15 27 61 / 12%);
 }
 .quick-dates {
   display: flex;
@@ -1584,7 +1584,7 @@ h3 {
   margin: 0;
   max-width: 440px;
   line-height: 1.7;
-  color: #b9cdbf;
+  color: #bcd2f7;
 }
 .auth-story .hero-tag {
   top: 72px;
@@ -1676,14 +1676,14 @@ h3 {
   align-items: center;
   gap: 18px;
   padding: 16px 20px;
-  border-bottom: 1px solid #efeee6;
+  border-bottom: 1px solid #f1f6ff;
   transition: background 0.2s;
 }
 .my-row:last-child {
   border-bottom: 0;
 }
 .my-row:hover {
-  background: #fbfaf6;
+  background: #f8fbff;
 }
 .my-row-image {
   width: 76px;
@@ -1830,7 +1830,7 @@ h3 {
     justify-content: center;
     gap: 3px;
     font-size: 10px;
-    color: #b9c2bb;
+    color: #c3cee2;
   }
   .bottom-nav a.active {
     color: var(--lime);
@@ -1930,7 +1930,7 @@ h3 {
   line-height: 1.15;
 }
 .detail-info .item-facts {
-  border-block: 1px dashed #dcdbd0;
+  border-block: 1px dashed #dce5f5;
 }
 .item-progress {
   margin: 0 0 26px;

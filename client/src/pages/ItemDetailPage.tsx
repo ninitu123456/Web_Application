@@ -17,6 +17,7 @@ import {
   ConfirmDialog,
   dateLabel,
   ErrorState,
+  ItemCard,
   ItemImage,
   Loading,
   StatusBadge,
@@ -106,16 +107,40 @@ function Detail({ item }: { item: Item }) {
       setBusy(false);
     }
   }
+  const open = !hidden && ["OPEN", "CLAIM_PENDING"].includes(item.status);
+  const loginTo = `/dang-nhap?next=${encodeURIComponent(`/do-vat/${item.id}`)}`;
+  const isLost = item.type === "LOST";
+  async function share() {
+    const url = window.location.href;
+    try {
+      if (navigator.share) await navigator.share({ title: item.title, url });
+      else {
+        await navigator.clipboard.writeText(url);
+        toast("Đã sao chép đường dẫn tin đăng.");
+      }
+    } catch {
+      /* The person closed the share sheet. */
+    }
+  }
   return (
-    <section className="page-section">
+    <section className="page-section detail-v3">
       {arrival.error && (
         <p className="notice" role="alert">
           {arrival.error}
         </p>
       )}
-      <Link className="back-link" to={exploreFrom}>
-        ← Khám phá đồ vật
-      </Link>
+      <nav className="crumbs" aria-label="Vị trí trang">
+        <Link
+          className="back-link"
+          to={owner && !from ? "/bai-dang-cua-toi" : exploreFrom}
+        >
+          ← {owner && !from ? "Đồ của tôi" : "Khám phá"}
+        </Link>
+        <span aria-hidden="true">/</span>
+        <span>{isLost ? "Bị mất" : "Nhặt được"}</span>
+        <span aria-hidden="true">/</span>
+        <span>{item.title}</span>
+      </nav>
       {hidden && (
         <p className="notice" role="status">
           Bài đã được quản trị viên gỡ khỏi phần công khai. Chỉ chủ bài và quản
@@ -129,7 +154,14 @@ function Detail({ item }: { item: Item }) {
             <ItemImage
               src={item.images[Math.min(selected, item.images.length - 1)]?.url}
               title={item.title}
+              category={item.category?.name}
             />
+            {item.images.length > 1 && (
+              <span className="gallery-count">
+                {Math.min(selected, item.images.length - 1) + 1} /{" "}
+                {item.images.length}
+              </span>
+            )}
           </div>
           {item.images.length > 1 && (
             <div className="thumbnails" aria-label="Chọn ảnh">
@@ -152,83 +184,137 @@ function Detail({ item }: { item: Item }) {
         <div className="detail-info detail-panel">
           <div className="badge-row">
             <StatusBadge status={item.type} group="itemType" />
+            {item.category?.name && (
+              <span className="badge">{item.category.name}</span>
+            )}
             <StatusBadge status={item.status} group="item" />
           </div>
           <h1>{item.title}</h1>
-          <p className="detail-subtitle">
-            {item.category?.name || `Danh mục #${item.categoryId}`} · Bài #
-            {item.id}
-          </p>
-          <dl className="item-facts">
+          <p className="description">{item.description}</p>
+          <dl className="fact-rows">
             <div>
-              <dt>Địa điểm</dt>
+              <dt>
+                <span className="fact-icon">
+                  <Icon name="pin" />
+                </span>
+                {isLost ? "Nơi có thể bị mất" : "Nơi nhặt được"}
+              </dt>
               <dd>{item.location?.name || `#${item.locationId}`}</dd>
             </div>
             <div>
-              <dt>Ngày xảy ra</dt>
+              <dt>
+                <span className="fact-icon">
+                  <Icon name="clock" />
+                </span>
+                {isLost ? "Ngày bị mất" : "Ngày nhặt được"}
+              </dt>
               <dd>{dateLabel(item.eventDate)}</dd>
             </div>
             {item.color && (
               <div>
-                <dt>Màu sắc</dt>
+                <dt>
+                  <span className="fact-icon">
+                    <Icon name="image" />
+                  </span>
+                  Màu sắc
+                </dt>
                 <dd>{item.color}</dd>
               </div>
             )}
             <div>
-              <dt>Ngày đăng</dt>
+              <dt>
+                <span className="fact-icon">
+                  <Icon name="calendar" />
+                </span>
+                Ngày đăng
+              </dt>
               <dd>{dateLabel(item.createdAt)}</dd>
             </div>
           </dl>
           <ItemProgress item={item} />
-          <h2>Mô tả đồ vật</h2>
-          <p className="description">{item.description}</p>
           {error && (
             <p className="inline-error" role="alert">
               {error}
             </p>
           )}
-          {!hidden &&
-            !owner &&
-            item.type === "FOUND" &&
-            ["OPEN", "CLAIM_PENDING"].includes(item.status) &&
-            (user ? (
-              <Button disabled={busy} onClick={() => setClaimOpen(true)}>
-                Đây có thể là đồ của tôi →
-              </Button>
-            ) : (
-              <Link
-                className="button primary"
-                to={`/dang-nhap?next=${encodeURIComponent(`/do-vat/${item.id}`)}`}
-              >
-                Đăng nhập để nhận đồ →
-              </Link>
-            ))}
-          {!hidden && user && !owner && (
-            <div className="actions">
-              <Button
-                id="contact-action"
-                variant="secondary"
-                disabled={busy}
-                onClick={startChat}
-              >
-                {arrival.target?.kind === "CLAIM_CONTACT"
-                  ? "Liên hệ người nhặt"
-                  : "Nhắn tin"}
-              </Button>
+          {open && !owner && !isLost && (
+            <div className="cta-box dark">
+              <strong>Đây là đồ của bạn?</strong>
+              <p>
+                Mô tả đặc điểm chỉ chủ thật mới biết. Bằng chứng chỉ người nhặt
+                được xem.
+              </p>
+              {user ? (
+                <Button
+                  className="light"
+                  disabled={busy}
+                  onClick={() => setClaimOpen(true)}
+                >
+                  <Icon name="shield" /> Gửi yêu cầu nhận lại
+                </Button>
+              ) : (
+                <Link className="button light" to={loginTo}>
+                  Đăng nhập để gửi yêu cầu
+                </Link>
+              )}
             </div>
           )}
-          {!hidden && owner && item.status === "OPEN" && (
-            <div className="actions">
-              <Link className="button primary" to={`/do-vat/${item.id}/sua`}>
-                Chỉnh sửa bài ↗
-              </Link>
-              <Button
-                variant="secondary"
-                disabled={busy}
-                onClick={() => setConfirmClose(true)}
-              >
-                Đóng bài
-              </Button>
+          {open && !owner && isLost && (
+            <div className="cta-box green">
+              <strong>Bạn đã nhặt được món này?</strong>
+              <p>
+                Báo cho chủ đồ kèm nơi bạn nhặt được. FindIt mở cuộc trò chuyện
+                riêng giữa hai bạn.
+              </p>
+              {user ? (
+                <Button className="success" disabled={busy} onClick={startChat}>
+                  <Icon name="box" /> Tôi đã nhặt được món này
+                </Button>
+              ) : (
+                <Link className="button success" to={loginTo}>
+                  Đăng nhập để báo cho chủ đồ
+                </Link>
+              )}
+            </div>
+          )}
+          {!hidden && user && !owner && !isLost && (
+            <Button
+              id="contact-action"
+              className="wide"
+              variant="secondary"
+              disabled={busy}
+              onClick={startChat}
+            >
+              <Icon name="message" />
+              {arrival.target?.kind === "CLAIM_CONTACT"
+                ? "Liên hệ người nhặt"
+                : "Nhắn tin hỏi thêm"}
+            </Button>
+          )}
+          {!hidden && owner && (
+            <div className="owner-box">
+              <p>
+                <Icon name="eye" /> <strong>Tin của bạn</strong> · đăng ngày{" "}
+                {dateLabel(item.createdAt)}
+              </p>
+              {item.status === "OPEN" && (
+                <div className="actions">
+                  <Link
+                    className="button secondary"
+                    to={`/do-vat/${item.id}/sua`}
+                  >
+                    <Icon name="cog" /> Sửa tin
+                  </Link>
+                  <Button
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={() => setConfirmClose(true)}
+                  >
+                    <Icon name="close" />{" "}
+                    {isLost ? "Đã tìm thấy · Đóng tin" : "Đóng tin"}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
           {["CLAIMED", "RETURNED", "CLOSED"].includes(item.status) && (
@@ -240,54 +326,28 @@ function Detail({ item }: { item: Item }) {
                   : "Bài đăng đã đóng và không tiếp nhận yêu cầu mới."}
             </p>
           )}
-          {item.type === "FOUND" && (
-            <section className="recovery-guide" aria-label="Cách nhận lại đồ">
-              <h2>Nhận lại đồ như thế nào?</h2>
-              <ol>
-                {[
-                  [
-                    "Gửi bằng chứng",
-                    "Gửi yêu cầu nhận đồ với đặc điểm chỉ bạn biết.",
-                  ],
-                  [
-                    "Chờ xác minh",
-                    "Chủ bài kiểm tra bằng chứng và xác nhận với bạn.",
-                  ],
-                  [
-                    "Nhận lại đồ",
-                    "Thống nhất thời gian, địa điểm và xác nhận bàn giao.",
-                  ],
-                ].map(([title, text], index) => (
-                  <li key={title}>
-                    <span>{index + 1}</span>
-                    <strong>{title}</strong>
-                    <p>{text}</p>
-                  </li>
-                ))}
-              </ol>
-              <p className="fine-print">
-                <Icon name="shield" /> Bằng chứng sở hữu được gửi riêng tư. Nhắn
-                tin để trao đổi; gửi yêu cầu nhận đồ để được xác minh chính
-                thức.
-              </p>
-            </section>
-          )}
-          {user && (
-            <div className="report-actions">
-              <ReportButton
-                targetType="ITEM"
-                targetId={item.id}
-                label="Báo cáo bài đăng"
-              />
-              <ReportButton
-                targetType="USER"
-                targetId={item.userId}
-                label="Báo cáo chủ bài"
-              />
-            </div>
-          )}
+          <div className="util-row">
+            <Button variant="secondary" onClick={() => void share()}>
+              <Icon name="share" /> Chia sẻ
+            </Button>
+            {user && !owner && (
+              <>
+                <ReportButton
+                  targetType="ITEM"
+                  targetId={item.id}
+                  label="Báo cáo tin"
+                />
+                <ReportButton
+                  targetType="USER"
+                  targetId={item.userId}
+                  label="Báo cáo người đăng"
+                />
+              </>
+            )}
+          </div>
         </div>
       </div>
+      {!owner && <RelatedItems item={item} />}
       {(showSuggestions || canInspect) && (
         <div className="detail-tabs" id="received-claims" tabIndex={-1}>
           <div className="tabs" role="tablist" aria-label="Thông tin liên quan">
@@ -355,6 +415,38 @@ function Detail({ item }: { item: Item }) {
           có thể được xem công khai.
         </ConfirmDialog>
       )}
+    </section>
+  );
+}
+function RelatedItems({ item }: { item: Item }) {
+  const lost = item.type === "LOST";
+  const related = useResource<Item[]>("/items", {
+    limit: 5,
+    category: item.categoryId,
+    ...(lost ? { type: "FOUND" } : {}),
+  });
+  const list = (related.data?.data ?? [])
+    .filter((other) => other.id !== item.id)
+    .slice(0, 4);
+  if (!list.length) return null;
+  return (
+    <section className="related" aria-labelledby="related-title">
+      <div className="section-row">
+        <h2 id="related-title">
+          {lost ? "Đồ nhặt được gần giống" : "Tin khác cùng danh mục"}
+        </h2>
+        <Link
+          className="link-more"
+          to={`/kham-pha?category=${item.categoryId}${lost ? "&type=FOUND" : ""}`}
+        >
+          Xem thêm <Icon name="arrow" width="16" height="16" />
+        </Link>
+      </div>
+      <div className="item-grid four">
+        {list.map((other) => (
+          <ItemCard key={other.id} item={other} />
+        ))}
+      </div>
     </section>
   );
 }
