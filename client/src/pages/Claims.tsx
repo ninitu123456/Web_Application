@@ -3,14 +3,16 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, errorText, invalidate } from "../lib/api";
 import { useResource } from "../lib/hooks";
-import type { Claim } from "../lib/types";
+import type { Claim, VerificationQuestion } from "../lib/types";
 import { ReportButton } from "../components/ReportButton";
+import { HandoverPanel } from "../components/HandoverPanel";
 import {
   Button,
   ConfirmDialog,
   dateLabel,
   EmptyState,
   ErrorState,
+  Input,
   Loading,
   Modal,
   Pagination,
@@ -21,12 +23,15 @@ import {
 
 export function ClaimModal({
   itemId,
+  questions = [],
   close,
 }: {
   itemId: number;
+  questions?: VerificationQuestion[];
   close: () => void;
 }) {
   const [proof, setProof] = useState("");
+  const [answers, setAnswers] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const lock = useRef(false);
@@ -42,13 +47,27 @@ export function ClaimModal({
       setError("Bằng chứng quá dài. Vui lòng rút ngắn.");
       return;
     }
+    if (questions.some((question) => !answers[question.id]?.trim())) {
+      setError("Vui lòng trả lời đủ các câu hỏi xác minh của người nhặt.");
+      return;
+    }
     lock.current = true;
     setBusy(true);
     setError("");
     try {
       await api(`/items/${itemId}/claims`, {
         method: "POST",
-        body: { proofDescription: proof.trim() },
+        body: {
+          proofDescription: proof.trim(),
+          ...(questions.length
+            ? {
+                answers: questions.map((question) => ({
+                  questionId: question.id,
+                  answer: answers[question.id].trim(),
+                })),
+              }
+            : {}),
+        },
       });
       toast("Đã gửi yêu cầu nhận đồ. Theo dõi tại mục Yêu cầu nhận đồ.");
       close();
@@ -65,13 +84,36 @@ export function ClaimModal({
       title="Yêu cầu nhận đồ"
       close={close}
       busy={busy}
-      dismissible={!proof.trim()}
+      dismissible={
+        !proof.trim() && !Object.values(answers).some((value) => value.trim())
+      }
     >
       <p className="muted">
         Hãy cung cấp đặc điểm riêng mà chỉ chủ sở hữu biết. Bằng chứng chỉ được
         hiển thị cho bạn, chủ bài và quản trị viên có thẩm quyền.
       </p>
       <form onSubmit={submit}>
+        {questions.length > 0 && (
+          <fieldset className="verify-questions">
+            <legend>Câu hỏi xác minh từ người nhặt</legend>
+            {questions.map((question, index) => (
+              <Input
+                key={question.id}
+                label={`${index + 1}. ${question.question}`}
+                value={answers[question.id] ?? ""}
+                maxLength={300}
+                required
+                disabled={busy}
+                onChange={(e) =>
+                  setAnswers((old) => ({
+                    ...old,
+                    [question.id]: e.target.value,
+                  }))
+                }
+              />
+            ))}
+          </fieldset>
+        )}
         <Textarea
           label="Bằng chứng sở hữu"
           placeholder="Ví dụ: chi tiết đặc biệt, vết xước, vật dụng bên trong…"
@@ -195,10 +237,23 @@ export function ReceivedClaims({
                 </div>
                 <StatusBadge status={claim.status} group="claim" />
               </div>
+              {claim.answers && claim.answers.length > 0 && (
+                <dl className="claim-answers">
+                  {claim.answers.map((answer) => (
+                    <div key={answer.questionId}>
+                      <dt>{answer.question}</dt>
+                      <dd>{answer.answer}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
               <div className="proof">
                 <span className="eyebrow">BẰNG CHỨNG SỞ HỮU</span>
                 <p>{claim.proofDescription}</p>
               </div>
+              {canAct && ["APPROVED", "COMPLETED"].includes(claim.status) && (
+                <HandoverPanel claimId={claim.id} role="OWNER" />
+              )}
               <ReportButton
                 targetType="CLAIM"
                 targetId={claim.id}
@@ -345,8 +400,8 @@ export function MyClaimsPage() {
               />
               {claim.status === "APPROVED" && (
                 <p className="notice">
-                  Yêu cầu đã được chấp thuận. Chủ bài sẽ xác nhận sau khi bàn
-                  giao đồ vật.
+                  Yêu cầu đã được chấp thuận. Hẹn lịch nhận đồ bên dưới; chủ bài
+                  hoàn tất sau khi trao đồ.
                   {claim.item?.visibility !== "HIDDEN" && (
                     <Link
                       className="button secondary"
@@ -356,6 +411,9 @@ export function MyClaimsPage() {
                     </Link>
                   )}
                 </p>
+              )}
+              {claim.status === "APPROVED" && (
+                <HandoverPanel claimId={claim.id} role="CLAIMANT" />
               )}
               {claim.completedAt && (
                 <p className="muted">

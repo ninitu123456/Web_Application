@@ -27,8 +27,70 @@ export interface Item {
   status: ItemStatus;
   visibility?: "PUBLIC" | "HIDDEN";
   images: { id: number; url: string }[];
+  verificationQuestions?: VerificationQuestion[];
+  savedAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+export interface VerificationQuestion {
+  id: number;
+  position: number;
+  question: string;
+}
+export interface ClaimAnswer {
+  questionId: number;
+  position: number;
+  question: string;
+  answer: string;
+}
+export interface Handover {
+  claimId: number;
+  claimStatus: ClaimStatus;
+  appointment: {
+    at: string;
+    place: string;
+    status: "PROPOSED" | "ACCEPTED";
+    proposedBy: number | null;
+  } | null;
+  ownerConfirmedAt: string | null;
+  claimantConfirmedAt: string | null;
+  dispute: { reason: string; by: number | null; at: string; resolvedAt: string | null } | null;
+  ownerId: number;
+  claimantId: number;
+}
+export interface UserStats {
+  posts: { total: number; lost: number; found: number; active: number; returned: number };
+  claims: { sent: number; pending: number; approved: number; completed: number };
+  incomingPendingClaims: number;
+  totalViews: number;
+  savedItems: number;
+}
+export interface ItemStats { views: number; saves: number; claims: number; pendingClaims: number }
+export type ContactTopic = "GENERAL" | "ACCOUNT" | "ITEM" | "REPORT" | "OTHER";
+export interface ContactMessage {
+  id: number;
+  userId: number | null;
+  fullName: string;
+  email: string;
+  topic: ContactTopic;
+  body: string;
+  itemUrl: string | null;
+  status: "NEW" | "HANDLED";
+  createdAt: string;
+  handledAt: string | null;
+  handledBy: number | null;
+}
+export interface HandoverDispute {
+  claimId: number;
+  claimStatus: ClaimStatus;
+  reason: string;
+  disputedAt: string;
+  resolvedAt: string | null;
+  disputedBy: { id: number; fullName: string | null } | null;
+  item: { id: number; title: string };
+  owner: { id: number; fullName: string };
+  claimant: { id: number; fullName: string };
+  appointment: { at: string; place: string; status: string } | null;
 }
 export type ClaimStatus = "PENDING" | "APPROVED" | "REJECTED" | "COMPLETED";
 export interface Claim {
@@ -41,6 +103,7 @@ export interface Claim {
   reviewedAt: string | null;
   completedAt: string | null;
   claimant?: { id: number; fullName: string };
+  answers?: ClaimAnswer[];
   item?: {
     id: number;
     title: string;

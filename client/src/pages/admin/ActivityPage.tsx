@@ -28,6 +28,12 @@ const actions: Record<string, string> = {
   LOCATION_CREATED: "Tạo địa điểm",
   LOCATION_UPDATED: "Cập nhật địa điểm",
   LOCATION_DISABLED: "Ngừng địa điểm",
+  HANDOVER_PROPOSED: "Đề xuất lịch hẹn bàn giao",
+  HANDOVER_ACCEPTED: "Chốt lịch hẹn bàn giao",
+  HANDOVER_CONFIRMED: "Xác nhận bàn giao một phía",
+  HANDOVER_DISPUTED: "Khiếu nại bàn giao",
+  HANDOVER_DISPUTE_RESOLVED: "Đóng khiếu nại bàn giao",
+  CONTACT_HANDLED: "Xử lý liên hệ",
 };
 const entities: Record<string, string> = {
   ITEM: "Bài đăng",
@@ -36,6 +42,7 @@ const entities: Record<string, string> = {
   CATEGORY: "Danh mục",
   LOCATION: "Địa điểm",
   REPORT: "Báo cáo",
+  CONTACT: "Liên hệ",
 };
 const detailLabels: Record<string, string> = {
   previousVisibility: "Hiển thị trước",
@@ -50,6 +57,7 @@ const detailLabels: Record<string, string> = {
   autoRejectedClaimCount: "Số yêu cầu nhận đồ tự động bị từ chối",
   decisionLogId: "Nhật ký quyết định",
   automatic: "Tự động",
+  side: "Bên xác nhận",
 };
 export function AdminActivityPage() {
   const filters = useAdminQuery([

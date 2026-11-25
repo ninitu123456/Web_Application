@@ -9,6 +9,7 @@ const TABS = [
   { to: "/ho-so", icon: "grid", label: "Tổng quan" },
   { to: "/bai-dang-cua-toi", icon: "box", label: "Đồ của tôi" },
   { to: "/yeu-cau-cua-toi", icon: "shield", label: "Yêu cầu nhận đồ" },
+  { to: "/da-luu", icon: "heart", label: "Đã lưu" },
   { to: "/tin-nhan", icon: "message", label: "Tin nhắn" },
   { to: "/thong-bao", icon: "bell", label: "Thông báo" },
   { to: "/bao-cao-cua-toi", icon: "flag", label: "Báo cáo của tôi" },

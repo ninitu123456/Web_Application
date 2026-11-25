@@ -4,7 +4,7 @@ export function adminUserDto(row) { return { id: safeId(row.user_id), fullName: 
 export function lookupDto(row, idColumn) { return { id: safeId(row[idColumn]), name: row.name, isActive: Boolean(Number(row.is_active)) }; }
 export function dashboardNumber(value) { const number = Number(value ?? 0); if (!Number.isSafeInteger(number) || number < 0) throw new Error('Admin aggregate cannot be represented safely in the API'); return number; }
 
-export const businessEntities = ['ITEM', 'CLAIM', 'USER', 'CATEGORY', 'LOCATION', 'REPORT'];
+export const businessEntities = ['ITEM', 'CLAIM', 'USER', 'CATEGORY', 'LOCATION', 'REPORT', 'CONTACT'];
 const transition = ['previousStatus', 'status'];
 const actionDetails = {
   ITEM_HIDDEN: ['previousVisibility', 'visibility', 'reason', 'source'],
@@ -14,7 +14,8 @@ const actionDetails = {
   CLAIM_APPROVED: [...transition, 'itemId', 'source', 'decisionLogId'],
   CLAIM_REJECTED: [...transition, 'itemId', 'automatic', 'source', 'decisionLogId'],
   CLAIM_COMPLETED: [...transition, 'itemId'], USER_STATUS_CHANGED: transition, REPORT_STATUS_CHANGED: transition,
-  CATEGORY_CREATED: [], CATEGORY_UPDATED: [], CATEGORY_DISABLED: [], LOCATION_CREATED: [], LOCATION_UPDATED: [], LOCATION_DISABLED: []
+  CATEGORY_CREATED: [], CATEGORY_UPDATED: [], CATEGORY_DISABLED: [], LOCATION_CREATED: [], LOCATION_UPDATED: [], LOCATION_DISABLED: [],
+  HANDOVER_PROPOSED: ['itemId'], HANDOVER_ACCEPTED: ['itemId'], HANDOVER_CONFIRMED: ['itemId', 'side'], HANDOVER_DISPUTED: ['itemId'], HANDOVER_DISPUTE_RESOLVED: [], CONTACT_HANDLED: []
 };
 export const businessActions = Object.keys(actionDetails);
 export function adminClaimSummary(row) {

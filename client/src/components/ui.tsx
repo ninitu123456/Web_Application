@@ -17,6 +17,7 @@ import {
 import { Link, useLocation } from "react-router-dom";
 import { errorText } from "../lib/api";
 import type { Item, PaginationData } from "../lib/types";
+import { SaveButton } from "./SaveButton";
 
 export function Button({
   variant = "primary",
@@ -178,6 +179,7 @@ export function ItemCard({ item }: { item: Item }) {
         <StatusBadge status={item.type} group="itemType" />
         <span className="card-punch" />
       </Link>
+      <SaveButton itemId={item.id} ownerId={item.userId} />
       <div className="card-content">
         {item.visibility === "HIDDEN" && (
           <span className="badge">Đã gỡ khỏi công khai</span>

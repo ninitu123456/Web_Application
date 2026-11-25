@@ -18,6 +18,8 @@ import { NotificationsProvider } from "./lib/notifications";
 import { NotificationsPage } from "./pages/NotificationsPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { MyReportsPage } from "./pages/MyReportsPage";
+import { SavedItemsPage } from "./pages/SavedItemsPage";
+import { AdminContactPage, AdminDisputesPage } from "./pages/admin/SupportPages";
 import { AdminLayout } from "./pages/admin/AdminLayout";
 import { DashboardPage } from "./pages/admin/DashboardPage";
 import { AdminUsersPage, AdminUserDetailPage } from "./pages/admin/UsersPage";
@@ -119,6 +121,16 @@ createRoot(document.getElementById("root")!).render(
                     }
                   />
                   <Route
+                    path="da-luu"
+                    element={
+                      <Protected>
+                        <AccountShell>
+                          <SavedItemsPage />
+                        </AccountShell>
+                      </Protected>
+                    }
+                  />
+                  <Route
                     path="bao-cao-cua-toi"
                     element={
                       <Protected>
@@ -158,6 +170,8 @@ createRoot(document.getElementById("root")!).render(
                       element={<AdminLookupsPage />}
                     />
                     <Route path="nhat-ky" element={<AdminActivityPage />} />
+                    <Route path="lien-he" element={<AdminContactPage />} />
+                    <Route path="khieu-nai" element={<AdminDisputesPage />} />
                   </Route>
                   <Route
                     path="dang-bai"

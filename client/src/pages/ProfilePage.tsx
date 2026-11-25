@@ -4,7 +4,7 @@ import { api, errorText, invalidate } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useChat } from "../lib/chat";
 import { useResource } from "../lib/hooks";
-import type { Claim, Item, User } from "../lib/types";
+import type { Claim, Item, User, UserStats } from "../lib/types";
 import { AccountShell } from "../components/AccountShell";
 import { Icon } from "../components/Icon";
 import {
@@ -30,6 +30,8 @@ function Overview() {
   const mine = useResource<Item[]>("/items/mine", { limit: 100 });
   const claims = useResource<Claim[]>("/claims/mine", { limit: 50 });
   const chat = useChat();
+  const summary = useResource<UserStats>("/users/me/stats");
+  const totals = summary.data?.data;
   if (mine.loading || claims.loading) return <Loading />;
   if (mine.error || claims.error)
     return <ErrorState error={mine.error || claims.error} retry={invalidate} />;
@@ -50,16 +52,19 @@ function Overview() {
     {
       icon: "box",
       tone: "blue",
-      value: open,
+      value: totals?.posts.active ?? open,
       label: "Tin đang mở",
-      sub: `Trên tổng ${items.length} tin đã đăng`,
+      sub: `Trên tổng ${totals?.posts.total ?? items.length} tin đã đăng`,
     },
     {
       icon: "shield",
       tone: "amber",
-      value: pending.length,
-      label: "Tin có yêu cầu chờ duyệt",
-      sub: pending.length ? "Cần bạn xem bằng chứng" : "Không có yêu cầu mới",
+      value: totals?.incomingPendingClaims ?? pending.length,
+      label: "Yêu cầu chờ bạn duyệt",
+      sub:
+        (totals?.incomingPendingClaims ?? pending.length)
+          ? "Cần bạn xem bằng chứng"
+          : "Không có yêu cầu mới",
     },
     {
       icon: "smile",
@@ -118,6 +123,22 @@ function Overview() {
           </div>
         ))}
       </div>
+      {totals && (
+        <p className="overview-meta">
+          <span>
+            <Icon name="eye" width="16" height="16" />{" "}
+            <strong>{totals.totalViews}</strong> lượt xem tin của bạn
+          </span>
+          <Link to="/da-luu">
+            <Icon name="heart" width="16" height="16" />{" "}
+            <strong>{totals.savedItems}</strong> tin đã lưu
+          </Link>
+          <span>
+            <Icon name="send" width="16" height="16" />{" "}
+            <strong>{totals.claims.sent}</strong> yêu cầu đã gửi
+          </span>
+        </p>
+      )}
       <div className="overview-grid">
         <section className="v3-card todo-card" aria-labelledby="todo-title">
           <h2 id="todo-title">Việc cần làm</h2>
@@ -149,6 +170,9 @@ function Overview() {
             {chat.unread > 0 && (
               <span className="tab-count">{chat.unread}</span>
             )}
+          </Link>
+          <Link to="/da-luu">
+            <Icon name="heart" /> Tin đã lưu
           </Link>
           <Link to="/dang-bai/tim-truoc">
             <Icon name="search" /> Tôi bị mất đồ

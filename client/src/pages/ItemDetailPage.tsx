@@ -1,6 +1,6 @@
 import { useNotificationArrival } from "../lib/notification-navigation";
 import { Icon } from "../components/Icon";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Link,
   useLocation,
@@ -11,7 +11,7 @@ import {
 import { api, errorText, invalidate } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useResource } from "../lib/hooks";
-import type { Item } from "../lib/types";
+import type { Item, ItemStats } from "../lib/types";
 import {
   Button,
   ConfirmDialog,
@@ -25,6 +25,8 @@ import {
 } from "../components/ui";
 import { ClaimModal, ReceivedClaims } from "./Claims";
 import { ReportButton } from "../components/ReportButton";
+import { SaveButton } from "../components/SaveButton";
+import { FoundItModal } from "../components/FoundItModal";
 import { VisualSuggestions } from "../components/VisualSuggestions";
 import { canShowVisualSuggestions } from "../lib/visual-suggestions";
 export function ItemDetailPage() {
@@ -33,6 +35,29 @@ export function ItemDetailPage() {
   if (item.loading) return <Loading />;
   if (item.error) return <ErrorState error={item.error} retry={invalidate} />;
   return item.data ? <Detail key={id} item={item.data.data} /> : null;
+}
+// One view per page load; StrictMode double effects must not double count.
+const viewed = new Set<number>();
+function OwnerStats({ itemId }: { itemId: number }) {
+  const stats = useResource<ItemStats>(`/items/${itemId}/stats`);
+  const data = stats.data?.data;
+  if (typeof data?.views !== "number") return null;
+  return (
+    <ul className="owner-stats" aria-label="Thống kê tin">
+      <li>
+        <Icon name="eye" /> <strong>{data.views}</strong> lượt xem
+      </li>
+      <li>
+        <Icon name="heart" /> <strong>{data.saves}</strong> lượt lưu
+      </li>
+      {data.claims > 0 && (
+        <li>
+          <Icon name="shield" /> <strong>{data.claims}</strong> yêu cầu
+          {data.pendingClaims ? ` · ${data.pendingClaims} chờ duyệt` : ""}
+        </li>
+      )}
+    </ul>
+  );
 }
 function Detail({ item }: { item: Item }) {
   const location = useLocation();
@@ -55,11 +80,19 @@ function Detail({ item }: { item: Item }) {
   });
   const [selected, setSelected] = useState(0);
   const [claimOpen, setClaimOpen] = useState(false);
+  const [foundOpen, setFoundOpen] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const lock = useRef(false);
   const owner = item.userId === user?.id;
+  useEffect(() => {
+    if (owner || viewed.has(item.id) || item.visibility === "HIDDEN") return;
+    viewed.add(item.id);
+    void api(`/items/${item.id}/views`, { method: "POST" }).catch(() =>
+      viewed.delete(item.id),
+    );
+  }, [item.id, owner, item.visibility]);
   const hidden = item.visibility === "HIDDEN";
   const canInspect = item.type === "FOUND" && (owner || user?.role === "ADMIN");
   const showSuggestions =
@@ -241,8 +274,9 @@ function Detail({ item }: { item: Item }) {
             <div className="cta-box dark">
               <strong>Đây là đồ của bạn?</strong>
               <p>
-                Mô tả đặc điểm chỉ chủ thật mới biết. Bằng chứng chỉ người nhặt
-                được xem.
+                {item.verificationQuestions?.length
+                  ? `Trả lời ${item.verificationQuestions.length} câu hỏi xác minh của người nhặt và mô tả đặc điểm riêng.`
+                  : "Mô tả đặc điểm chỉ chủ thật mới biết. Bằng chứng chỉ người nhặt được xem."}
               </p>
               {user ? (
                 <Button
@@ -267,7 +301,11 @@ function Detail({ item }: { item: Item }) {
                 riêng giữa hai bạn.
               </p>
               {user ? (
-                <Button className="success" disabled={busy} onClick={startChat}>
+                <Button
+                  className="success"
+                  disabled={busy}
+                  onClick={() => setFoundOpen(true)}
+                >
                   <Icon name="box" /> Tôi đã nhặt được món này
                 </Button>
               ) : (
@@ -297,6 +335,7 @@ function Detail({ item }: { item: Item }) {
                 <Icon name="eye" /> <strong>Tin của bạn</strong> · đăng ngày{" "}
                 {dateLabel(item.createdAt)}
               </p>
+              <OwnerStats itemId={item.id} />
               {item.status === "OPEN" && (
                 <div className="actions">
                   <Link
@@ -327,6 +366,13 @@ function Detail({ item }: { item: Item }) {
             </p>
           )}
           <div className="util-row">
+            {!hidden && (
+              <SaveButton
+                itemId={item.id}
+                ownerId={item.userId}
+                variant="detail"
+              />
+            )}
             <Button variant="secondary" onClick={() => void share()}>
               <Icon name="share" /> Chia sẻ
             </Button>
@@ -402,7 +448,14 @@ function Detail({ item }: { item: Item }) {
         </div>
       )}
       {claimOpen && (
-        <ClaimModal itemId={item.id} close={() => setClaimOpen(false)} />
+        <ClaimModal
+          itemId={item.id}
+          questions={item.verificationQuestions}
+          close={() => setClaimOpen(false)}
+        />
+      )}
+      {foundOpen && (
+        <FoundItModal item={item} close={() => setFoundOpen(false)} />
       )}
       {confirmClose && (
         <ConfirmDialog

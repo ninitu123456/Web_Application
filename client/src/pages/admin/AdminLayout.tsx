@@ -19,6 +19,8 @@ const navigation = [
   ["/bao-cao", "Báo cáo vi phạm", "alert"],
   ["/nguoi-dung", "Người dùng", "users"],
   ["/danh-muc-dia-diem", "Danh mục & địa điểm", "pin"],
+  ["/khieu-nai", "Khiếu nại bàn giao", "flag"],
+  ["/lien-he", "Hộp thư liên hệ", "mail"],
   ["/nhat-ky", "Nhật ký hoạt động", "clock"],
 ] as const;
 function AdminNavigation({ close }: { close?: () => void }) {

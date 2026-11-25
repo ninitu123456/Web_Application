@@ -14,6 +14,8 @@ vi.mock("../lib/api", () => ({
   api: vi.fn(),
   itemDetail: vi.fn(),
   invalidate: vi.fn(),
+  sessionToken: () => null,
+  subscribe: () => () => {},
   errorText: () => "Không thể tải nội dung.",
 }));
 

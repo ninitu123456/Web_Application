@@ -133,6 +133,10 @@ function ItemForm({
         }
       : { ...empty, type: initialType, title: initialTitle },
   );
+  const originalQuestions = (original?.verificationQuestions ?? []).map(
+    (row) => row.question,
+  );
+  const [questions, setQuestions] = useState<string[]>(originalQuestions);
   const [step, setStep] = useState(1);
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<keyof Fields, string>>
@@ -410,6 +414,14 @@ function ItemForm({
           eventDate: fields.eventDate,
           color: fields.color.trim() || null,
         };
+        const asked = questions.map((q) => q.trim()).filter(Boolean);
+        if (
+          fields.type === "FOUND" &&
+          (original
+            ? JSON.stringify(asked) !== JSON.stringify(originalQuestions)
+            : asked.length)
+        )
+          body.verificationQuestions = asked;
         if (!original) {
           body.type = fields.type;
           body.categoryId = Number(fields.categoryId);
@@ -805,6 +817,61 @@ function ItemForm({
               Đây là nội dung công khai. Giữ lại đặc điểm bí mật để xác minh khi
               nhận đồ.
             </small>
+            {fields.type === "FOUND" && (
+              <div className="verify-editor">
+                <div className="verify-head">
+                  <strong>
+                    <Icon name="shield" /> Câu hỏi xác minh (tùy chọn)
+                  </strong>
+                  <span className="muted">
+                    Người nhận phải trả lời trước khi gửi yêu cầu. Chỉ bạn thấy
+                    câu trả lời.
+                  </span>
+                </div>
+                {questions.map((question, index) => (
+                  <div className="verify-row" key={index}>
+                    <Input
+                      label={`Câu hỏi ${index + 1}`}
+                      value={question}
+                      maxLength={200}
+                      placeholder={
+                        [
+                          "Ví dụ: Bên trong có những gì?",
+                          "Ví dụ: Móc khóa hình gì?",
+                          "Ví dụ: Ốp lưng màu gì?",
+                        ][index]
+                      }
+                      onChange={(e) =>
+                        setQuestions((old) =>
+                          old.map((value, i) =>
+                            i === index ? e.target.value : value,
+                          ),
+                        )
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={`Xóa câu hỏi ${index + 1}`}
+                      onClick={() =>
+                        setQuestions((old) => old.filter((_, i) => i !== index))
+                      }
+                    >
+                      <Icon name="close" width="16" height="16" />
+                    </button>
+                  </div>
+                ))}
+                {questions.length < 3 && (
+                  <button
+                    type="button"
+                    className="button secondary small"
+                    onClick={() => setQuestions((old) => [...old, ""])}
+                  >
+                    <Icon name="plus" width="16" height="16" /> Thêm câu hỏi
+                  </button>
+                )}
+              </div>
+            )}
           </fieldset>
           <section className="image-editor" hidden={wizard && step !== 1}>
             <h2>
@@ -969,6 +1036,12 @@ function ItemForm({
                   <div>
                     <dt>Màu sắc</dt>
                     <dd>{fields.color.trim()}</dd>
+                  </div>
+                )}
+                {fields.type === "FOUND" && questions.some((q) => q.trim()) && (
+                  <div>
+                    <dt>Câu hỏi xác minh</dt>
+                    <dd>{questions.filter((q) => q.trim()).length} câu</dd>
                   </div>
                 )}
                 <div>

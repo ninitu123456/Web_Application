@@ -4,6 +4,8 @@ import { Icon } from "../components/Icon";
 import { RobotMascot } from "../components/Illustrations";
 import { Input, Select, Textarea } from "../components/ui";
 import { useAuth } from "../lib/auth";
+import { api, errorText } from "../lib/api";
+import type { ContactTopic } from "../lib/types";
 
 // Support inbox for the contact form; set VITE_SUPPORT_EMAIL when deploying.
 const SUPPORT_EMAIL =
@@ -106,19 +108,22 @@ export function AboutPage() {
   );
 }
 
-const TOPICS = [
-  "Báo lỗi",
-  "Góp ý tính năng",
-  "Tranh chấp khi trao đồ",
-  "Tài khoản",
-  "Khác",
+const TOPICS: [ContactTopic, string][] = [
+  ["GENERAL", "Câu hỏi / góp ý chung"],
+  ["ITEM", "Bài đăng hoặc trao đồ"],
+  ["REPORT", "Báo lỗi / vi phạm"],
+  ["ACCOUNT", "Tài khoản"],
+  ["OTHER", "Khác"],
 ];
 
 export function ContactPage() {
   const { user } = useAuth();
   const [name, setName] = useState(user?.fullName ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
-  const [topic, setTopic] = useState(TOPICS[0]);
+  const [topic, setTopic] = useState<ContactTopic>("GENERAL");
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [failure, setFailure] = useState("");
   const [body, setBody] = useState("");
   const [link, setLink] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -127,17 +132,38 @@ export function ContactPage() {
     setName((value) => value || user.fullName);
     setEmail((value) => value || user.email);
   }, [user]);
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
+    if (busy) return;
     const next: Record<string, string> = {};
     if (!name.trim()) next.name = "Vui lòng nhập họ tên.";
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) next.email = "Email chưa hợp lệ.";
     if (body.trim().length < 20) next.body = "Nội dung tối thiểu 20 ký tự.";
+    if (link.trim() && !/^https?:\/\/\S+$/.test(link.trim()))
+      next.link = "Đường dẫn cần bắt đầu bằng http:// hoặc https://";
     setErrors(next);
     if (Object.keys(next).length) return;
-    // Until the contact inbox API exists, hand the message to the mail app.
-    const text = `${body.trim()}\n\n${link ? `Tin liên quan: ${link}\n` : ""}— ${name.trim()} <${email.trim()}>`;
-    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(`[FindIt] ${topic}`)}&body=${encodeURIComponent(text)}`;
+    setBusy(true);
+    setFailure("");
+    try {
+      await api("/contact", {
+        method: "POST",
+        body: {
+          fullName: name.trim(),
+          email: email.trim(),
+          topic,
+          body: body.trim(),
+          ...(link.trim() ? { itemUrl: link.trim() } : {}),
+        },
+      });
+      setSent(true);
+      setBody("");
+      setLink("");
+    } catch (error) {
+      setFailure(errorText(error));
+    } finally {
+      setBusy(false);
+    }
   }
   return (
     <section className="page-section static-page contact-page">
@@ -189,10 +215,12 @@ export function ContactPage() {
         <Select
           label="Chủ đề *"
           value={topic}
-          onChange={(e) => setTopic(e.target.value)}
+          onChange={(e) => setTopic(e.target.value as ContactTopic)}
         >
-          {TOPICS.map((value) => (
-            <option key={value}>{value}</option>
+          {TOPICS.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
           ))}
         </Select>
         <Textarea
@@ -207,14 +235,24 @@ export function ContactPage() {
           label="Đường dẫn tin liên quan"
           value={link}
           onChange={(e) => setLink(e.target.value)}
+          error={errors.link}
           placeholder="https://…/do-vat/…"
         />
-        <button className="button primary" type="submit">
-          <Icon name="send" /> Gửi tin nhắn
+        {sent && (
+          <p className="notice success" role="status">
+            <Icon name="check" /> Đã gửi! Ban quản trị sẽ phản hồi qua email{" "}
+            {email.trim()}.
+          </p>
+        )}
+        {failure && (
+          <p className="inline-error" role="alert">
+            {failure}
+          </p>
+        )}
+        <button className="button primary" type="submit" disabled={busy}>
+          <Icon name="send" /> {busy ? "Đang gửi…" : "Gửi tin nhắn"}
         </button>
-        <p className="fine">
-          Tin nhắn được mở trong ứng dụng email của bạn để gửi đi.
-        </p>
+        <p className="fine">Tin nhắn được lưu vào hộp thư hỗ trợ của FindIt.</p>
       </form>
     </section>
   );
