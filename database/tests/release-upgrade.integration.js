@@ -15,7 +15,7 @@ import { createAdminModerationRepository } from '../../server/repositories/admin
 // Verified against origin/main a7cceb3: those 18 published SQL blobs are unchanged.
 // The test uses the immutable release files, so shallow CI checkouts need no Git history.
 const mainFeatures = new Set(['014_session_version.sql', '015_password_reset_tokens.sql', '016_email_outbox.sql', '017_conversations.sql', '018_messages.sql']);
-test('release upgrades verified latest-main 18 migrations to 30 while preserving rows, audit visibility and checksums', {timeout: 90000}, async () => {
+test('release upgrades verified latest-main 18 migrations to the full manifest while preserving rows, audit visibility and checksums', {timeout: 90000}, async () => {
   const base = configFromEnv(), name = 'findit_test_' + randomBytes(12).toString('hex');
   const connection = await connect(base, false);
   let created = false, pool;
@@ -56,7 +56,7 @@ test('release upgrades verified latest-main 18 migrations to 30 while preserving
       return result;
     };
     const before = await snapshot();
-    assert.equal(await migrate(connection, name), 12);
+    assert.equal(await migrate(connection, name), files.length - 18);
     assert.equal(await migrate(connection, name), 0);
     await verifyMigrations(connection, name);
     const after = await snapshot();
@@ -71,7 +71,7 @@ test('release upgrades verified latest-main 18 migrations to 30 while preserving
     assert.equal(result.item.status, 'OPEN');
     const [[catalog]] = await query(pool, 'SELECT revision FROM ai_visual_catalog_state WHERE state_id=1');
     assert.equal(Number(catalog.revision), 1);
-    const [[count]] = await connection.query('SELECT COUNT(*) AS n FROM _schema_migrations'); assert.equal(Number(count.n), 30);
+    const [[count]] = await connection.query('SELECT COUNT(*) AS n FROM _schema_migrations'); assert.equal(Number(count.n), files.length);
   } finally {
     if (pool) await pool.end();
     try {if (created) {assertOwnedDatabase(name, name); await connection.query(`DROP DATABASE \`${name}\``);}}

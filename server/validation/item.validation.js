@@ -33,14 +33,28 @@ function eventDate(value) {
   if (result > latestEventDate()) throw new HttpError(400, 'Ngày xảy ra không được ở tương lai');
   return result;
 }
+// FOUND posts may carry up to three private-answer questions that claimants
+// must answer; the questions themselves are public, the answers are not.
+export function verificationQuestions(value) {
+  if (!Array.isArray(value) || value.length > 3) invalid();
+  const questions = value.map((question) => string(question, 200));
+  if (new Set(questions.map((question) => question.toLocaleLowerCase('vi'))).size !== questions.length) invalid();
+  return questions;
+}
 export function validateCreateItem(body) {
-  onlyKeys(body, ['title', 'type', 'categoryId', 'locationId', 'eventDate', 'description', 'color']);
+  onlyKeys(body, ['title', 'type', 'categoryId', 'locationId', 'eventDate', 'description', 'color', 'verificationQuestions']);
   required(body, ['title', 'type', 'categoryId', 'locationId', 'eventDate', 'description']);
   if (!['LOST', 'FOUND'].includes(body.type)) invalid();
-  return { title: string(body.title, 200), type: body.type, categoryId: positiveId(body.categoryId), locationId: positiveId(body.locationId), eventDate: eventDate(body.eventDate), description: string(body.description, 65535), color: body.color === undefined || body.color === null ? null : string(body.color, 80) };
+  const result = { title: string(body.title, 200), type: body.type, categoryId: positiveId(body.categoryId), locationId: positiveId(body.locationId), eventDate: eventDate(body.eventDate), description: string(body.description, 65535), color: body.color === undefined || body.color === null ? null : string(body.color, 80) };
+  if (body.verificationQuestions !== undefined) {
+    const questions = verificationQuestions(body.verificationQuestions);
+    if (questions.length && body.type !== 'FOUND') throw new HttpError(400, 'Chỉ bài nhặt được mới có câu hỏi xác minh');
+    result.verificationQuestions = questions;
+  }
+  return result;
 }
 export function validateUpdateItem(body) {
-  const fields = ['title', 'categoryId', 'locationId', 'eventDate', 'description', 'color'];
+  const fields = ['title', 'categoryId', 'locationId', 'eventDate', 'description', 'color', 'verificationQuestions'];
   onlyKeys(body, fields);
   if (!Object.keys(body).length) invalid();
   const result = {};
@@ -50,6 +64,7 @@ export function validateUpdateItem(body) {
     if (key === 'eventDate') result.eventDate = eventDate(body.eventDate);
     if (key === 'description') result.description = string(body.description, 65535);
     if (key === 'color') result.color = body.color === null ? null : string(body.color, 80);
+    if (key === 'verificationQuestions') result.verificationQuestions = verificationQuestions(body.verificationQuestions);
   }
   return result;
 }

@@ -25,6 +25,7 @@ export function createSecurity(overrides = {}) {
     }),
     api: limiter('api', 60000), health: limiter('health', 60000), login: limiter('login', 900000), register: limiter('register', 900000),
     reset: rateLimit({ windowMs: 900000, limit: 10, standardHeaders: 'draft-7', legacyHeaders: false, validate: { xForwardedForHeader: false, forwardedHeader: false }, handler: (_req, res) => res.status(429).json({ success: false, message: 'Quá nhiều yêu cầu, vui lòng thử lại sau' }) }),
+    contact: rateLimit({ windowMs: 3600000, limit: config.contactMax ?? 5, standardHeaders: 'draft-7', legacyHeaders: false, validate: { xForwardedForHeader: false, forwardedHeader: false }, skip: (req) => req.method !== 'POST', handler: (_req, res) => res.set('Cache-Control', 'no-store').status(429).json({ success: false, message: 'Quá nhiều yêu cầu, vui lòng thử lại sau' }) }),
     upload: limiter('upload', 60000, (req) => String(req.user.id))
   };
 }

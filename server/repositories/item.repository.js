@@ -8,7 +8,17 @@ import { hiddenItemSql } from '../utils/item-visibility.js';
 import { lockActiveAdmin } from './admin-actor.js';
 
 const columns = `i.item_id, i.user_id, i.category_id, i.location_id, i.title, i.description, i.type, i.color, i.event_date, i.status, i.created_at, i.updated_at, c.name AS category_name, l.name AS location_name, ${hiddenItemSql()} AS is_hidden`;
+// Verification questions ride along with the detail row (no extra round trip).
+const questionsJson = "(SELECT JSON_ARRAYAGG(JSON_OBJECT('question_id', q.question_id, 'position', q.position, 'question', q.question)) FROM item_verification_questions q WHERE q.item_id = i.item_id)";
 const joins = 'FROM items i JOIN categories c ON c.category_id = i.category_id JOIN locations l ON l.location_id = i.location_id';
+async function insertQuestions(run, itemId, questions) {
+  const saved = [];
+  for (const [index, question] of questions.entries()) {
+    const [result] = await run('INSERT INTO item_verification_questions (item_id, position, question, created_at) VALUES (?, ?, ?, UTC_TIMESTAMP())', [itemId, index + 1, question]);
+    saved.push({ question_id: result.insertId, position: index + 1, question });
+  }
+  return saved;
+}
 export function createItemRepository(pool, execute = (sql, values = []) => query(pool, sql, values), { lockReferences = false } = {}) {
   async function attachImages(items) {
     if (!items.length) return items;
@@ -58,14 +68,26 @@ export function createItemRepository(pool, execute = (sql, values = []) => query
         const run = (sql, values = []) => connection.query({ sql, timeout: databaseTimeout }, values);
         await bumpAiVisualCatalogRevision(run);
         await createMatchingService(createMatchingRepository(pool, run)).synchronize(created.item_id);
-        return { ...created, images: [] };
+        const questions = await insertQuestions(run, created.item_id, item.verificationQuestions ?? []);
+        return { ...created, images: [], questions };
       });
     },
     async findById(id) {
-      const [[item]] = await execute(`SELECT ${columns} ${joins} WHERE i.item_id = ?`, [id]);
-      if (!item) return undefined;
+      const [[row]] = await execute(`SELECT ${columns}, ${questionsJson} AS questions_json ${joins} WHERE i.item_id = ?`, [id]);
+      if (!row) return undefined;
+      const { questions_json: raw, ...item } = row;
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw ?? [];
+      const questions = parsed.sort((a, b) => a.position - b.position);
       const [images] = await execute('SELECT image_id, image_url FROM item_images WHERE item_id = ? ORDER BY image_id', [id]);
-      return { ...item, images };
+      return { ...item, images, questions };
+    },
+    async claimCount(id) {
+      const [[row]] = await execute('SELECT COUNT(*) AS total FROM claims WHERE item_id = ?', [id]);
+      return Number(row.total);
+    },
+    async replaceQuestions(id, questions) {
+      await execute('DELETE FROM item_verification_questions WHERE item_id = ?', [id]);
+      return insertQuestions(execute, id, questions);
     },
     async list(filters, ownerId, { includeHidden = false } = {}) {
       const where = [], values = [];

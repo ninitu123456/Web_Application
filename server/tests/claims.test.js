@@ -6,7 +6,8 @@ import { serve } from './helpers.js';
 
 const owner = { id: '10', role: 'USER' }, claimant = { id: '20', role: 'USER' }, unrelated = { id: '30', role: 'USER' };
 
-function fixture({ itemType = 'FOUND', status = 'OPEN' } = {}) {
+function fixture({ itemType = 'FOUND', status = 'OPEN', questions } = {}) {
+  const answers = [];
   const item = { item_id: '4', user_id: owner.id, type: itemType, status };
   const claims = [];
   const logs = [];
@@ -19,6 +20,7 @@ function fixture({ itemType = 'FOUND', status = 'OPEN' } = {}) {
       const source = {
         async notifyClaim(type, claimId) { assert.ok(['NEW_CLAIM', 'CLAIM_APPROVED', 'CLAIM_REJECTED', 'CLAIM_COMPLETED'].includes(type)); assert.ok(claims.some((claim) => claim.claim_id === String(claimId))); },
         async findItem() { return item; },
+        ...(questions ? { async questions() { return questions; }, async saveAnswers(claimId, rows) { answers.push(...rows.map((row) => ({ claimId: String(claimId), ...row }))); } } : {}),
         async findClaimForUpdate(claimId) { return claims.find((claim) => claim.claim_id === String(claimId)); },
         async findClaimByClaimant(userId) { return claims.find((claim) => claim.claimant_id === String(userId)); },
         async activeClaimExists(exceptId = null) { return claims.some((claim) => claim.claim_id !== String(exceptId) && ['APPROVED', 'COMPLETED'].includes(claim.status)); },
@@ -45,12 +47,16 @@ function fixture({ itemType = 'FOUND', status = 'OPEN' } = {}) {
       return operation(source);
     }
   };
-  return { item, claims, logs, service: createClaimService(repository) };
+  return { item, claims, logs, answers, service: createClaimService(repository) };
 }
 
 test('Claim validation requires trimmed evidence and forbids client-selected fields', () => {
-  assert.deepEqual(validateCreateClaim({ proofDescription: '  private evidence  ' }), { proofDescription: 'private evidence' });
-  for (const bad of [undefined, null, {}, { proofDescription: '  ' }, { proofDescription: 'ok', status: 'APPROVED' }, { proofDescription: 3 }]) {
+  assert.deepEqual(validateCreateClaim({ proofDescription: '  private evidence  ' }), { proofDescription: 'private evidence', answers: [] });
+  assert.deepEqual(validateCreateClaim({ proofDescription: 'x', answers: [{ questionId: '7', answer: '  blue  ' }] }), { proofDescription: 'x', answers: [{ questionId: 7, answer: 'blue' }] });
+  for (const bad of [undefined, null, {}, { proofDescription: '  ' }, { proofDescription: 'ok', status: 'APPROVED' }, { proofDescription: 3 },
+    { proofDescription: 'ok', answers: 'x' }, { proofDescription: 'ok', answers: [{ questionId: 1, answer: ' ' }] },
+    { proofDescription: 'ok', answers: [{ questionId: 1, answer: 'a' }, { questionId: 1, answer: 'b' }] },
+    { proofDescription: 'ok', answers: [{ questionId: 1, answer: 'a', extra: 1 }] }, { proofDescription: 'ok', answers: [1, 2, 3, 4] }]) {
     assert.throws(() => validateCreateClaim(bad), (error) => error.status === 400);
   }
 });
@@ -167,4 +173,17 @@ test('HTTP ADMIN can claim another owner item, but cannot self-claim or bypass d
     state.item.status = 'OPEN'; state.item.type = 'LOST';
     assert.equal((await create()).status, 400);
   } finally { await http.close(); }
+});
+
+test('claims must answer every verification question exactly once and answers are stored', async () => {
+  const questions = [{ question_id: 5, position: 1, question: 'Màu dây đeo?' }, { question_id: 6, position: 2, question: 'Có gì bên trong?' }];
+  const found = fixture({ questions });
+  for (const answers of [[], [{ questionId: 5, answer: 'Xanh' }], [{ questionId: 5, answer: 'Xanh' }, { questionId: 9, answer: 'Thẻ' }]]) {
+    await assert.rejects(() => found.service.create(claimant, 4, { proofDescription: 'proof', answers }), (error) => error.status === 400);
+  }
+  assert.equal(found.claims.length, 0);
+  await found.service.create(claimant, 4, { proofDescription: 'proof', answers: [{ questionId: 6, answer: 'Thẻ SV' }, { questionId: 5, answer: 'Xanh' }] });
+  assert.deepEqual(found.answers.map((row) => row.questionId).sort(), [5, 6]);
+  const plain = fixture();
+  await assert.rejects(() => plain.service.create(claimant, 4, { proofDescription: 'proof', answers: [{ questionId: 5, answer: 'x' }] }), (error) => error.status === 400);
 });

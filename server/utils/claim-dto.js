@@ -17,6 +17,7 @@ export function claimDto(claim) {
     eventDate: claim.item_event_date instanceof Date ? claim.item_event_date.toISOString().slice(0, 10) : String(claim.item_event_date).slice(0, 10),
     category: claim.category_name ?? null, location: claim.location_name ?? null
   };
+  if (claim.answers !== undefined) result.answers = claim.answers.map((row) => ({ questionId: id(row.question_id), position: Number(row.position), question: row.question, answer: row.answer }));
   if (claim.claimant_name !== undefined) result.claimant = { id: id(claim.claimant_id), fullName: claim.claimant_name };
   if (result.item && claim.item_is_hidden !== undefined) result.item.visibility = Number(claim.item_is_hidden) ? 'HIDDEN' : 'PUBLIC';
   return result;

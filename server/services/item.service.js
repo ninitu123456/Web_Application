@@ -56,6 +56,13 @@ export function createItemService(repository, imageStorage, imageOperations, aiV
     if (!Number.isSafeInteger(count) || count < 0) throw new Error('Item image count is invalid');
     if (count + amount > 5) throw new HttpError(400, 'Mỗi Item được phép có tối đa 5 ảnh');
   }
+  async function replaceQuestions(source, item, questions) {
+    const current = (item.questions ?? []).map((row) => row.question);
+    if (JSON.stringify(current) === JSON.stringify(questions)) return;
+    if (item.type !== 'FOUND' && questions.length) throw new HttpError(400, 'Chỉ bài nhặt được mới có câu hỏi xác minh');
+    if (await source.claimCount(item.item_id)) throw new HttpError(409, 'Không thể đổi câu hỏi xác minh khi đã có yêu cầu nhận lại');
+    await source.replaceQuestions(item.item_id, questions);
+  }
   return {
     async create(identity, item) { await assertReferences(item); return itemDto(await repository.create(identity.id, item, (source) => assertReferences(item, source))); },
     async get(id, identity, { includeHidden = false } = {}) {
@@ -71,9 +78,12 @@ export function createItemService(repository, imageStorage, imageOperations, aiV
     },
     async update(identity, id, fields) {
       return repository.withLockedItem(id, async (source) => {
-        open(await owned(identity, id, source));
+        const item = await owned(identity, id, source);
+        open(item);
         await assertReferences(fields, source);
-        await source.update(id, fields);
+        const { verificationQuestions: questions, ...columns } = fields;
+        if (questions !== undefined) await replaceQuestions(source, item, questions);
+        if (Object.keys(columns).length) await source.update(id, columns);
         return itemDto(await source.findById(id));
       }, { matching: Object.keys(fields).some((key) => ['categoryId', 'locationId', 'eventDate', 'title', 'description'].includes(key)) });
     },

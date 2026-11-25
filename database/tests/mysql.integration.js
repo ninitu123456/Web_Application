@@ -47,7 +47,7 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
     created = true;
     await initialize(connection, ownedName);
     await t.test('empty database migrates and seeds with verified password hashes', async () => {
-      assert.equal(await migrate(connection, ownedName), 30);
+      assert.equal(await migrate(connection, ownedName), 36);
       await seed(connection, ownedName, credentials);
       await verifyMigrations(connection, ownedName);
       assert.deepEqual(await verifySeed(connection, ownedName, credentials), { roles: 2, users: 2, categories: 4, locations: 4, items: 4 });
@@ -66,12 +66,12 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
       await connection.query('ALTER TABLE users DROP COLUMN session_version');
       await connection.query(`DELETE FROM _schema_migrations WHERE version IN (${featureVersions.map(() => '?').join(',')})`, featureVersions);
       assert.equal(Number((await connection.query('SELECT COUNT(*) AS n FROM _schema_migrations'))[0][0].n), 25);
-      assert.equal(await migrate(connection, ownedName), 5, 'AI predecessor acquires only account/chat migrations');
+      assert.equal(await migrate(connection, ownedName), featureVersions.length, 'AI predecessor acquires only feature migrations');
       const visualNames = new Set(tables.slice(11).map(table => table.name));
       const visualVersions = files.filter(file => visualNames.has(file.table?.name) || file.kind === 'seed').map(file => file.version);
       for (const table of tables.slice(11).reverse()) await connection.query(`DROP TABLE ${quote(table.name)}`);
       await connection.query(`DELETE FROM _schema_migrations WHERE version IN (${visualVersions.map(() => '?').join(',')})`, visualVersions);
-      assert.equal(Number((await connection.query('SELECT COUNT(*) AS n FROM _schema_migrations'))[0][0].n), 18);
+      assert.equal(Number((await connection.query('SELECT COUNT(*) AS n FROM _schema_migrations'))[0][0].n), 24);
       assert.equal(await migrate(connection, ownedName), 12, 'UI predecessor acquires only AI migrations');
       await verifyMigrations(connection, ownedName);
       await verifySeed(connection, ownedName, credentials);
@@ -203,10 +203,10 @@ test('real MySQL: fresh setup, constraints, reruns, recovery and conflict protec
       await connection.query('DROP INDEX idx_items_created_at ON items');
       await connection.query('DROP TABLE ai_visual_pair_alerts, ai_visual_notification_outbox, ai_visual_notification_decisions, ai_visual_snapshot_results, ai_visual_snapshots, ai_visual_demo_entities, ai_visual_notification_preferences, ai_visual_candidates, ai_visual_jobs, item_image_embeddings, ai_visual_catalog_state');
       await connection.execute("DELETE FROM _schema_migrations WHERE version>='013'");
-      for (const name of ['messages', 'conversations', 'email_outbox', 'password_reset_tokens']) await connection.query(`DROP TABLE ${quote(name)}`);
+      for (const name of ['claim_handovers', 'contact_messages', 'item_views', 'saved_items', 'claim_answers', 'item_verification_questions', 'messages', 'conversations', 'email_outbox', 'password_reset_tokens']) await connection.query(`DROP TABLE ${quote(name)}`);
       await connection.query('ALTER TABLE users DROP COLUMN session_version');
       await connection.execute("UPDATE _schema_migrations SET status='running', applied_at=NULL WHERE version='012_item_search_indexes.sql'");
-      assert.equal(await migrate(connection, ownedName), 19);
+      assert.equal(await migrate(connection, ownedName), 25);
       await connection.execute('UPDATE _schema_migrations SET checksum=REPEAT(\'0\',64) WHERE version=?', [last.version]);
       await assert.rejects(() => migrate(connection, ownedName), /history\/checksum/);
       await connection.execute('UPDATE _schema_migrations SET checksum=? WHERE version=?', [last.checksum, last.version]);

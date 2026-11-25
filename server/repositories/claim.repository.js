@@ -52,7 +52,18 @@ export function createClaimRepository(pool) {
           async listForItem(options) {
             const [[count]] = await run('SELECT COUNT(*) AS total FROM claims WHERE item_id=?', [itemId]);
             const [rows] = await run(`SELECT ${claimColumns}, u.full_name AS claimant_name FROM claims c JOIN users u ON u.user_id=c.claimant_id WHERE c.item_id = ? ORDER BY c.submitted_at DESC, c.claim_id DESC LIMIT ? OFFSET ?`, [itemId, options.limit, (options.page - 1) * options.limit]);
+            if (rows.length) {
+              const [answers] = await run(`SELECT a.claim_id, a.question_id, q.position, q.question, a.answer FROM claim_answers a JOIN item_verification_questions q ON q.question_id=a.question_id WHERE a.claim_id IN (${rows.map(() => '?').join(',')}) ORDER BY q.position`, rows.map((row) => row.claim_id));
+              for (const row of rows) row.answers = answers.filter((answer) => String(answer.claim_id) === String(row.claim_id));
+            }
             return { rows, total: count.total };
+          },
+          async questions() {
+            const [rows] = await run('SELECT question_id, position, question FROM item_verification_questions WHERE item_id=? ORDER BY position', [itemId]);
+            return rows;
+          },
+          async saveAnswers(claimId, answers) {
+            for (const entry of answers) await run('INSERT INTO claim_answers (claim_id, question_id, answer, created_at) VALUES (?, ?, ?, UTC_TIMESTAMP())', [claimId, entry.questionId, entry.answer]);
           },
           async updateClaim(claimId, from, to, field) {
             const assignment = field === 'completed_at'
@@ -78,6 +89,22 @@ export function createClaimRepository(pool) {
             const [result] = await run("UPDATE items SET status = 'RETURNED', updated_at = UTC_TIMESTAMP() WHERE item_id = ? AND status = 'CLAIMED'", [itemId]);
             if (result.affectedRows) await deleteAiVisualCandidatesIfPresent(run, itemId);
             return result.affectedRows;
+          },
+          async findHandover(claimId) {
+            const [[row]] = await run('SELECT * FROM claim_handovers WHERE claim_id = ? FOR UPDATE', [claimId]);
+            return row;
+          },
+          async saveHandover(claimId, fields) {
+            const allowed = ['appointment_at', 'appointment_place', 'proposed_by', 'appointment_status', 'owner_confirmed_at', 'claimant_confirmed_at', 'dispute_reason', 'disputed_by', 'disputed_at', 'dispute_resolved_at'];
+            const keys = Object.keys(fields).filter((key) => allowed.includes(key));
+            const value = (key) => fields[key] === 'NOW' ? { sql: 'UTC_TIMESTAMP()', values: [] } : { sql: '?', values: [fields[key]] };
+            await run('INSERT IGNORE INTO claim_handovers (claim_id, updated_at) VALUES (?, UTC_TIMESTAMP())', [claimId]);
+            if (keys.length) {
+              const parts = keys.map((key) => ({ key, ...value(key) }));
+              await run(`UPDATE claim_handovers SET ${parts.map((part) => `${part.key} = ${part.sql}`).join(', ')}, updated_at = UTC_TIMESTAMP() WHERE claim_id = ?`, [...parts.flatMap((part) => part.values), claimId]);
+            }
+            const [[row]] = await run('SELECT * FROM claim_handovers WHERE claim_id = ?', [claimId]);
+            return row;
           },
           async audit(actorId, action, claimId, details) {
             await run('INSERT INTO activity_logs (user_id, action, entity_type, entity_id, details, created_at) VALUES (?, ?, \'CLAIM\', ?, ?, UTC_TIMESTAMP())', [actorId, action, claimId, JSON.stringify(details)]);

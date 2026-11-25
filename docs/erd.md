@@ -31,6 +31,7 @@ Database gồm 26 bảng chia ba nhóm, cộng bảng kỹ thuật `_schema_migr
 | --- | --- | --- |
 | Nghiệp vụ | 11 | `roles`, `users`, `categories`, `locations`, `items`, `item_images`, `matches`, `claims`, `notifications`, `reports`, `activity_logs` |
 | Tài khoản và chat | 4 | `password_reset_tokens`, `email_outbox`, `conversations`, `messages` |
+| Tương tác và bàn giao | 6 | `item_verification_questions`, `claim_answers`, `saved_items`, `item_views`, `contact_messages`, `claim_handovers` |
 | Gợi ý bằng hình ảnh (AI) | 11 | `item_image_embeddings`, `ai_visual_jobs`, `ai_visual_candidates`, `ai_visual_catalog_state`, `ai_visual_snapshots`, `ai_visual_snapshot_results`, `ai_visual_notification_preferences`, `ai_visual_notification_decisions`, `ai_visual_notification_outbox`, `ai_visual_pair_alerts`, `ai_visual_demo_entities` |
 
 ```mermaid
@@ -55,6 +56,14 @@ erDiagram
     conversations ||--o{ messages : "chứa"
     users ||--o{ messages : "gửi"
     item_images ||--o{ item_image_embeddings : "có vector"
+    items ||--o{ item_verification_questions : "câu hỏi xác minh"
+    claims ||--o{ claim_answers : "trả lời"
+    item_verification_questions ||--o{ claim_answers : "được trả lời"
+    users ||--o{ saved_items : "lưu"
+    items ||--o{ saved_items : "được lưu"
+    items ||--o{ item_views : "lượt xem"
+    users |o--o{ contact_messages : "gửi / xử lý"
+    claims ||--o| claim_handovers : "bàn giao"
 ```
 
 ## 3. Bảng nghiệp vụ

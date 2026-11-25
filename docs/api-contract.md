@@ -322,12 +322,22 @@ Cả ba endpoint chỉ dành cho chủ bài (`USER` hoặc `ADMIN` đang `ACTIVE
 | PATCH | `/api/claims/:id/approve` | Chủ bài `FOUND` | — | `200` – Claim `APPROVED`, bài `CLAIMED` |
 | PATCH | `/api/claims/:id/reject` | Chủ bài `FOUND` | — | `200` – Claim `REJECTED` |
 | PATCH | `/api/claims/:id/complete` | Chủ bài `FOUND` | — | `200` – Claim `COMPLETED`, bài `RETURNED` |
+| GET | `/api/claims/:id/handover` | Chủ bài, người gửi Claim hoặc `ADMIN` | — | `200` – Trạng thái bàn giao |
+| PUT | `/api/claims/:id/handover/appointment` | Chủ bài hoặc người gửi Claim | `appointmentAt` (ISO, trong 60 ngày tới), `place` | `200` – Lịch hẹn `PROPOSED` |
+| PATCH | `/api/claims/:id/handover/appointment/accept` | Bên **không** đề xuất lịch | — | `200` – Lịch hẹn `ACCEPTED` |
+| PATCH | `/api/claims/:id/handover/confirm` | Chủ bài hoặc người gửi Claim | — | `200` – Ghi nhận xác nhận; đủ hai bên thì Claim `COMPLETED`, bài `RETURNED` |
+| POST | `/api/claims/:id/handover/dispute` | Chủ bài hoặc người gửi Claim | `reason` | `200` – Mở khiếu nại, tạm khóa xác nhận/hoàn tất |
 
-`:id` trong `/api/claims/:id/...` là mã Claim.
+`:id` trong `/api/claims/:id/...` là mã Claim. Bàn giao chỉ áp dụng cho Claim `APPROVED`/`COMPLETED`.
 
 ```json
-{ "proofDescription": "Tai nghe của tôi có một vết xước nhỏ ở mặt sau hộp." }
+{
+  "proofDescription": "Tai nghe của tôi có một vết xước nhỏ ở mặt sau hộp.",
+  "answers": [{ "questionId": 12, "answer": "Màu xanh dương" }]
+}
 ```
+
+- Nếu bài có câu hỏi xác minh, `answers` phải trả lời **đủ và đúng một lần** mỗi câu (`400` nếu thiếu/thừa). Câu trả lời chỉ trả về cho chủ bài qua `GET /api/items/:id/claims` (trường `answers`).
 
 - Danh sách sắp xếp mới nhất trước (`submitted_at DESC`, `claim_id DESC`).
 - Lỗi: `400` dữ liệu hoặc chuyển trạng thái không hợp lệ; `403` không có quyền; `404` bài hoặc Claim không tồn tại; `409` đã gửi Claim cho bài này hoặc xung đột với Claim đang hoạt động.
@@ -335,6 +345,23 @@ Cả ba endpoint chỉ dành cho chủ bài (`USER` hoặc `ADMIN` đang `ACTIVE
 ```json
 { "success": false, "message": "Người dùng đã gửi yêu cầu nhận đồ cho bài đăng này" }
 ```
+
+## 7b. Lưu bài, lượt xem, thống kê, liên hệ
+
+| Phương thức | Endpoint | Quyền | Dữ liệu | Kết quả |
+| --- | --- | --- | --- | --- |
+| GET | `/api/saved-items` | `USER`/`ADMIN` | `page?`, `limit?` | `200` – Bài đã lưu (kèm `savedAt`), bỏ qua bài bị ẩn |
+| GET | `/api/saved-items/ids` | `USER`/`ADMIN` | — | `200` – Mảng mã bài đã lưu (tối đa 500) |
+| PUT | `/api/saved-items/:itemId` | `USER`/`ADMIN`, trừ chủ bài | — | `200` – Idempotent |
+| DELETE | `/api/saved-items/:itemId` | `USER`/`ADMIN` | — | `200` – Idempotent |
+| POST | `/api/items/:id/views` | Công khai (token tùy chọn) | — | `200` – `{ counted }`; chủ bài không tính, mỗi người xem tính 1 lần/30 phút |
+| GET | `/api/items/:id/stats` | Chủ bài hoặc `ADMIN` | — | `200` – `views`, `saves`, `claims`, `pendingClaims` |
+| GET | `/api/users/me/stats` | `USER`/`ADMIN` | — | `200` – Số bài theo loại/trạng thái, Claim đã gửi, Claim chờ duyệt trên bài của tôi, tổng lượt xem, số bài đã lưu |
+| POST | `/api/contact` | Công khai (token tùy chọn), giới hạn 5 lần/giờ/IP | `fullName`, `email`, `topic` (`GENERAL`/`ACCOUNT`/`ITEM`/`REPORT`/`OTHER`), `body`, `itemUrl?` | `201` – Liên hệ `NEW` |
+| GET | `/api/admin/contact-messages` | `ADMIN` | `status?` (`NEW`/`HANDLED`), `page?`, `limit?` | `200` – Hộp thư liên hệ |
+| PATCH | `/api/admin/contact-messages/:id/handle` | `ADMIN` | — | `200` – Liên hệ `HANDLED` |
+| GET | `/api/admin/handover-disputes` | `ADMIN` | `status?` (`OPEN`/`RESOLVED`), `page?`, `limit?` | `200` – Khiếu nại bàn giao |
+| PATCH | `/api/admin/handover-disputes/:claimId/resolve` | `ADMIN` | — | `200` – Đóng khiếu nại, hai bên tiếp tục xác nhận |
 
 ## 8. Nhắn tin
 

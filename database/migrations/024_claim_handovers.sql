@@ -1,0 +1,21 @@
+CREATE TABLE `claim_handovers` (
+  `claim_id` BIGINT UNSIGNED NOT NULL,
+  `appointment_at` DATETIME NULL,
+  `appointment_place` VARCHAR(200) NULL,
+  `proposed_by` BIGINT UNSIGNED NULL,
+  `appointment_status` ENUM('NONE','PROPOSED','ACCEPTED') NOT NULL DEFAULT 'NONE',
+  `owner_confirmed_at` DATETIME NULL,
+  `claimant_confirmed_at` DATETIME NULL,
+  `dispute_reason` VARCHAR(1000) NULL,
+  `disputed_by` BIGINT UNSIGNED NULL,
+  `disputed_at` DATETIME NULL,
+  `dispute_resolved_at` DATETIME NULL,
+  `updated_at` DATETIME NOT NULL,
+  PRIMARY KEY (`claim_id`),
+  KEY `idx_handover_dispute` (`disputed_at`, `dispute_resolved_at`),
+  KEY `idx_claim_handovers_proposed_by` (`proposed_by`),
+  KEY `idx_claim_handovers_disputed_by` (`disputed_by`),
+  CONSTRAINT `fk_handover_claim` FOREIGN KEY (`claim_id`) REFERENCES `claims` (`claim_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_handover_proposer` FOREIGN KEY (`proposed_by`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_handover_disputer` FOREIGN KEY (`disputed_by`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

@@ -403,6 +403,17 @@ Chỉ ghép bài khác loại (`LOST` với `FOUND`); mỗi cặp bài chỉ có
 Bị từ chối:       PENDING → REJECTED
 ```
 
+### `BR-CLAIM-VERIFY` — Câu hỏi xác minh
+
+- Chỉ bài `FOUND` có tối đa 3 câu hỏi (≤ 200 ký tự, không trùng). Câu hỏi công khai, câu trả lời (≤ 300 ký tự) chỉ chủ bài thấy.
+- Claim phải trả lời đủ mọi câu hỏi. Không đổi câu hỏi khi bài đã có Claim.
+
+### `BR-HANDOVER` — Bàn giao hai phía
+
+- Áp dụng cho Claim `APPROVED`. Một bên đề xuất lịch hẹn (thời gian trong 60 ngày tới, địa điểm), bên còn lại xác nhận. Không đổi lịch khi đã có bên xác nhận bàn giao.
+- Mỗi bên bấm xác nhận đã giao/đã nhận; khi đủ hai bên, Claim chuyển `COMPLETED` và bài `RETURNED` (như `complete`).
+- Khi có khiếu nại chưa xử lý, mọi xác nhận và `complete` bị chặn (`409`) đến khi `ADMIN` đóng khiếu nại.
+
 ### `BR-STATUS-05` — Dùng transaction
 
 Các thao tác sau chạy trong transaction có khóa dòng (`SELECT ... FOR UPDATE`) để tránh race condition:

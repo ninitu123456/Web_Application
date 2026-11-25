@@ -425,3 +425,93 @@ CREATE TABLE `messages` (
   CONSTRAINT `fk_message_chat` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`conversation_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_message_sender` FOREIGN KEY (`sender_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `item_verification_questions` (
+  `question_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `item_id` BIGINT UNSIGNED NOT NULL,
+  `position` TINYINT UNSIGNED NOT NULL,
+  `question` VARCHAR(200) NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`question_id`),
+  UNIQUE KEY `uq_question_position` (`item_id`, `position`),
+  CONSTRAINT `fk_question_item` FOREIGN KEY (`item_id`) REFERENCES `items` (`item_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `ck_question_position` CHECK (position >= 1 AND position <= 3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `claim_answers` (
+  `answer_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `claim_id` BIGINT UNSIGNED NOT NULL,
+  `question_id` BIGINT UNSIGNED NOT NULL,
+  `answer` VARCHAR(300) NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`answer_id`),
+  UNIQUE KEY `uq_claim_answer` (`claim_id`, `question_id`),
+  KEY `idx_claim_answers_question_id` (`question_id`),
+  CONSTRAINT `fk_answer_claim` FOREIGN KEY (`claim_id`) REFERENCES `claims` (`claim_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_answer_question` FOREIGN KEY (`question_id`) REFERENCES `item_verification_questions` (`question_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `saved_items` (
+  `saved_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `item_id` BIGINT UNSIGNED NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`saved_id`),
+  UNIQUE KEY `uq_saved_user_item` (`user_id`, `item_id`),
+  KEY `idx_saved_user_recent` (`user_id`, `created_at`, `saved_id`),
+  KEY `idx_saved_items_item_id` (`item_id`),
+  CONSTRAINT `fk_saved_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_saved_item` FOREIGN KEY (`item_id`) REFERENCES `items` (`item_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `item_views` (
+  `view_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `item_id` BIGINT UNSIGNED NOT NULL,
+  `viewer_key` CHAR(64) NOT NULL,
+  `viewed_at` DATETIME NOT NULL,
+  PRIMARY KEY (`view_id`),
+  KEY `idx_item_view_dedupe` (`item_id`, `viewer_key`, `viewed_at`),
+  CONSTRAINT `fk_view_item` FOREIGN KEY (`item_id`) REFERENCES `items` (`item_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `contact_messages` (
+  `contact_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT UNSIGNED NULL,
+  `full_name` VARCHAR(100) NOT NULL,
+  `email` VARCHAR(255) NOT NULL,
+  `topic` ENUM('GENERAL','ACCOUNT','ITEM','REPORT','OTHER') NOT NULL,
+  `body` VARCHAR(3000) NOT NULL,
+  `item_url` VARCHAR(500) NULL,
+  `status` ENUM('NEW','HANDLED') NOT NULL DEFAULT 'NEW',
+  `created_at` DATETIME NOT NULL,
+  `handled_at` DATETIME NULL,
+  `handled_by` BIGINT UNSIGNED NULL,
+  PRIMARY KEY (`contact_id`),
+  KEY `idx_contact_status` (`status`, `created_at`, `contact_id`),
+  KEY `idx_contact_messages_user_id` (`user_id`),
+  KEY `idx_contact_messages_handled_by` (`handled_by`),
+  CONSTRAINT `fk_contact_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_contact_handler` FOREIGN KEY (`handled_by`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `claim_handovers` (
+  `claim_id` BIGINT UNSIGNED NOT NULL,
+  `appointment_at` DATETIME NULL,
+  `appointment_place` VARCHAR(200) NULL,
+  `proposed_by` BIGINT UNSIGNED NULL,
+  `appointment_status` ENUM('NONE','PROPOSED','ACCEPTED') NOT NULL DEFAULT 'NONE',
+  `owner_confirmed_at` DATETIME NULL,
+  `claimant_confirmed_at` DATETIME NULL,
+  `dispute_reason` VARCHAR(1000) NULL,
+  `disputed_by` BIGINT UNSIGNED NULL,
+  `disputed_at` DATETIME NULL,
+  `dispute_resolved_at` DATETIME NULL,
+  `updated_at` DATETIME NOT NULL,
+  PRIMARY KEY (`claim_id`),
+  KEY `idx_handover_dispute` (`disputed_at`, `dispute_resolved_at`),
+  KEY `idx_claim_handovers_proposed_by` (`proposed_by`),
+  KEY `idx_claim_handovers_disputed_by` (`disputed_by`),
+  CONSTRAINT `fk_handover_claim` FOREIGN KEY (`claim_id`) REFERENCES `claims` (`claim_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_handover_proposer` FOREIGN KEY (`proposed_by`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_handover_disputer` FOREIGN KEY (`disputed_by`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

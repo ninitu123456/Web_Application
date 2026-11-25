@@ -10,5 +10,12 @@ export function claimRoutes(authService, claimService) {
   router.patch('/:id/approve', controller.approve);
   router.patch('/:id/reject', controller.reject);
   router.patch('/:id/complete', controller.complete);
+  if (claimService.handover) {
+    router.get('/:id/handover', controller.handover);
+    router.put('/:id/handover/appointment', controller.propose);
+    router.patch('/:id/handover/appointment/accept', controller.accept);
+    router.patch('/:id/handover/confirm', controller.confirm);
+    router.post('/:id/handover/dispute', controller.dispute);
+  }
   return router;
 }

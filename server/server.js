@@ -39,6 +39,8 @@ import { createImageStorage } from './config/cloudinary.js';
 import { createImageOperations, startImageCleanup } from './services/image-operations.js';
 import { assertIsolatedInstance } from '../database/scripts/assert-isolated.js';
 import { assertAiVisualSchema } from './ai-visual/schema-check.js';
+import { createEngagementService } from './services/engagement.service.js';
+import { createEngagementRepository } from './repositories/engagement.repository.js';
 
 export async function startServer(config = readConfig()) {
   if ((config.aiVisual?.enabled || config.aiVisualSuggestions?.enabled) && !config.aiVisual?.production) await assertIsolatedInstance();
@@ -72,7 +74,7 @@ export async function startServer(config = readConfig()) {
     if (config.aiVisual?.enabled || config.aiVisualSuggestions?.enabled) await assertAiVisualSchema(pool);
     await healthService.check({ fresh: true });
     console.log('MySQL connection verified: findit_db');
-    server = createServer(createApp({ suggestionsService: createSuggestionsService(createSuggestionsRepository(pool, { visualEnabled: config.aiVisualSuggestions.enabled, production: config.aiVisual?.production })), healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, lookupService, visualSuggestionsService, chatService, passwordResetService, corsOrigins: config.corsOrigins, security: config.security }));
+    server = createServer(createApp({ suggestionsService: createSuggestionsService(createSuggestionsRepository(pool, { visualEnabled: config.aiVisualSuggestions.enabled, production: config.aiVisual?.production })), healthService, authService, userService, itemService, matchingService, claimService, notificationService, reportService, adminService, lookupService, visualSuggestionsService, chatService, passwordResetService, engagementService: createEngagementService(createEngagementRepository(pool)), corsOrigins: config.corsOrigins, security: config.security }));
     io = attachChatSocket(server, { authService, chatService, corsOrigins: config.corsOrigins });
     await new Promise((resolve, reject) => {
       server.once('error', reject);
