@@ -1,9 +1,9 @@
 export const chartColors = [
-  "#206448",
-  "#a8cda0",
-  "#f0c66c",
-  "#76a98c",
-  "#d4d9d4",
+  "#1d6bff",
+  "#f79009",
+  "#7a5af8",
+  "#12b76a",
+  "#c3cee2",
 ];
 export function distribution(rows: { label: string; count: number }[]) {
   const total = rows.reduce((sum, row) => sum + row.count, 0);
@@ -15,7 +15,7 @@ export function distribution(rows: { label: string; count: number }[]) {
   });
   return {
     total,
-    background: total ? `conic-gradient(${stops.join(",")})` : "#e6eae3",
+    background: total ? `conic-gradient(${stops.join(",")})` : "#e6ecf8",
   };
 }
 export function barScale(values: number[]) {

@@ -1,3 +1,4 @@
+import { AuthFrame } from "../components/AuthFrame";
 import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, errorText } from "../lib/api";
@@ -81,69 +82,79 @@ export function PasswordResetPage({ reset = false }: { reset?: boolean }) {
     }
   }
   return (
-    <section className="panel auth-panel reset-panel">
-      <h1>{reset ? "Đặt lại mật khẩu" : "Quên mật khẩu?"}</h1>
-      <p className="muted">
-        {reset
-          ? "Nhập mật khẩu mới, ít nhất 8 ký tự."
-          : "Nhập email để nhận liên kết đặt lại mật khẩu, có hiệu lực 15 phút."}
-      </p>
-      <form onSubmit={submit}>
-        {reset ? (
-          <>
-            <PasswordInput
-              label="Mật khẩu mới"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="new-password"
-              required
-            />
-            <PasswordInput
-              label="Nhập lại mật khẩu mới"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              autoComplete="new-password"
-              required
-            />
-          </>
-        ) : (
-          <Input
-            label="Email"
-            inputMode="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        )}
-        {error && (
-          <p className="inline-error" role="alert">
-            {error}
-          </p>
-        )}
-        {message && (
-          <p className="notice" role="status">
-            {message}
-          </p>
-        )}
-        <Button className="full" disabled={busy}>
-          {busy
-            ? "Đang xử lý…"
-            : reset
-              ? "Lưu mật khẩu mới"
-              : message
-                ? "Yêu cầu gửi lại liên kết"
-                : "Gửi yêu cầu khôi phục"}
-        </Button>
-      </form>
-      {reset && (
-        <p>
-          <Link to="/quen-mat-khau">Yêu cầu liên kết mới</Link>
+    <AuthFrame
+      title={
+        <>
+          Đừng lo,
+          <br />
+          lấy lại tài khoản rất nhanh.
+        </>
+      }
+    >
+      <section className="panel auth-panel reset-panel">
+        <h1>{reset ? "Đặt lại mật khẩu" : "Quên mật khẩu?"}</h1>
+        <p className="muted">
+          {reset
+            ? "Nhập mật khẩu mới, ít nhất 8 ký tự."
+            : "Nhập email để nhận liên kết đặt lại mật khẩu, có hiệu lực 15 phút."}
         </p>
-      )}
-      <p>
-        <Link to="/dang-nhap">← Về trang đăng nhập</Link>
-      </p>
-    </section>
+        <form onSubmit={submit}>
+          {reset ? (
+            <>
+              <PasswordInput
+                label="Mật khẩu mới"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                required
+              />
+              <PasswordInput
+                label="Nhập lại mật khẩu mới"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                required
+              />
+            </>
+          ) : (
+            <Input
+              label="Email"
+              inputMode="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          )}
+          {error && (
+            <p className="inline-error" role="alert">
+              {error}
+            </p>
+          )}
+          {message && (
+            <p className="notice" role="status">
+              {message}
+            </p>
+          )}
+          <Button className="full" disabled={busy}>
+            {busy
+              ? "Đang xử lý…"
+              : reset
+                ? "Lưu mật khẩu mới"
+                : message
+                  ? "Yêu cầu gửi lại liên kết"
+                  : "Gửi yêu cầu khôi phục"}
+          </Button>
+        </form>
+        {reset && (
+          <p>
+            <Link to="/quen-mat-khau">Yêu cầu liên kết mới</Link>
+          </p>
+        )}
+        <p>
+          <Link to="/dang-nhap">← Về trang đăng nhập</Link>
+        </p>
+      </section>
+    </AuthFrame>
   );
 }

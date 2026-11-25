@@ -13,7 +13,7 @@
   flex-direction: column;
   padding: 24px 14px 18px;
   background: var(--ink);
-  color: #edf5e8;
+  color: #e7ecf6;
   overflow-y: auto;
 }
 .admin-shell .admin-brand {
@@ -95,7 +95,7 @@
   gap: 12px;
   padding: 10px 28px;
   border-bottom: 1px solid var(--line);
-  background: #fcfcf8;
+  background: #f8f9fc;
 }
 .admin-shell .admin-breadcrumb {
   display: flex;
@@ -104,7 +104,7 @@
   min-width: 0;
   flex-wrap: wrap;
   font-size: 13px;
-  color: #54685d;
+  color: #535a69;
 }
 .admin-shell .admin-breadcrumb a {
   min-height: 44px;
@@ -113,7 +113,7 @@
   gap: 9px;
 }
 .admin-shell .admin-breadcrumb strong {
-  color: #294d3d;
+  color: #27344f;
   font-weight: 600;
 }
 .admin-shell .admin-topbar-actions {
@@ -208,7 +208,7 @@
 }
 .admin-shell .stat-card span {
   font-size: 13px;
-  color: #526158;
+  color: #515762;
 }
 .admin-shell .stat-card strong {
   color: var(--forest);
@@ -223,8 +223,8 @@
   height: 44px;
   flex-shrink: 0;
   border-radius: 12px;
-  background: #e9f3e8;
-  color: #206448;
+  background: #e7ebf4;
+  color: #1d3667;
 }
 .admin-shell .admin-stat-icon svg {
   width: 25px;
@@ -286,7 +286,7 @@
   width: 100%;
   max-width: 38px;
   min-height: 3px;
-  background: linear-gradient(#397e5e, var(--forest));
+  background: linear-gradient(#364f81, var(--forest));
   border-radius: 3px 3px 0 0;
   padding: 0;
   position: relative;
@@ -307,7 +307,7 @@
   bottom: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
-  background: #203e2e;
+  background: #1f2940;
   color: white;
   padding: 7px 10px;
   border-radius: 6px;
@@ -356,7 +356,7 @@
 }
 .admin-shell .admin-donut span {
   font-size: 12px;
-  color: #596a5b;
+  color: #585e6b;
 }
 .admin-shell .admin-donut strong {
   font-size: 30px;
@@ -403,12 +403,12 @@
 }
 .admin-shell .admin-horizontal-bars > div > div {
   height: 20px;
-  background: #f1f4ec;
+  background: #eceff4;
   border-radius: 3px;
 }
 .admin-shell .admin-horizontal-bars > div > div > span {
   display: block;
-  background: #286a4c;
+  background: #253d6d;
   height: 100%;
   min-width: 0;
   border-radius: 3px;
@@ -422,7 +422,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid #e5e9e1;
+  border-bottom: 1px solid #e1e4e9;
   padding: 13px 0;
   font-size: 13px;
 }
@@ -448,7 +448,7 @@
   flex-wrap: wrap;
   padding: 22px 2px;
   font-size: 13px;
-  color: #5b6c5d;
+  color: #5a606d;
 }
 .admin-shell .admin-secondary-stats strong {
   margin-left: 8px;
@@ -476,8 +476,8 @@
   border-radius: 12px;
 }
 .admin-shell .table-scroll th {
-  background: #f0f3ec;
-  color: #58685b;
+  background: #eceef3;
+  color: #575d69;
   font-size: 13px;
   padding: 14px;
 }
@@ -495,7 +495,7 @@
   font-size: 13px;
 }
 .admin-shell .table-scroll tbody tr:hover {
-  background: #f7faf2;
+  background: #f2f5fa;
 }
 .admin-shell .status-pending,
 .admin-shell .status-claim_pending,
@@ -546,8 +546,8 @@
   margin-top: 6px;
 }
 .admin-shell .admin-selected-row {
-  background: #eaf3e5;
-  box-shadow: inset 3px 0 #347451;
+  background: #e4e9f4;
+  box-shadow: inset 3px 0 #314877;
 }
 .admin-shell .admin-report-detail {
   scroll-margin-top: 20px;
@@ -567,7 +567,7 @@
   grid-template-columns: 1fr;
 }
 .admin-shell .admin-related-object {
-  border-block: 1px solid #e2e7dd;
+  border-block: 1px solid #dce0e7;
   padding-block: 18px;
   margin: 20px 0;
 }
@@ -624,12 +624,12 @@
   color: var(--forest);
 }
 .claim-inspector .admin-verification-guide {
-  background: #f1f5e9;
-  border: 1px solid #dfe6d5;
+  background: #e8edf6;
+  border: 1px solid #d4dae7;
   border-radius: 12px;
   padding: 14px;
   font-size: 14px;
-  color: #2c583e;
+  color: #2a3a5a;
 }
 .claim-inspector .admin-claim-comparison {
   display: grid;
@@ -689,7 +689,7 @@
   text-align: center;
 }
 .claim-inspector .admin-claim-sender {
-  background: #f1f4ec;
+  background: #eceff4;
   border-radius: 8px;
   padding: 10px;
 }
@@ -702,7 +702,7 @@
   margin-bottom: 16px;
 }
 .claim-inspector .admin-private-proof .proof {
-  background: #f5f6f2;
+  background: #f2f3f6;
   padding: 16px;
   border-radius: 9px;
   min-height: 110px;
@@ -729,7 +729,7 @@
   margin-bottom: 20px;
 }
 .admin-nav-dialog nav a.active {
-  background: #e9f3e0;
+  background: #dfe6f4;
   color: var(--forest);
   font-weight: 600;
 }

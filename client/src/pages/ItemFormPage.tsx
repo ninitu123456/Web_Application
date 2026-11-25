@@ -644,7 +644,7 @@ function ItemForm({
       >
         ← Quay lại
       </Link>
-      <h1>{original ? "Chỉnh sửa bài đăng" : "Đăng bài"}</h1>
+      <h1>{original ? "Sửa tin đăng" : "Đăng tin mới"}</h1>
       {savedMessage && (
         <div className="notice" role="status">
           Nội dung bài #{saved?.id} đã được lưu. Nếu tải ảnh gặp lỗi, kiểm tra

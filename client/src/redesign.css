@@ -144,7 +144,7 @@ h3 {
   color: var(--lime);
 }
 .brand-dot {
-  color: #7fb51f;
+  color: #184ebc;
 }
 .navigation {
   display: flex;
@@ -386,7 +386,7 @@ h3 {
   max-width: 1320px;
   margin: 0 auto;
   padding: 20px clamp(16px, 3vw, 40px) 28px;
-  border-top: 1px solid #2a3630;
+  border-top: 1px solid #292e37;
   font-size: 13px;
 }
 .main-wide + .footer {
@@ -430,7 +430,7 @@ h3 {
 }
 .status-open {
   background: #e3edff;
-  color: #2f5a24;
+  color: #21355d;
 }
 .status-claim_pending,
 .status-pending {
@@ -444,8 +444,8 @@ h3 {
 }
 .status-returned,
 .status-completed {
-  background: #e3f0dd;
-  color: #26532c;
+  background: #dce3f1;
+  color: #243455;
 }
 .status-rejected {
   background: #faeeee;
@@ -913,7 +913,7 @@ h3 {
   background: #f6ecd2;
 }
 .hero-tag-b .hero-tag-art {
-  background: #e8f2cf;
+  background: #cddaf4;
 }
 .hero-tag-body {
   padding: 12px 4px 4px;
@@ -1198,7 +1198,7 @@ h3 {
   margin: 0;
   font-size: 15px;
   line-height: 1.7;
-  color: #c6dacb;
+  color: #c5ccdb;
 }
 .home-safety > div:first-child p {
   color: var(--muted);

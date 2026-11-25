@@ -1,4 +1,4 @@
-import { Icon } from "../components/Icon";
+import { AuthFrame } from "../components/AuthFrame";
 import { PasswordInput } from "../components/PasswordInput";
 import { useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
@@ -78,26 +78,46 @@ export function AuthPage({ register = false }: { register?: boolean }) {
     }
   }
   return (
-    <div className="auth-layout">
-      <section className="auth-story" aria-labelledby="auth-story-title">
-        <div className="hero-tag" aria-hidden="true">
-          <div className="hero-tag-art" style={{ background: "#efe4d2" }}>
-            <Icon name="box" width="48" height="48" strokeWidth="1.2" />
-          </div>
-          <div className="hero-tag-body">
-            <span className="badge status-returned">Đã trao trả</span>
-            <strong>Ví da màu nâu</strong>
-          </div>
-        </div>
-        <h2 id="auth-story-title">Mỗi món đồ đều có đường về nhà.</h2>
-        <p>
-          {register
-            ? "Tạo tài khoản để đăng bài, nhận gợi ý trùng khớp và nhắn tin bàn giao an toàn."
-            : "Đăng nhập để đăng bài, nhận gợi ý trùng khớp và nhắn tin bàn giao an toàn."}
-        </p>
-      </section>
+    <AuthFrame
+      title={
+        register ? (
+          <>
+            Tham gia cộng đồng
+            <br />
+            giúp nhau tìm lại đồ.
+          </>
+        ) : (
+          <>
+            Mỗi món đồ đều xứng đáng
+            <br />
+            được về đúng chủ.
+          </>
+        )
+      }
+    >
+      <div className="auth-tabs" role="tablist" aria-label="Chọn hình thức">
+        <Link
+          role="tab"
+          aria-selected={!register}
+          to={`/dang-nhap?next=${encodeURIComponent(next)}`}
+        >
+          Đăng nhập
+        </Link>
+        <Link
+          role="tab"
+          aria-selected={register}
+          to={`/dang-ky?next=${encodeURIComponent(next)}`}
+        >
+          Đăng ký
+        </Link>
+      </div>
       <section className="panel auth-panel">
-        <h1>{register ? "Tạo tài khoản" : "Đăng nhập"}</h1>
+        <h1>{register ? "Tạo tài khoản" : "Chào mừng trở lại"}</h1>
+        <p className="muted auth-lead">
+          {register
+            ? "Chỉ mất 1 phút với email trường."
+            : "Đăng nhập để tìm và trả đồ thất lạc."}
+        </p>
         <form onSubmit={submit}>
           {register && (
             <Input
@@ -163,6 +183,6 @@ export function AuthPage({ register = false }: { register?: boolean }) {
           </Link>
         </p>
       </section>
-    </div>
+    </AuthFrame>
   );
 }

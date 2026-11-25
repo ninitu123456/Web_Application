@@ -307,6 +307,9 @@ export function MyClaimsPage() {
                 </div>
                 <StatusBadge status={claim.status} group="claim" />
               </div>
+              {claim.status !== "REJECTED" && (
+                <ClaimStepper status={claim.status} />
+              )}
               {claim.item && (
                 <div className="claim-item-state">
                   Trạng thái bài đăng:{" "}
@@ -374,5 +377,24 @@ export function MyClaimsPage() {
         change={(page) => setParams({ page: String(page) })}
       />
     </section>
+  );
+}
+
+const CLAIM_STEPS = ["Đã gửi", "Được chấp thuận", "Đã nhận lại"];
+function ClaimStepper({ status }: { status: string }) {
+  const reached = status === "COMPLETED" ? 3 : status === "APPROVED" ? 2 : 1;
+  return (
+    <ol className="claim-stepper" aria-label="Tiến trình yêu cầu">
+      {CLAIM_STEPS.map((label, index) => (
+        <li
+          key={label}
+          className={index < reached ? "done" : undefined}
+          aria-current={index === reached - 1 ? "step" : undefined}
+        >
+          <span aria-hidden="true">{index < reached ? "✓" : index + 1}</span>
+          {label}
+        </li>
+      ))}
+    </ol>
   );
 }

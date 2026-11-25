@@ -13,10 +13,10 @@ describe("admin aggregate chart data", () => {
     expect(chart.background).not.toMatch(/NaN|Infinity/);
   });
   it("renders an explicit zero total without dividing by zero", () => {
-    expect(distribution([])).toEqual({ total: 0, background: "#e6eae3" });
+    expect(distribution([])).toEqual({ total: 0, background: "#e6ecf8" });
     expect(distribution([{ label: "Chờ", count: 0 }])).toEqual({
       total: 0,
-      background: "#e6eae3",
+      background: "#e6ecf8",
     });
     expect(barScale([])).toBe(1);
     expect(barScale([0, 0])).toBe(1);

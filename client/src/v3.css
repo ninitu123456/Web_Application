@@ -1946,3 +1946,269 @@ body {
 .chat-bubble.mine time {
   color: #fff;
 }
+
+/* ---------- Auth ---------- */
+.auth-shell {
+  padding: 20px;
+  max-width: none;
+}
+.auth-frame {
+  display: flex;
+  gap: 20px;
+  min-height: calc(100vh - 40px);
+}
+.auth-art {
+  flex: 1.05;
+  border-radius: 36px;
+  background: linear-gradient(160deg, #2f7bff, #0b3fb8);
+  position: relative;
+  overflow: hidden;
+  padding: 48px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+.auth-art::before,
+.auth-art::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 7%);
+}
+.auth-art::before {
+  right: -120px;
+  top: -120px;
+  width: 420px;
+  height: 420px;
+}
+.auth-art::after {
+  left: -80px;
+  bottom: -140px;
+  width: 360px;
+  height: 360px;
+}
+.auth-art .brand .brand-pin {
+  fill: #fff;
+}
+.auth-art .brand .brand-lens {
+  stroke: var(--primary);
+}
+.auth-stage {
+  position: relative;
+  flex: 1;
+  min-height: 420px;
+}
+.auth-robot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 300px;
+  transform: translate(-50%, -50%);
+  animation: float-y 5s ease-in-out infinite;
+}
+@keyframes float-y {
+  50% {
+    translate: 0 -12px;
+  }
+}
+.auth-stage .hero-float {
+  color: var(--ink);
+  animation: float-y 6s ease-in-out infinite;
+}
+.auth-stage .a1 {
+  left: 6%;
+  top: 8%;
+  rotate: -6deg;
+}
+.auth-stage .a2 {
+  right: 6%;
+  top: 26%;
+  rotate: 7deg;
+  animation-delay: -2s;
+}
+.auth-stage .a3 {
+  left: 12%;
+  bottom: 6%;
+  rotate: 4deg;
+  animation-delay: -3.5s;
+}
+.auth-art h2 {
+  position: relative;
+  margin: 0;
+  font-size: 38px;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+.auth-art p {
+  position: relative;
+  margin: 12px 0 0;
+  color: #d6e4ff;
+}
+.auth-side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 32px 16px;
+}
+.auth-box {
+  width: 100%;
+  max-width: 440px;
+}
+.auth-box .auth-panel {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+.auth-box h1 {
+  margin: 0;
+  font-size: 38px;
+  letter-spacing: -0.04em;
+}
+.auth-lead {
+  margin: 8px 0 24px;
+  font-size: 16px;
+}
+.auth-tabs {
+  display: flex;
+  padding: 5px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-card);
+  margin-bottom: 26px;
+}
+.auth-tabs a {
+  flex: 1;
+  text-align: center;
+  padding: 12px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+.auth-tabs a[aria-selected="true"] {
+  background: var(--primary);
+  color: #fff;
+}
+.auth-box form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.auth-box .full,
+.auth-box form > .button {
+  width: 100%;
+  min-height: 52px;
+  font-size: 16px;
+}
+.auth-box a {
+  color: var(--primary);
+  font-weight: 600;
+}
+.auth-switch {
+  text-align: center;
+  color: var(--muted);
+}
+.auth-home {
+  color: var(--muted);
+  font-weight: 600;
+}
+@media (max-width: 900px) {
+  .auth-art {
+    display: none;
+  }
+}
+.auth-tabs a[aria-selected="false"] {
+  color: var(--ink);
+}
+
+/* ---------- Admin ---------- */
+.admin-shell {
+  background:
+    radial-gradient(900px 500px at 30% -10%, #dde9ff 0%, transparent 60%),
+    linear-gradient(#f3f7ff, #eaf1ff);
+}
+.admin-shell .admin-rail {
+  background: #0f1b3d;
+}
+.admin-shell h1,
+.admin-shell h2,
+.admin-shell h3 {
+  color: var(--ink);
+}
+.admin-shell .admin-rail a.active,
+.admin-shell .admin-rail a[aria-current="page"] {
+  background: var(--grad);
+  color: #fff;
+}
+.admin-shell .panel,
+.admin-shell .card {
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-card);
+}
+.claim-stepper {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.claim-stepper li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #9aa8c3;
+}
+.claim-stepper li::before {
+  content: "";
+  position: absolute;
+  top: 16px;
+  left: -50%;
+  width: 100%;
+  height: 3px;
+  background: var(--line-strong);
+  z-index: 0;
+}
+.claim-stepper li:first-child::before {
+  display: none;
+}
+.claim-stepper li.done {
+  color: var(--ink);
+}
+.claim-stepper li.done::before {
+  background: var(--primary);
+  transform-origin: left;
+  animation: grow-x 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+.claim-stepper li span {
+  position: relative;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 32px;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  border: 2px solid var(--line-strong);
+}
+.claim-stepper li.done span {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.claim-stepper li[aria-current="step"] span {
+  box-shadow: 0 0 0 5px #dce8ff;
+}
