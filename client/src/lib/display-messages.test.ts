@@ -49,7 +49,7 @@ describe("safe, actionable error messages", () => {
     [
       409,
       "Bạn đã tạo Claim cho Item này",
-      "Bạn đã gửi yêu cầu nhận đồ cho bài đăng này. Vui lòng kiểm tra trong Yêu cầu đã gửi.",
+      "Bạn đã gửi yêu cầu nhận đồ cho bài đăng này. Vui lòng kiểm tra trong mục Yêu cầu nhận đồ.",
     ],
     [
       409,

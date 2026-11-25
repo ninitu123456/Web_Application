@@ -102,7 +102,7 @@ const messages: Record<number, Record<string, string>> = {
     "Item đã có Claim được duyệt":
       "Bài đăng đã có yêu cầu nhận đồ được chấp thuận.",
     "Bạn đã tạo Claim cho Item này":
-      "Bạn đã gửi yêu cầu nhận đồ cho bài đăng này. Vui lòng kiểm tra trong Yêu cầu đã gửi.",
+      "Bạn đã gửi yêu cầu nhận đồ cho bài đăng này. Vui lòng kiểm tra trong mục Yêu cầu nhận đồ.",
     "Claim liên kết với Item không hợp lệ":
       "Yêu cầu nhận đồ không phù hợp với bài đăng liên quan nên chưa thể xử lý.",
     "Bạn đã có báo cáo đang được xử lý cho đối tượng này":

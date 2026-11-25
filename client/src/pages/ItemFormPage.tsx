@@ -99,6 +99,7 @@ export function ItemFormPage() {
       explicitType={
         params.get("type") === "FOUND" || params.get("type") === "LOST"
       }
+      initialTitle={(params.get("title") ?? "").slice(0, 120)}
       userId={user?.id}
       navigate={navigate}
     />
@@ -108,12 +109,14 @@ function ItemForm({
   original,
   initialType,
   explicitType,
+  initialTitle = "",
   userId,
   navigate,
 }: {
   original?: Item;
   initialType: ItemType;
   explicitType: boolean;
+  initialTitle?: string;
   userId?: number;
   navigate: ReturnType<typeof useNavigate>;
 }) {
@@ -128,7 +131,7 @@ function ItemForm({
           description: original.description,
           color: original.color || "",
         }
-      : { ...empty, type: initialType },
+      : { ...empty, type: initialType, title: initialTitle },
   );
   const [step, setStep] = useState(1);
   const [fieldErrors, setFieldErrors] = useState<
@@ -1035,7 +1038,7 @@ function ItemForm({
                   Kiểm tra lại ảnh đã lưu
                 </Button>
               ) : (
-                <Link to="/bai-dang-cua-toi">Kiểm tra Bài đăng của tôi →</Link>
+                <Link to="/bai-dang-cua-toi">Kiểm tra Đồ của tôi →</Link>
               )}
             </div>
           )}

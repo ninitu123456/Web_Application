@@ -1,3 +1,4 @@
+import { Icon } from "../components/Icon";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, errorText } from "../lib/api";
@@ -240,7 +241,7 @@ export function MessagesPage() {
         <h1>Tin nhắn</h1>
         <p className="muted" role="status">
           {connected
-            ? "Đã kết nối"
+            ? "Trao đổi và hẹn giờ trao đồ ngay tại đây."
             : "Đang kết nối lại… Tin nhắn sẽ tự đồng bộ."}
         </p>
       </div>
@@ -268,14 +269,29 @@ export function MessagesPage() {
                 className={`chat-preview ${chat.id === selected ? "active" : ""}`}
                 to={`/tin-nhan?hoi-thoai=${chat.id}`}
               >
-                <strong>{chat.peer.fullName}</strong>
-                <span>{chat.lastMessage || "Bắt đầu cuộc trò chuyện"}</span>
-                <small>
-                  {chat.lastMessageAt
-                    ? new Date(chat.lastMessageAt).toLocaleString("vi-VN")
-                    : ""}{" "}
-                  {chat.unreadCount > 0 && <b>{chat.unreadCount} chưa đọc</b>}
-                </small>
+                <span className="avatar" aria-hidden="true">
+                  {chat.peer.fullName
+                    .trim()
+                    .slice(0, 1)
+                    .toLocaleUpperCase("vi")}
+                </span>
+                <span className="preview-body">
+                  <span className="preview-top">
+                    <strong>{chat.peer.fullName}</strong>
+                    <small>{shortTime(chat.lastMessageAt)}</small>
+                  </span>
+                  <span className="preview-text">
+                    {chat.lastMessage || "Bắt đầu cuộc trò chuyện"}
+                  </span>
+                </span>
+                {chat.unreadCount > 0 && (
+                  <b
+                    className="tab-count"
+                    aria-label={`${chat.unreadCount} chưa đọc`}
+                  >
+                    {chat.unreadCount}
+                  </b>
+                )}
               </Link>
             ))
           )}
@@ -296,7 +312,18 @@ export function MessagesPage() {
                 <Link className="chat-back" to="/tin-nhan">
                   ← Hội thoại
                 </Link>
-                <h2>{peer?.fullName || "Cuộc trò chuyện"}</h2>
+                <span className="avatar" aria-hidden="true">
+                  {(peer?.fullName || "?")
+                    .trim()
+                    .slice(0, 1)
+                    .toLocaleUpperCase("vi")}
+                </span>
+                <div>
+                  <h2>{peer?.fullName || "Cuộc trò chuyện"}</h2>
+                  <small className={connected ? "online" : "offline"}>
+                    {connected ? "● Đã kết nối" : "● Đang kết nối lại…"}
+                  </small>
+                </div>
               </header>
               <div
                 className="chat-history"
@@ -323,7 +350,7 @@ export function MessagesPage() {
                   >
                     <p>{message.content}</p>
                     <time dateTime={message.createdAt}>
-                      {new Date(message.createdAt).toLocaleString("vi-VN")}
+                      {shortTime(message.createdAt)}
                     </time>
                   </article>
                 ))}
@@ -357,8 +384,11 @@ export function MessagesPage() {
                   maxLength={2000}
                   disabled={sending}
                 />
-                <Button disabled={sending || !text.trim()}>
-                  {sending ? "Đang gửi…" : "Gửi"}
+                <Button
+                  disabled={sending || !text.trim()}
+                  aria-label={sending ? "Đang gửi" : "Gửi tin nhắn"}
+                >
+                  <Icon name="send" />
                 </Button>
               </form>
             </>
@@ -367,4 +397,13 @@ export function MessagesPage() {
       </div>
     </section>
   );
+}
+
+function shortTime(value: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  const today = new Date();
+  return date.toDateString() === today.toDateString()
+    ? date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
+    : date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
 }

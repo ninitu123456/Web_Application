@@ -23,7 +23,7 @@ export function MyItemsPage() {
     <section className="page-section my-page">
       <div className="section-heading">
         <div>
-          <h1>Bài đăng của tôi</h1>
+          <h1>Đồ của tôi</h1>
           <p className="muted">
             {typeof total === "number"
               ? `${total} bài đăng · sửa, đóng bài và xử lý yêu cầu nhận lại ngay tại đây.`
@@ -31,7 +31,7 @@ export function MyItemsPage() {
           </p>
         </div>
         <Link className="button primary" to="/dang-bai">
-          <Icon name="plus" width="17" height="17" /> Đăng bài mới
+          <Icon name="plus" width="17" height="17" /> Đăng tin mới
         </Link>
       </div>
       {result.loading ? (

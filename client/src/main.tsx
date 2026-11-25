@@ -3,16 +3,11 @@ import { MessagesPage } from "./pages/MessagesPage";
 import { PasswordResetPage } from "./pages/PasswordResetPage";
 import { lazy, StrictMode, Suspense, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import {
-  BrowserRouter,
-  Link,
-  Route,
-  Routes,
-  useLocation,
-} from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider, Protected } from "./lib/auth";
 import { ToastProvider } from "./components/ui";
 import { Layout } from "./components/Layout";
+import { AccountShell } from "./components/AccountShell";
 import { ExplorePage } from "./pages/ExplorePage";
 import { AuthPage } from "./pages/AuthPage";
 import { ItemDetailPage } from "./pages/ItemDetailPage";
@@ -34,6 +29,8 @@ import {
 } from "./pages/admin/ReportsPage";
 import { AdminLookupsPage } from "./pages/admin/LookupsPage";
 import { AdminActivityPage } from "./pages/admin/ActivityPage";
+import { SearchFirstPage } from "./pages/SearchFirstPage";
+import { AboutPage, ContactPage, NotFoundPage } from "./pages/StaticPages";
 import "@fontsource/be-vietnam-pro/400.css";
 import "@fontsource/be-vietnam-pro/500.css";
 import "@fontsource/be-vietnam-pro/600.css";
@@ -79,6 +76,12 @@ createRoot(document.getElementById("root")!).render(
                     }
                   />
                   <Route path="kham-pha" element={<ExplorePage />} />
+                  <Route path="gioi-thieu" element={<AboutPage />} />
+                  <Route path="lien-he" element={<ContactPage />} />
+                  <Route
+                    path="dang-bai/tim-truoc"
+                    element={<SearchFirstPage />}
+                  />
                   <Route path="dang-nhap" element={<AuthPage />} />
                   <Route path="quen-mat-khau" element={<PasswordResetPage />} />
                   <Route
@@ -89,7 +92,9 @@ createRoot(document.getElementById("root")!).render(
                     path="tin-nhan"
                     element={
                       <Protected>
-                        <MessagesPage />
+                        <AccountShell>
+                          <MessagesPage />
+                        </AccountShell>
                       </Protected>
                     }
                   />
@@ -99,7 +104,9 @@ createRoot(document.getElementById("root")!).render(
                     path="thong-bao"
                     element={
                       <Protected>
-                        <NotificationsPage />
+                        <AccountShell>
+                          <NotificationsPage />
+                        </AccountShell>
                       </Protected>
                     }
                   />
@@ -115,7 +122,9 @@ createRoot(document.getElementById("root")!).render(
                     path="bao-cao-cua-toi"
                     element={
                       <Protected>
-                        <MyReportsPage />
+                        <AccountShell>
+                          <MyReportsPage />
+                        </AccountShell>
                       </Protected>
                     }
                   />
@@ -170,7 +179,9 @@ createRoot(document.getElementById("root")!).render(
                     path="bai-dang-cua-toi"
                     element={
                       <Protected>
-                        <MyItemsPage />
+                        <AccountShell>
+                          <MyItemsPage />
+                        </AccountShell>
                       </Protected>
                     }
                   />
@@ -178,21 +189,13 @@ createRoot(document.getElementById("root")!).render(
                     path="yeu-cau-cua-toi"
                     element={
                       <Protected>
-                        <MyClaimsPage />
+                        <AccountShell>
+                          <MyClaimsPage />
+                        </AccountShell>
                       </Protected>
                     }
                   />
-                  <Route
-                    path="*"
-                    element={
-                      <div className="state">
-                        <h1>Không tìm thấy trang</h1>
-                        <Link className="button primary" to="/">
-                          Về trang chủ →
-                        </Link>
-                      </div>
-                    }
-                  />
+                  <Route path="*" element={<NotFoundPage />} />
                 </Route>
               </Routes>
             </NotificationsProvider>

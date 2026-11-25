@@ -50,7 +50,7 @@ export function ClaimModal({
         method: "POST",
         body: { proofDescription: proof.trim() },
       });
-      toast("Đã gửi yêu cầu nhận đồ. Theo dõi tại Yêu cầu đã gửi.");
+      toast("Đã gửi yêu cầu nhận đồ. Theo dõi tại mục Yêu cầu nhận đồ.");
       close();
       invalidate();
     } catch (e) {
@@ -273,7 +273,10 @@ export function MyClaimsPage() {
           {arrival.error}
         </p>
       )}
-      <h1>Yêu cầu đã gửi</h1>
+      <h1>Yêu cầu nhận đồ tôi đã gửi</h1>
+      <p className="page-lead">
+        Yêu cầu gửi đến tin của bạn được duyệt ngay trong trang chi tiết tin.
+      </p>
       {result.loading ? (
         <Loading />
       ) : result.error ? (
