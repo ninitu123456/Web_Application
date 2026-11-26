@@ -16,6 +16,11 @@ import {
   ErrorState,
   EmptyState,
 } from "../components/ui";
+import {
+  AiFoundCard,
+  RecentChats,
+  itemProgress,
+} from "../components/OverviewWidgets";
 
 export function ProfilePage() {
   return (
@@ -163,24 +168,28 @@ function Overview() {
             <p className="muted">Không có việc nào đang chờ bạn. Tuyệt vời!</p>
           )}
         </section>
-        <aside className="v3-card quick-card">
-          <h2>Lối tắt</h2>
-          <Link to="/tin-nhan">
-            <Icon name="message" /> Tin nhắn
-            {chat.unread > 0 && (
-              <span className="tab-count">{chat.unread}</span>
-            )}
-          </Link>
-          <Link to="/da-luu">
-            <Icon name="heart" /> Tin đã lưu
-          </Link>
-          <Link to="/dang-bai/tim-truoc">
-            <Icon name="search" /> Tôi bị mất đồ
-          </Link>
-          <Link to="/dang-bai?type=FOUND">
-            <Icon name="box" /> Tôi nhặt được đồ
-          </Link>
-        </aside>
+        <div className="overview-side">
+          <AiFoundCard items={items} />
+          <RecentChats revision={chat.revision} />
+          <aside className="v3-card quick-card">
+            <h2>Lối tắt</h2>
+            <Link to="/tin-nhan">
+              <Icon name="message" /> Tin nhắn
+              {chat.unread > 0 && (
+                <span className="tab-count">{chat.unread}</span>
+              )}
+            </Link>
+            <Link to="/da-luu">
+              <Icon name="heart" /> Tin đã lưu
+            </Link>
+            <Link to="/dang-bai/tim-truoc">
+              <Icon name="search" /> Tôi bị mất đồ
+            </Link>
+            <Link to="/dang-bai?type=FOUND">
+              <Icon name="box" /> Tôi nhặt được đồ
+            </Link>
+          </aside>
+        </div>
       </div>
       <section className="overview-items" aria-labelledby="mine-title">
         <div className="section-row">
@@ -192,7 +201,7 @@ function Overview() {
         {items.length ? (
           <div className="item-grid four">
             {items.slice(0, 4).map((item) => (
-              <ItemCard item={item} key={item.id} />
+              <ItemCard item={item} key={item.id} note={itemProgress(item)} />
             ))}
           </div>
         ) : (

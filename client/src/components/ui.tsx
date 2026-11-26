@@ -155,7 +155,7 @@ export function ItemImage({
     </div>
   );
 }
-export function ItemCard({ item }: { item: Item }) {
+export function ItemCard({ item, note }: { item: Item; note?: string }) {
   const location = useLocation();
   const state =
     location.pathname === "/kham-pha"
@@ -195,6 +195,7 @@ export function ItemCard({ item }: { item: Item }) {
         <p className="card-location">
           <Icon name="pin" /> {place}
         </p>
+        {note && <p className="card-note">{note}</p>}
         <div className="card-bottom">
           <StatusBadge status={item.status} group="item" />
           <Link

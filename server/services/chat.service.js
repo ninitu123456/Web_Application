@@ -45,6 +45,7 @@ export function createChatService(repository) {
       const changed = await repository.read(chatId(id), identity.id, chatId(String(body?.messageId ?? '')));
       if (changed) publish([identity.id], 'conversation:updated', { id });
     },
+    context: (identity, id) => repository.context(chatId(id), identity.id),
     unread: identity => repository.unread(identity.id)
   };
 }

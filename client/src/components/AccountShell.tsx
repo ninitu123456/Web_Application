@@ -4,6 +4,8 @@ import { Icon } from "./Icon";
 import { useAuth } from "../lib/auth";
 import { useChat } from "../lib/chat";
 import { useNotifications } from "../lib/notifications";
+import { useResource } from "../lib/hooks";
+import type { UserStats } from "../lib/types";
 
 const TABS = [
   { to: "/ho-so", icon: "grid", label: "Tổng quan" },
@@ -26,7 +28,9 @@ export function AccountShell({
   const { user } = useAuth();
   const chat = useChat();
   const notifications = useNotifications();
+  const stats = useResource<UserStats>("/users/me/stats", {}, chat.revision);
   const counts: Record<string, number> = {
+    "/bai-dang-cua-toi": stats.data?.data?.incomingPendingClaims ?? 0,
     "/tin-nhan": chat.unread,
     "/thong-bao": notifications.count,
   };

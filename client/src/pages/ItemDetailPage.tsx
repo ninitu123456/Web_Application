@@ -270,6 +270,29 @@ function Detail({ item }: { item: Item }) {
               {error}
             </p>
           )}
+          {item.owner && !owner && (
+            <div className="poster-box">
+              <span className="avatar" aria-hidden="true">
+                {item.owner.fullName.trim().slice(0, 1).toLocaleUpperCase("vi")}
+              </span>
+              <div>
+                <strong>{item.owner.fullName}</strong>
+                <small>
+                  {isLost ? "Người bị mất" : "Người nhặt được"}
+                  {item.owner.returnedCount > 0
+                    ? ` · đã trả lại ${item.owner.returnedCount} món`
+                    : " · thành viên FindIt"}
+                </small>
+              </div>
+              {user && (
+                <ReportButton
+                  targetType="USER"
+                  targetId={item.userId}
+                  label="Báo cáo"
+                />
+              )}
+            </div>
+          )}
           {open && !owner && !isLost && (
             <div className="cta-box dark">
               <strong>Đây là đồ của bạn?</strong>
@@ -383,11 +406,13 @@ function Detail({ item }: { item: Item }) {
                   targetId={item.id}
                   label="Báo cáo tin"
                 />
-                <ReportButton
-                  targetType="USER"
-                  targetId={item.userId}
-                  label="Báo cáo người đăng"
-                />
+                {!item.owner && (
+                  <ReportButton
+                    targetType="USER"
+                    targetId={item.userId}
+                    label="Báo cáo người đăng"
+                  />
+                )}
               </>
             )}
           </div>

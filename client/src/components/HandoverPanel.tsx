@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, errorText, invalidate } from "../lib/api";
 import { useResource } from "../lib/hooks";
 import type { Handover } from "../lib/types";
@@ -20,18 +20,29 @@ function localInput(value?: string) {
 }
 
 /** Appointment, receipt confirmation and dispute for an approved Claim. */
+export type HandoverChange = "proposed" | "accepted" | "confirmed" | "disputed";
 export function HandoverPanel({
   claimId,
   role,
+  variant = "panel",
+  openForm = 0,
+  revision = 0,
+  onChanged,
 }: {
   claimId: number;
   role: "OWNER" | "CLAIMANT";
+  /** "chat" renders the compact card shown inside a conversation. */
+  variant?: "panel" | "chat";
+  /** Bump to open the appointment form from outside (chat composer). */
+  openForm?: number;
+  revision?: number;
+  onChanged?: (change: HandoverChange, handover: Handover) => void;
 }) {
   const [refresh, setRefresh] = useState(0);
   const result = useResource<Handover>(
     `/claims/${claimId}/handover`,
     {},
-    refresh,
+    refresh + revision * 1000,
   );
   const [editing, setEditing] = useState(false);
   const [disputing, setDisputing] = useState(false);
@@ -43,6 +54,14 @@ export function HandoverPanel({
   const lock = useRef(false);
   const toast = useToast();
   const handover = result.data?.data;
+  const loaded = Boolean(handover);
+  useEffect(() => {
+    if (!openForm || !loaded) return;
+    setAt(localInput(handover?.appointment?.at));
+    setPlace(handover?.appointment?.place ?? "");
+    setEditing(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openForm, loaded]);
   if (!handover) return null;
   const mine = role === "OWNER" ? handover.ownerId : handover.claimantId;
   const appointment = handover.appointment;
@@ -53,14 +72,19 @@ export function HandoverPanel({
     method: string,
     body?: unknown,
     message?: string,
+    change?: HandoverChange,
   ) {
     if (lock.current) return false;
     lock.current = true;
     setBusy(true);
     setError("");
     try {
-      await api(`/claims/${claimId}/handover${path}`, { method, body });
+      const response = await api<Handover>(
+        `/claims/${claimId}/handover${path}`,
+        { method, body },
+      );
       if (message) toast(message);
+      if (change) onChanged?.(change, response.data);
       setRefresh((value) => value + 1);
       invalidate();
       return true;
@@ -89,6 +113,7 @@ export function HandoverPanel({
         "PUT",
         { appointmentAt: time.toISOString(), place: place.trim() },
         "Đã gửi lịch hẹn cho bên còn lại.",
+        "proposed",
       )
     )
       setEditing(false);
@@ -105,6 +130,7 @@ export function HandoverPanel({
         "POST",
         { reason: reason.trim() },
         "Đã gửi khiếu nại tới ban quản trị.",
+        "disputed",
       )
     ) {
       setDisputing(false);
@@ -116,7 +142,10 @@ export function HandoverPanel({
   const otherConfirmed =
     role === "OWNER" ? handover.claimantConfirmedAt : handover.ownerConfirmedAt;
   return (
-    <section className="handover-panel" aria-label="Bàn giao đồ vật">
+    <section
+      className={`handover-panel${variant === "chat" ? " handover-chat" : ""}`}
+      aria-label="Bàn giao đồ vật"
+    >
       <header>
         <span className="handover-icon">
           <Icon name="calendar" />
@@ -164,6 +193,7 @@ export function HandoverPanel({
                     "PATCH",
                     undefined,
                     "Đã chốt lịch hẹn.",
+                    "accepted",
                   )
                 }
               >
@@ -192,6 +222,7 @@ export function HandoverPanel({
                   "PATCH",
                   undefined,
                   "Đã xác nhận bạn nhận được đồ.",
+                  "confirmed",
                 )
               }
             >

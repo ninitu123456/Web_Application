@@ -10,6 +10,8 @@ import { lockActiveAdmin } from './admin-actor.js';
 const columns = `i.item_id, i.user_id, i.category_id, i.location_id, i.title, i.description, i.type, i.color, i.event_date, i.status, i.created_at, i.updated_at, c.name AS category_name, l.name AS location_name, ${hiddenItemSql()} AS is_hidden`;
 // Verification questions ride along with the detail row (no extra round trip).
 const questionsJson = "(SELECT JSON_ARRAYAGG(JSON_OBJECT('question_id', q.question_id, 'position', q.position, 'question', q.question)) FROM item_verification_questions q WHERE q.item_id = i.item_id)";
+// Public poster summary for the detail page: name and how many items they handed back.
+const ownerColumns = "(SELECT full_name FROM users WHERE user_id = i.user_id) AS owner_name, (SELECT COUNT(*) FROM items r WHERE r.user_id = i.user_id AND r.type = 'FOUND' AND r.status = 'RETURNED') AS owner_returned";
 const joins = 'FROM items i JOIN categories c ON c.category_id = i.category_id JOIN locations l ON l.location_id = i.location_id';
 async function insertQuestions(run, itemId, questions) {
   const saved = [];
@@ -73,7 +75,7 @@ export function createItemRepository(pool, execute = (sql, values = []) => query
       });
     },
     async findById(id) {
-      const [[row]] = await execute(`SELECT ${columns}, ${questionsJson} AS questions_json ${joins} WHERE i.item_id = ?`, [id]);
+      const [[row]] = await execute(`SELECT ${columns}, ${questionsJson} AS questions_json, ${ownerColumns} ${joins} WHERE i.item_id = ?`, [id]);
       if (!row) return undefined;
       const { questions_json: raw, ...item } = row;
       const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw ?? [];

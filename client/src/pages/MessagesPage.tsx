@@ -5,6 +5,17 @@ import { api, errorText } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useChat, type Conversation, type Message } from "../lib/chat";
 import { Button } from "../components/ui";
+import { ChatSide } from "../components/ChatSide";
+import {
+  HandoverPanel,
+  type HandoverChange,
+} from "../components/HandoverPanel";
+import { useResource } from "../lib/hooks";
+import {
+  handoverMessage,
+  type ConversationContext,
+} from "../lib/conversation-context";
+import type { Handover } from "../lib/types";
 export function MessagesPage() {
   const { user } = useAuth(),
     { revision, connected } = useChat();
@@ -31,6 +42,51 @@ export function MessagesPage() {
   // Unsent text is kept per conversation while the page stays open.
   const drafts = useRef(new Map<string, string>());
   current.current = selected;
+  const [contextRefresh, setContextRefresh] = useState(0);
+  const [active, setActive] = useState(0);
+  const [scheduleSignal, setScheduleSignal] = useState(0);
+  const contextResult = useResource<ConversationContext>(
+    selected ? `/conversations/${selected}/context` : null,
+    {},
+    revision * 1000 + contextRefresh,
+  );
+  const context = contextResult.data?.data;
+  const thread = context?.threads[active];
+  const handoverThread =
+    thread?.claim &&
+    thread.handover &&
+    (thread.role === "OWNER" || thread.role === "CLAIMANT")
+      ? thread
+      : undefined;
+  const canSchedule =
+    handoverThread?.claim?.status === "APPROVED" &&
+    !handoverThread.handover?.ownerConfirmedAt &&
+    !handoverThread.handover?.claimantConfirmedAt;
+  async function postNote(content: string) {
+    const id = current.current;
+    if (!content || !id) return;
+    try {
+      const result = await api<Message>(`/conversations/${id}/messages`, {
+        method: "POST",
+        body: { clientId: crypto.randomUUID(), content },
+      });
+      if (current.current === id)
+        setMessages((previous) =>
+          previous.some((message) => message.id === result.data.id)
+            ? previous
+            : [...previous, result.data],
+        );
+    } catch {
+      // The handover itself succeeded; the chat note is best effort.
+    }
+  }
+  function handoverChanged(change: HandoverChange, handover: Handover) {
+    setContextRefresh((value) => value + 1);
+    if (handoverThread)
+      void postNote(
+        handoverMessage(change, handover, handoverThread.item.title),
+      );
+  }
   useEffect(() => {
     const controller = new AbortController();
     void api<Conversation[]>("/conversations", {
@@ -62,6 +118,7 @@ export function MessagesPage() {
     newest.current = "";
     setText(drafts.current.get(selected) || "");
     setError("");
+    setActive(0);
     pending.current = null;
   }, [selected]);
   useEffect(() => {
@@ -250,7 +307,9 @@ export function MessagesPage() {
           {error}
         </p>
       )}
-      <div className={`chat-layout ${selected ? "chat-selected" : ""}`}>
+      <div
+        className={`chat-layout ${selected ? "chat-selected has-side" : ""}`}
+      >
         <aside
           className="panel chat-list"
           aria-label="Danh sách cuộc trò chuyện"
@@ -354,9 +413,35 @@ export function MessagesPage() {
                     </time>
                   </article>
                 ))}
+                {handoverThread?.claim && (
+                  <HandoverPanel
+                    key={handoverThread.claim.id}
+                    claimId={handoverThread.claim.id}
+                    role={handoverThread.role as "OWNER" | "CLAIMANT"}
+                    variant="chat"
+                    openForm={scheduleSignal}
+                    revision={revision}
+                    onChanged={handoverChanged}
+                  />
+                )}
                 <div ref={bottom} />
               </div>
               <form className="chat-compose" onSubmit={send}>
+                {canSchedule && (
+                  <button
+                    type="button"
+                    className="chat-tool"
+                    onClick={() => {
+                      setScheduleSignal((value) => value + 1);
+                      requestAnimationFrame(() =>
+                        bottom.current?.scrollIntoView({ block: "nearest" }),
+                      );
+                    }}
+                  >
+                    <Icon name="calendar" width="16" height="16" /> Đề xuất lịch
+                    hẹn
+                  </button>
+                )}
                 <label htmlFor="chat-message" className="sr-only">
                   Tin nhắn
                 </label>
@@ -394,6 +479,9 @@ export function MessagesPage() {
             </>
           )}
         </div>
+        {selected && (
+          <ChatSide context={context} active={active} select={setActive} />
+        )}
       </div>
     </section>
   );

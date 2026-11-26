@@ -17,6 +17,8 @@ import { createEngagementRepository } from '../repositories/engagement.repositor
 import { createItemService } from '../services/item.service.js';
 import { createClaimService } from '../services/claim.service.js';
 import { createEngagementService } from '../services/engagement.service.js';
+import { createChatService } from '../services/chat.service.js';
+import { createChatRepository } from '../repositories/chat.repository.js';
 import { createAuthService } from '../services/auth.service.js';
 import { createUserService } from '../services/user.service.js';
 import { createTokenService } from '../utils/jwt.js';
@@ -40,7 +42,7 @@ test('Phase 2 integration: verification questions, saved items, views, stats, co
     http = await serveApp(createApp({
       healthService: { async check() { return {}; } }, authService: auth, userService: createUserService(users),
       itemService: createItemService(createItemRepository(pool)), claimService: createClaimService(createClaimRepository(pool)),
-      engagementService: createEngagementService(createEngagementRepository(pool)), logger: () => {}, security: { contactMax: 3 }
+      engagementService: createEngagementService(createEngagementRepository(pool)), chatService: createChatService(createChatRepository(pool)), logger: () => {}, security: { contactMax: 3 }
     }));
     const login = async (email) => (await request(http, '/api/auth/login', { method: 'POST', body: { email, password } })).json.data;
     const owner = await login('owner@phase2.test'), admin = await login('admin@phase2.test');
@@ -145,6 +147,22 @@ test('Phase 2 integration: verification questions, saved items, views, stats, co
       assert.equal((await request(http, `${base}/confirm`, { method: 'PATCH', token: claimant.token })).status, 409);
       const [[{ n }]] = await query(pool, "SELECT COUNT(*) AS n FROM notifications WHERE type='CLAIM_COMPLETED'");
       assert.equal(Number(n), 1);
+    });
+
+    await t.test('conversation context lists the Claim and items mentioned as "tin #N"', async () => {
+      const lost = await request(http, '/api/items', { method: 'POST', token: claimant.token, body: itemBody('LOST') });
+      const chat = await request(http, '/api/conversations', { method: 'POST', token: owner.token, body: { userId: Number(claimant.user.id) } });
+      const chatId = chat.json.data.id;
+      await request(http, `/api/conversations/${chatId}/messages`, { method: 'POST', token: owner.token, body: { clientId: '0b4c1f9e-1111-4a2b-9c3d-123456789abc', content: `Mình nhặt được (tin #${lost.json.data.id}) và (tin #${foundId})` } });
+      assert.equal((await request(http, `/api/conversations/${chatId}/context`, { token: admin.token })).status, 404);
+      const context = (await request(http, `/api/conversations/${chatId}/context`, { token: owner.token })).json.data;
+      assert.equal(context.peer.fullName, 'Người nhận');
+      assert.equal(context.threads.length, 2);
+      assert.equal(context.threads[0].claim.id, Number(claimId));
+      assert.equal(context.threads[0].role, 'OWNER');
+      assert.equal(context.threads[0].handover.claimStatus, 'COMPLETED');
+      assert.equal(context.threads[1].item.id, Number(lost.json.data.id));
+      assert.equal(context.threads[1].role, 'FINDER');
     });
   } finally {
     if (http) await http.close();

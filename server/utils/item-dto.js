@@ -16,6 +16,7 @@ export function itemDto(item) {
   if (item.is_hidden !== undefined) result.visibility = Number(item.is_hidden) ? 'HIDDEN' : 'PUBLIC';
   if (item.location_name !== undefined) result.location = { id: id(item.location_id), name: item.location_name };
   result.images = (item.images ?? []).map((image) => ({ id: id(image.image_id), url: image.image_url }));
+  if (item.owner_name !== undefined) result.owner = { id: id(item.user_id), fullName: item.owner_name, returnedCount: Number(item.owner_returned ?? 0) };
   if (item.questions !== undefined) result.verificationQuestions = item.questions.map((row) => ({ id: id(row.question_id), position: Number(row.position), question: row.question }));
   return result;
 }

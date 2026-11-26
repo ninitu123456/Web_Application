@@ -28,6 +28,7 @@ export interface Item {
   visibility?: "PUBLIC" | "HIDDEN";
   images: { id: number; url: string }[];
   verificationQuestions?: VerificationQuestion[];
+  owner?: { id: number; fullName: string; returnedCount: number };
   savedAt?: string;
   createdAt: string;
   updatedAt: string;
