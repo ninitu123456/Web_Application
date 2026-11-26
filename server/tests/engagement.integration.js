@@ -20,6 +20,8 @@ import { createEngagementService } from '../services/engagement.service.js';
 import { createChatService } from '../services/chat.service.js';
 import { createChatRepository } from '../repositories/chat.repository.js';
 import { createAuthService } from '../services/auth.service.js';
+import { createAdminService } from '../services/admin.service.js';
+import { createAdminRepository } from '../repositories/admin.repository.js';
 import { createUserService } from '../services/user.service.js';
 import { createTokenService } from '../utils/jwt.js';
 import { createApp } from '../app.js';
@@ -42,7 +44,7 @@ test('Phase 2 integration: verification questions, saved items, views, stats, co
     http = await serveApp(createApp({
       healthService: { async check() { return {}; } }, authService: auth, userService: createUserService(users),
       itemService: createItemService(createItemRepository(pool)), claimService: createClaimService(createClaimRepository(pool)),
-      engagementService: createEngagementService(createEngagementRepository(pool)), chatService: createChatService(createChatRepository(pool)), logger: () => {}, security: { contactMax: 3 }
+      engagementService: createEngagementService(createEngagementRepository(pool)), chatService: createChatService(createChatRepository(pool)), adminService: createAdminService(createAdminRepository(pool), createItemService(createItemRepository(pool))), logger: () => {}, security: { contactMax: 3 }
     }));
     const login = async (email) => (await request(http, '/api/auth/login', { method: 'POST', body: { email, password } })).json.data;
     const owner = await login('owner@phase2.test'), admin = await login('admin@phase2.test');
@@ -113,6 +115,8 @@ test('Phase 2 integration: verification questions, saved items, views, stats, co
       assert.equal((await request(http, '/api/admin/contact-messages', { token: owner.token })).status, 403);
       const inbox = await request(http, '/api/admin/contact-messages?status=NEW', { token: admin.token });
       assert.equal(inbox.json.pagination.total, 2);
+      assert.equal((await request(http, '/api/admin/queue', { token: owner.token })).status, 403);
+      assert.equal((await request(http, '/api/admin/queue', { token: admin.token })).json.data.contacts, 2);
       const handled = await request(http, `/api/admin/contact-messages/${sent.json.data.id}/handle`, { method: 'PATCH', token: admin.token });
       assert.equal(handled.json.data.status, 'HANDLED');
       assert.equal((await request(http, '/api/admin/contact-messages?status=NEW', { token: admin.token })).json.pagination.total, 1);

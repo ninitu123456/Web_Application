@@ -362,6 +362,10 @@ Cả ba endpoint chỉ dành cho chủ bài (`USER` hoặc `ADMIN` đang `ACTIVE
 | PATCH | `/api/admin/contact-messages/:id/handle` | `ADMIN` | — | `200` – Liên hệ `HANDLED` |
 | GET | `/api/admin/handover-disputes` | `ADMIN` | `status?` (`OPEN`/`RESOLVED`), `page?`, `limit?` | `200` – Khiếu nại bàn giao |
 | PATCH | `/api/admin/handover-disputes/:claimId/resolve` | `ADMIN` | — | `200` – Đóng khiếu nại, hai bên tiếp tục xác nhận |
+| GET | `/api/admin/queue` | `ADMIN` | — | `200` – Số báo cáo chờ, khiếu nại mở, liên hệ mới (badge thanh điều hướng) |
+| GET | `/api/conversations/:id/context` | Thành viên cuộc trò chuyện | — | `200` – Người còn lại và các tin liên quan: Claim giữa hai người (kèm bàn giao) và tin được nhắc dạng "tin #N" |
+
+Ghi chú: `GET /api/items/:id` trả thêm `owner` (`fullName`, `returnedCount`); `GET /api/admin/users` nhận `keyword` và trả `stats` (`items`, `claims`, `reports`); `GET /api/admin/items` nhận `keyword`; `GET /api/admin/dashboard` trả thêm `monthlyItems`, `growth`, `queue`, `recentLogs`.
 
 ## 8. Nhắn tin
 

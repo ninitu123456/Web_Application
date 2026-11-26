@@ -24,6 +24,12 @@ export interface AdminUser extends User {
   accountStatus: "ACTIVE" | "SUSPENDED";
   createdAt: string;
   updatedAt: string;
+  stats?: { items: number; claims: number; reports: number };
+}
+export interface AdminQueue {
+  reports: number;
+  disputes: number;
+  contacts: number;
 }
 export interface AdminLookup {
   id: number;
@@ -60,6 +66,22 @@ export interface Dashboard {
   reports: { total: number; byStatus: Record<ReportStatus, number> };
   categories: { id: number; name: string; count: number }[];
   recentActivity: { date: string; count: number }[];
+  monthlyItems?: { month: string; lost: number; found: number }[];
+  growth?: {
+    newUsers30: number;
+    newItems30: number;
+    newItemsPrevious30: number;
+    returned30: number;
+  };
+  queue?: AdminQueue & { overdueReports: number };
+  recentLogs?: {
+    id: number;
+    action: string;
+    entityType: string;
+    entityId: number | null;
+    actorName: string | null;
+    createdAt: string;
+  }[];
 }
 export interface ActivityLog {
   id: number;

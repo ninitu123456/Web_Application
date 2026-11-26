@@ -8,7 +8,7 @@ export async function adminRefreshCheck({ page, url, artifacts, reportId }) {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`${url}/quan-tri`);
   await expect(
-    page.getByRole("heading", { name: "Tổng quan", exact: true }),
+    page.getByRole("heading", { name: "Tổng quan hệ thống", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".admin-donut")).toBeVisible();
   assert.equal(

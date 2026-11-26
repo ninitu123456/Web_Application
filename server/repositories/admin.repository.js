@@ -4,12 +4,23 @@ import { createAdminModerationRepository } from './admin-moderation.repository.j
 import { bumpAiVisualCatalogRevision } from '../ai-visual/catalog-revision.js';
 import { lockActiveAdmin } from './admin-actor.js';
 const userColumns = 'u.user_id, u.full_name, u.email, u.account_status, u.created_at, u.updated_at, r.name AS role';
+// Activity counters shown in the admin user list and detail panel.
+const userStatColumns = `(SELECT COUNT(*) FROM items WHERE user_id = u.user_id) AS item_count,
+  (SELECT COUNT(*) FROM claims WHERE claimant_id = u.user_id) AS claim_count,
+  (SELECT COUNT(*) FROM reports rp WHERE rp.reported_user_id = u.user_id OR rp.item_id IN (SELECT item_id FROM items WHERE user_id = u.user_id)) AS report_count`;
 const tableConfig = { categories: { table: 'categories', id: 'category_id', entity: 'CATEGORY' }, locations: { table: 'locations', id: 'location_id', entity: 'LOCATION' } };
 export function createAdminRepository(pool, execute = (sql, values = []) => query(pool, sql, values)) {
   const repo = {
     moderation: createAdminModerationRepository(pool),
     withTransaction(operation) {
       return transaction(pool, (connection) => operation(createAdminRepository(pool, (sql, values = []) => connection.query({ sql, timeout: databaseTimeout }, values))));
+    },
+    async queue() {
+      const [[row]] = await execute(`SELECT
+        (SELECT COUNT(*) FROM reports WHERE status IN ('PENDING','REVIEWING')) AS reports,
+        (SELECT COUNT(*) FROM claim_handovers WHERE disputed_at IS NOT NULL AND dispute_resolved_at IS NULL) AS disputes,
+        (SELECT COUNT(*) FROM contact_messages WHERE status='NEW') AS contacts`);
+      return row;
     },
     async dashboard() {
       const [[users]] = await execute("SELECT COUNT(*) AS total, SUM(account_status='ACTIVE') AS active, SUM(account_status='SUSPENDED') AS suspended FROM users");
@@ -22,18 +33,32 @@ export function createAdminRepository(pool, execute = (sql, values = []) => quer
       const [reportStatuses] = await execute('SELECT status, COUNT(*) AS total FROM reports GROUP BY status');
       const [categories] = await execute('SELECT c.category_id AS id, c.name, COUNT(i.item_id) AS total FROM categories c LEFT JOIN items i ON i.category_id=c.category_id GROUP BY c.category_id, c.name ORDER BY total DESC, c.name LIMIT 20');
       const [recentActivity] = await execute("SELECT DATE(created_at) AS date, COUNT(*) AS total FROM activity_logs WHERE created_at >= UTC_DATE() - INTERVAL 29 DAY GROUP BY DATE(created_at) ORDER BY date");
-      return { users, items, claims: claims.total, matches: matches.total, reports: reports.total, itemStatuses, claimStatuses, reportStatuses, categories, recentActivity };
+      const [monthly] = await execute("SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, SUM(type='LOST') AS lost, SUM(type='FOUND') AS found FROM items WHERE created_at >= DATE_FORMAT(UTC_DATE() - INTERVAL 11 MONTH, '%Y-%m-01') GROUP BY month ORDER BY month");
+      const [[growth]] = await execute(`SELECT
+        (SELECT COUNT(*) FROM users WHERE created_at >= UTC_TIMESTAMP() - INTERVAL 30 DAY) AS users_30,
+        (SELECT COUNT(*) FROM items WHERE created_at >= UTC_TIMESTAMP() - INTERVAL 30 DAY) AS items_30,
+        (SELECT COUNT(*) FROM items WHERE created_at >= UTC_TIMESTAMP() - INTERVAL 60 DAY AND created_at < UTC_TIMESTAMP() - INTERVAL 30 DAY) AS items_prev_30,
+        (SELECT COUNT(*) FROM claims WHERE completed_at >= UTC_TIMESTAMP() - INTERVAL 30 DAY) AS returned_30`);
+      const [[queue]] = await execute(`SELECT
+        (SELECT COUNT(*) FROM reports WHERE status IN ('PENDING','REVIEWING')) AS reports,
+        (SELECT COUNT(*) FROM reports WHERE status='PENDING' AND created_at < UTC_TIMESTAMP() - INTERVAL 1 DAY) AS reports_overdue,
+        (SELECT COUNT(*) FROM claim_handovers WHERE disputed_at IS NOT NULL AND dispute_resolved_at IS NULL) AS disputes,
+        (SELECT COUNT(*) FROM contact_messages WHERE status='NEW') AS contacts`);
+      const [recentLogs] = await execute(`SELECT l.log_id, l.action, l.entity_type, l.entity_id, l.created_at, u.full_name AS actor_name
+        FROM activity_logs l LEFT JOIN users u ON u.user_id=l.user_id ORDER BY l.created_at DESC, l.log_id DESC LIMIT 6`);
+      return { users, items, claims: claims.total, matches: matches.total, reports: reports.total, itemStatuses, claimStatuses, reportStatuses, categories, recentActivity, monthly, growth, queue, recentLogs };
     },
     async listUsers(options) {
       const where = [], values = [];
       if (options.accountStatus) { where.push('u.account_status=?'); values.push(options.accountStatus); }
       if (options.role) { where.push('r.name=?'); values.push(options.role); }
+      if (options.keyword) { where.push('(u.full_name LIKE ? OR u.email LIKE ?)'); const like = `%${options.keyword.replace(/[\\%_]/g, (c) => `\\${c}`)}%`; values.push(like, like); }
       const clause = where.length ? ` WHERE ${where.join(' AND ')}` : '';
       const [[count]] = await execute(`SELECT COUNT(*) AS total FROM users u JOIN roles r ON r.role_id=u.role_id${clause}`, values);
-      const [rows] = await execute(`SELECT ${userColumns} FROM users u JOIN roles r ON r.role_id=u.role_id${clause} ORDER BY u.created_at DESC, u.user_id DESC LIMIT ? OFFSET ?`, [...values, options.limit, (options.page - 1) * options.limit]);
+      const [rows] = await execute(`SELECT ${userColumns}, ${userStatColumns} FROM users u JOIN roles r ON r.role_id=u.role_id${clause} ORDER BY u.created_at DESC, u.user_id DESC LIMIT ? OFFSET ?`, [...values, options.limit, (options.page - 1) * options.limit]);
       return { rows, total: Number(count.total) };
     },
-    async findUser(id) { const [[row]] = await execute(`SELECT ${userColumns} FROM users u JOIN roles r ON r.role_id=u.role_id WHERE u.user_id=?`, [id]); return row; },
+    async findUser(id) { const [[row]] = await execute(`SELECT ${userColumns}, ${userStatColumns} FROM users u JOIN roles r ON r.role_id=u.role_id WHERE u.user_id=?`, [id]); return row; },
     async setUserStatus(actorId, id, status) {
       return repo.withTransaction(async (source) => {
         // Serialize all status writers BEFORE locking users. A current locking

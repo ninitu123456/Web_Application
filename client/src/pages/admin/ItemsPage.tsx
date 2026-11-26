@@ -23,14 +23,25 @@ import {
   Table,
   useAdminQuery,
   useMutation,
+  SearchBox,
 } from "./shared";
 export function AdminItemsPage() {
-  const filters = useAdminQuery(["type", "status", "visibility"]);
+  const filters = useAdminQuery(["type", "status", "visibility", "keyword"]);
   const result = useResource<Item[]>("/admin/items", filters.query);
   return (
     <>
       <AdminTitle title="Bài đăng" />
+      {result.data?.pagination && (
+        <p className="admin-subtitle">
+          {result.data.pagination.total.toLocaleString("vi-VN")} bài
+        </p>
+      )}
       <div className="admin-filters">
+        <SearchBox
+          value={filters.params.get("keyword") || ""}
+          change={(value) => filters.change("keyword", value)}
+          placeholder="Tìm tiêu đề, mô tả…"
+        />
         <Select
           label="Hiển thị"
           value={filters.params.get("visibility") || ""}
@@ -73,10 +84,22 @@ export function AdminItemsPage() {
           {result.data.data.map((item) => (
             <tr key={item.id}>
               <td>
-                <strong>{item.title}</strong>
-                <small>
-                  #{item.id} · Chủ bài #{item.userId}
-                </small>
+                <span className="admin-item-cell">
+                  <span className="admin-thumb">
+                    <ItemImage
+                      src={item.images[0]?.url}
+                      title={item.title}
+                      category={item.category?.name}
+                    />
+                  </span>
+                  <span>
+                    <strong>{item.title}</strong>
+                    <small>
+                      #{item.id} · {item.category?.name ?? "Đồ vật"} · Chủ bài #
+                      {item.userId}
+                    </small>
+                  </span>
+                </span>
               </td>
               <td>
                 <StatusBadge status={item.type} group="itemType" />
@@ -88,7 +111,12 @@ export function AdminItemsPage() {
                 )}
               </td>
               <td>
-                <Link to={`/quan-tri/bai-dang/${item.id}`}>Kiểm tra ↗</Link>
+                <Link
+                  className="button secondary"
+                  to={`/quan-tri/bai-dang/${item.id}`}
+                >
+                  Kiểm tra
+                </Link>
               </td>
             </tr>
           ))}

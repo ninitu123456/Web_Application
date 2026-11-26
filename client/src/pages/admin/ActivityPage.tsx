@@ -12,7 +12,7 @@ import {
   Select,
 } from "../../components/ui";
 import { AdminTitle, Table, useAdminQuery } from "./shared";
-const actions: Record<string, string> = {
+export const ACTION_LABELS: Record<string, string> = {
   ITEM_HIDDEN: "Gỡ bài khỏi công khai",
   ITEM_RESTORED: "Khôi phục hiển thị bài",
   ITEM_MODERATED_CLOSED: "Đóng bài đăng",
@@ -35,7 +35,7 @@ const actions: Record<string, string> = {
   HANDOVER_DISPUTE_RESOLVED: "Đóng khiếu nại bàn giao",
   CONTACT_HANDLED: "Xử lý liên hệ",
 };
-const entities: Record<string, string> = {
+export const ENTITY_LABELS: Record<string, string> = {
   ITEM: "Bài đăng",
   CLAIM: "Yêu cầu nhận đồ",
   USER: "Tài khoản",
@@ -87,7 +87,7 @@ export function AdminActivityPage() {
           onChange={(e) => filters.change("action", e.target.value)}
         >
           <option value="">Tất cả hành động</option>
-          {Object.entries(actions).map(([value, label]) => (
+          {Object.entries(ACTION_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>
@@ -99,7 +99,7 @@ export function AdminActivityPage() {
           onChange={(e) => filters.change("entityType", e.target.value)}
         >
           <option value="">Tất cả đối tượng</option>
-          {Object.entries(entities).map(([value, label]) => (
+          {Object.entries(ENTITY_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>
@@ -162,11 +162,11 @@ export function AdminActivityPage() {
           {result.data.data.map((log) => (
             <tr key={log.id}>
               <td>
-                <strong>{actions[log.action] || "Hành động khác"}</strong>
+                <strong>{ACTION_LABELS[log.action] || "Hành động khác"}</strong>
                 <small>Nhật ký #{log.id}</small>
               </td>
               <td>
-                {entities[log.entityType] || "Đối tượng khác"}{" "}
+                {ENTITY_LABELS[log.entityType] || "Đối tượng khác"}{" "}
                 {log.entityId ? `#${log.entityId}` : ""}
                 <small>
                   {log.actorId ? `Tài khoản #${log.actorId}` : "Hệ thống"}

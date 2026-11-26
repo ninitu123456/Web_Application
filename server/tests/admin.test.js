@@ -75,3 +75,11 @@ test('Report admin detail preserves current safe report contract and rejects non
 });
 
 
+test('Dashboard monthly series is zero-filled to twelve months ending this month', async () => {
+  const { lastTwelveMonths } = await import('../services/admin.service.js');
+  const series = lastTwelveMonths([{ month: '2026-11', lost: '3', found: '1' }, { month: '2026-01', lost: '1', found: null }], new Date('2026-11-20T00:00:00Z'));
+  assert.equal(series.length, 12);
+  assert.deepEqual(series[0], { month: '2025-12', lost: 0, found: 0 });
+  assert.deepEqual(series[1], { month: '2026-01', lost: 1, found: 0 });
+  assert.deepEqual(series[11], { month: '2026-11', lost: 3, found: 1 });
+});

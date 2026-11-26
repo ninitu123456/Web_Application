@@ -1,6 +1,8 @@
 import type { SVGProps } from "react";
 
 const paths = {
+  chart: "M3 3v18h18M7 15v2M11 11v6M15 13v4M19 7v10",
+  download: "M12 3v12m-5-5 5 5 5-5M4 21h16",
   bell: "M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4",
   home: "m3 10 9-8 9 8M5 9v12h5v-7h4v7h5V9",
   users:

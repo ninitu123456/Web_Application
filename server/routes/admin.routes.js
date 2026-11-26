@@ -11,6 +11,7 @@ export function adminRoutes(auth, service) {
   router.patch('/items/:id/close', controller.moderateClose);
   router.patch('/items/:id/visibility', controller.setItemVisibility);
   router.get('/dashboard', controller.dashboard);
+  router.get('/queue', controller.queue);
   router.get('/users', controller.listUsers); router.get('/users/:id', controller.getUser); router.patch('/users/:id/status', controller.setUserStatus);
   router.get('/items', controller.listItems); router.get('/items/:id', controller.getItem); router.patch('/items/:id/status', controller.setItemStatus);
   for (const kind of ['categories', 'locations']) {

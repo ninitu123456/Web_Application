@@ -7,38 +7,70 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
-import { useNotifications } from "../../lib/notifications";
+import { useResource } from "../../lib/hooks";
+import type { AdminQueue } from "../../lib/extended-types";
+import { BrandMark } from "../../components/Brand";
 import { ErrorState, Modal } from "../../components/ui";
 import { Icon } from "../../components/Icon";
 import { ApiError } from "../../lib/api";
 import "./admin.css";
 const navigation = [
-  ["", "Tổng quan", "home"],
-  ["/bai-dang", "Bài đăng", "box"],
-  ["/claims", "Yêu cầu & tranh chấp", "shield"],
-  ["/bao-cao", "Báo cáo vi phạm", "alert"],
+  ["", "Tổng quan", "grid"],
   ["/nguoi-dung", "Người dùng", "users"],
+  ["/bai-dang", "Bài đăng", "box"],
+  ["/claims", "Yêu cầu nhận đồ", "shield"],
+  ["/khieu-nai", "Khiếu nại bàn giao", "alert"],
+  ["/bao-cao", "Báo cáo vi phạm", "flag"],
   ["/danh-muc-dia-diem", "Danh mục & địa điểm", "pin"],
-  ["/khieu-nai", "Khiếu nại bàn giao", "flag"],
-  ["/lien-he", "Hộp thư liên hệ", "mail"],
-  ["/nhat-ky", "Nhật ký hoạt động", "clock"],
+  ["/lien-he", "Hộp thư liên hệ", "message"],
+  ["/nhat-ky", "Nhật ký hoạt động", "chart"],
 ] as const;
-function AdminNavigation({ close }: { close?: () => void }) {
+const QUEUE_KEYS: Record<string, keyof AdminQueue> = {
+  "/bao-cao": "reports",
+  "/khieu-nai": "disputes",
+  "/lien-he": "contacts",
+};
+function AdminNavigation({
+  close,
+  queue,
+}: {
+  close?: () => void;
+  queue?: AdminQueue;
+}) {
   return (
     <nav aria-label="Quản trị">
-      {navigation.map(([path, label, icon]) => (
-        <NavLink key={path} end={!path} to={`/quan-tri${path}`} onClick={close}>
-          <Icon name={icon} />
-          {label}
-        </NavLink>
-      ))}
+      {navigation.map(([path, label, icon]) => {
+        const count = queue && QUEUE_KEYS[path] ? queue[QUEUE_KEYS[path]] : 0;
+        return (
+          <NavLink
+            key={path}
+            end={!path}
+            to={`/quan-tri${path}`}
+            onClick={close}
+          >
+            <Icon name={icon} />
+            <span className="admin-nav-label">{label}</span>
+            {count > 0 && (
+              <span
+                className="admin-nav-count"
+                aria-label={`${count} cần xử lý`}
+              >
+                {count > 99 ? "99+" : count}
+              </span>
+            )}
+          </NavLink>
+        );
+      })}
     </nav>
   );
 }
 export function AdminLayout() {
   const { user, logout } = useAuth();
-  const notifications = useNotifications();
   const location = useLocation();
+  const queueResult = useResource<AdminQueue>(
+    user?.role === "ADMIN" ? "/admin/queue" : null,
+  );
+  const queue = queueResult.data?.data;
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [location.pathname]);
@@ -60,27 +92,46 @@ export function AdminLayout() {
         Đến nội dung chính
       </a>
       <aside className="admin-rail">
-        <Link className="brand admin-brand" to="/quan-tri">
-          FindIt<span>.</span>
+        <Link
+          className="admin-brand"
+          to="/quan-tri"
+          aria-label="FindIt quản trị"
+        >
+          <BrandMark size={30} />
+          <span>
+            Find<b>It</b>
+          </span>
         </Link>
-        <span className="admin-label">QUẢN TRỊ</span>
-        <AdminNavigation />
+        <span className="admin-label">QUẢN TRỊ HỆ THỐNG</span>
+        <AdminNavigation queue={queue} />
         <div className="admin-rail-bottom">
-          <Link to="/">
-            <Icon name="exit" />
-            Về trang người dùng
-          </Link>
-          <span className="admin-identity">
+          <div className="admin-identity">
             <span className="avatar">{user.fullName.slice(0, 1)}</span>
             <span>
               {user.fullName}
               <small>Quản trị viên</small>
             </span>
-          </span>
+            <button
+              type="button"
+              className="admin-logout"
+              aria-label="Đăng xuất"
+              title="Đăng xuất"
+              onClick={() => {
+                logout();
+                navigate("/");
+              }}
+            >
+              <Icon name="exit" width="18" height="18" />
+            </button>
+          </div>
+          <Link to="/">
+            <Icon name="arrow" className="flip" />
+            Về trang người dùng
+          </Link>
         </div>
       </aside>
       <div className="admin-workspace">
-        <header className="admin-topbar">
+        <header className={`admin-topbar${record ? " has-record" : ""}`}>
           <button
             className="icon-button admin-menu-toggle"
             aria-label="Mở điều hướng quản trị"
@@ -107,46 +158,6 @@ export function AdminLayout() {
               <strong>{current?.[1]}</strong>
             )}
           </nav>
-          <div className="admin-topbar-actions">
-            <Link
-              className="notification-bell"
-              to="/thong-bao"
-              aria-label={
-                notifications.error
-                  ? "Thông báo — chưa tải được số chưa đọc"
-                  : `Thông báo, ${notifications.count} chưa đọc`
-              }
-            >
-              <Icon name="bell" />
-              {notifications.count > 0 && (
-                <span className="notification-count">
-                  {notifications.count > 99 ? "99+" : notifications.count}
-                </span>
-              )}
-            </Link>
-            <details className="account">
-              <summary aria-label="Menu tài khoản">
-                <span className="avatar">{user.fullName.slice(0, 1)}</span>
-                <span className="admin-account-name">{user.fullName}</span>
-                <span aria-hidden="true">⌄</span>
-              </summary>
-              <div className="account-menu">
-                <strong>{user.fullName}</strong>
-                <small>{user.email}</small>
-                <Link to="/ho-so">Hồ sơ cá nhân</Link>
-                <Link to="/thong-bao">Thông báo</Link>
-                <Link to="/">Về trang người dùng</Link>
-                <button
-                  onClick={() => {
-                    logout();
-                    navigate("/");
-                  }}
-                >
-                  Đăng xuất
-                </button>
-              </div>
-            </details>
-          </div>
         </header>
         <main id="admin-main" className="admin-content" tabIndex={-1}>
           <Outlet />
@@ -158,7 +169,7 @@ export function AdminLayout() {
           title="Điều hướng quản trị"
           close={() => setOpen(false)}
         >
-          <AdminNavigation close={() => setOpen(false)} />
+          <AdminNavigation close={() => setOpen(false)} queue={queue} />
           <Link
             className="button secondary"
             to="/"

@@ -8,6 +8,7 @@ export function createAdminController(service) {
     async activityLogs(req, res) { res.json({ success: true, ...await service.activityLogs(req.user, adminActivityQuery(req.query)) }); },
     async resolveClaim(req, res) { adminEmptyQuery(req.query); res.json({ success: true, data: await service.resolveClaim(req.user, adminId(req.params.id), adminResolveInput(req.body)) }); },
     async moderateClose(req, res) { adminEmptyQuery(req.query); res.json({ success: true, data: await service.moderateClose(req.user, adminId(req.params.id), adminCloseInput(req.body)) }); },
+    async queue(req, res) { adminEmptyQuery(req.query); res.json({ success: true, data: await service.queue() }); },
     async dashboard(req, res) { adminEmptyQuery(req.query); res.json({ success: true, data: await service.dashboard() }); },
     async listUsers(req, res) { res.json({ success: true, ...await service.listUsers(adminUserQuery(req.query)) }); },
     async getUser(req, res) { adminEmptyQuery(req.query); res.json({ success: true, data: await service.getUser(adminId(req.params.id)) }); },

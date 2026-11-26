@@ -1,4 +1,11 @@
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import { Icon } from "../../components/Icon";
 import { useSearchParams } from "react-router-dom";
 import { api, errorText, invalidate } from "../../lib/api";
 import { Button, Modal, Textarea, useToast } from "../../components/ui";
@@ -16,6 +23,7 @@ export function useAdminQuery(keys: string[]) {
   };
   return {
     params,
+    setParams,
     query,
     change,
     page: (page: number) => change("page", String(page)),
@@ -184,5 +192,36 @@ export function ReasonDialog({
         </div>
       </form>
     </Modal>
+  );
+}
+
+export function SearchBox({
+  value,
+  change,
+  placeholder,
+}: {
+  value: string;
+  change: (value: string) => void;
+  placeholder: string;
+}) {
+  const [text, setText] = useState(value);
+  useEffect(() => setText(value), [value]);
+  useEffect(() => {
+    if (text.trim() === value) return;
+    const timer = setTimeout(() => change(text.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [text, value, change]);
+  return (
+    <label className="admin-search">
+      <span className="sr-only">Tìm kiếm</span>
+      <Icon name="search" width="18" height="18" />
+      <input
+        type="search"
+        value={text}
+        maxLength={100}
+        placeholder={placeholder}
+        onChange={(e) => setText(e.target.value)}
+      />
+    </label>
   );
 }

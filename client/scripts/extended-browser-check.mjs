@@ -128,7 +128,7 @@ export async function extendedBrowserCheck({
     );
     await adminPage.goto(url + "/quan-tri");
     await expect(
-      adminPage.getByRole("heading", { name: "Tổng quan", exact: true }),
+      adminPage.getByRole("heading", { name: "Tổng quan hệ thống", exact: true }),
     ).toBeVisible();
     const [[usersCount]] = await query(
       pool,
