@@ -1,8 +1,14 @@
+import { HttpError } from '../utils/http-error.js';
 import { workflowId, pagination } from '../validation/workflow.validation.js';
 
 export function createNotificationController(service) {
   return {
-    async list(req, res) { res.json({ success: true, ...await service.list(req.user, pagination(req.query)) }); },
+    async list(req, res) {
+      const { filter, ...rest } = req.query ?? {};
+      const options = pagination(rest);
+      if (filter !== undefined) { if (!['unread', 'match', 'claim', 'system'].includes(filter)) throw new HttpError(400, 'Dữ liệu không hợp lệ'); options.filter = filter; }
+      res.json({ success: true, ...await service.list(req.user, options) });
+    },
     async target(req,res) { res.set('Cache-Control','no-store');res.json({success:true,data:await service.target(req.user,workflowId(req.params.id))}); },
     async unread(req, res) { res.json({ success: true, data: await service.unread(req.user) }); },
     async markRead(req, res) { await service.markRead(req.user, workflowId(req.params.id)); res.json({ success: true, message: 'Đã đánh dấu thông báo là đã đọc' }); },

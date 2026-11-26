@@ -18,6 +18,8 @@ import { createItemService } from '../services/item.service.js';
 import { createClaimService } from '../services/claim.service.js';
 import { createEngagementService } from '../services/engagement.service.js';
 import { createChatService } from '../services/chat.service.js';
+import { createNotificationService } from '../services/notification.service.js';
+import { createNotificationRepository } from '../repositories/notification.repository.js';
 import { createChatRepository } from '../repositories/chat.repository.js';
 import { createAuthService } from '../services/auth.service.js';
 import { createAdminService } from '../services/admin.service.js';
@@ -44,7 +46,7 @@ test('Phase 2 integration: verification questions, saved items, views, stats, co
     http = await serveApp(createApp({
       healthService: { async check() { return {}; } }, authService: auth, userService: createUserService(users),
       itemService: createItemService(createItemRepository(pool)), claimService: createClaimService(createClaimRepository(pool)),
-      engagementService: createEngagementService(createEngagementRepository(pool)), chatService: createChatService(createChatRepository(pool)), adminService: createAdminService(createAdminRepository(pool), createItemService(createItemRepository(pool))), logger: () => {}, security: { contactMax: 3 }
+      engagementService: createEngagementService(createEngagementRepository(pool)), chatService: createChatService(createChatRepository(pool)), notificationService: createNotificationService(createNotificationRepository(pool)), adminService: createAdminService(createAdminRepository(pool), createItemService(createItemRepository(pool))), logger: () => {}, security: { contactMax: 3 }
     }));
     const login = async (email) => (await request(http, '/api/auth/login', { method: 'POST', body: { email, password } })).json.data;
     const owner = await login('owner@phase2.test'), admin = await login('admin@phase2.test');
@@ -101,6 +103,10 @@ test('Phase 2 integration: verification questions, saved items, views, stats, co
       assert.deepEqual((await request(http, `/api/items/${foundId}/stats`, { token: owner.token })).json.data, { views: 2, saves: 1, claims: 1, pendingClaims: 1 });
       const mine = (await request(http, '/api/users/me/stats', { token: owner.token })).json.data;
       assert.equal(mine.posts.found, 1); assert.equal(mine.incomingPendingClaims, 1); assert.equal(mine.totalViews, 2);
+      assert.equal(mine.posts.byStatus.CLAIM_PENDING, 1);
+      const filtered = await request(http, '/api/items/mine?status=CLAIM_PENDING&type=FOUND', { token: owner.token });
+      assert.deepEqual(filtered.json.data.map((row) => row.id), [foundId]);
+      assert.equal((await request(http, '/api/items/mine?status=LOST', { token: owner.token })).status, 400);
       assert.equal((await request(http, '/api/users/me/stats', { token: claimant.token })).json.data.savedItems, 1);
       assert.equal((await request(http, `/api/saved-items/${foundId}`, { method: 'DELETE', token: claimant.token })).json.data.saved, false);
       assert.deepEqual((await request(http, '/api/saved-items/ids', { token: claimant.token })).json.data, []);
@@ -116,6 +122,11 @@ test('Phase 2 integration: verification questions, saved items, views, stats, co
       const inbox = await request(http, '/api/admin/contact-messages?status=NEW', { token: admin.token });
       assert.equal(inbox.json.pagination.total, 2);
       assert.equal((await request(http, '/api/admin/queue', { token: owner.token })).status, 403);
+      assert.equal((await request(http, '/api/admin/dashboard?days=7', { token: admin.token })).json.data.days, 7);
+      assert.equal((await request(http, '/api/admin/dashboard?days=5', { token: admin.token })).status, 400);
+      const adminItems = (await request(http, `/api/admin/items?keyword=${encodeURIComponent('Ví da')}`, { token: admin.token })).json.data;
+      const listed = adminItems.find((row) => row.id === foundId);
+      assert.equal(listed.stats.views, 2); assert.equal(listed.ownerName.length > 0, true);
       assert.equal((await request(http, '/api/admin/queue', { token: admin.token })).json.data.contacts, 2);
       const handled = await request(http, `/api/admin/contact-messages/${sent.json.data.id}/handle`, { method: 'PATCH', token: admin.token });
       assert.equal(handled.json.data.status, 'HANDLED');
@@ -151,6 +162,10 @@ test('Phase 2 integration: verification questions, saved items, views, stats, co
       assert.equal((await request(http, `${base}/confirm`, { method: 'PATCH', token: claimant.token })).status, 409);
       const [[{ n }]] = await query(pool, "SELECT COUNT(*) AS n FROM notifications WHERE type='CLAIM_COMPLETED'");
       assert.equal(Number(n), 1);
+      const claimNotes = await request(http, '/api/notifications?filter=claim', { token: claimant.token });
+      assert.ok(claimNotes.json.data.length >= 1 && claimNotes.json.data.every((row) => row.type.startsWith('CLAIM')));
+      assert.equal((await request(http, '/api/notifications?filter=match', { token: claimant.token })).json.pagination.total, 0);
+      assert.equal((await request(http, '/api/notifications?filter=nope', { token: claimant.token })).status, 400);
     });
 
     await t.test('conversation context lists the Claim and items mentioned as "tin #N"', async () => {

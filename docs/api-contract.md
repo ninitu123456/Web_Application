@@ -365,7 +365,7 @@ Cả ba endpoint chỉ dành cho chủ bài (`USER` hoặc `ADMIN` đang `ACTIVE
 | GET | `/api/admin/queue` | `ADMIN` | — | `200` – Số báo cáo chờ, khiếu nại mở, liên hệ mới (badge thanh điều hướng) |
 | GET | `/api/conversations/:id/context` | Thành viên cuộc trò chuyện | — | `200` – Người còn lại và các tin liên quan: Claim giữa hai người (kèm bàn giao) và tin được nhắc dạng "tin #N" |
 
-Ghi chú: `GET /api/items/:id` trả thêm `owner` (`fullName`, `returnedCount`); `GET /api/admin/users` nhận `keyword` và trả `stats` (`items`, `claims`, `reports`); `GET /api/admin/items` nhận `keyword`; `GET /api/admin/dashboard` trả thêm `monthlyItems`, `growth`, `queue`, `recentLogs`.
+Ghi chú: `GET /api/items/mine` nhận thêm `status`, `type`; `GET /api/notifications` nhận `filter` (`unread`/`match`/`claim`/`system`); `GET /api/admin/dashboard` nhận `days` (`7`/`30`/`90`); `GET /api/admin/items` trả thêm `ownerName` và `stats` (`views`, `reports`); `GET /api/users/me/stats` trả thêm `posts.byStatus`. `GET /api/items/:id` trả thêm `owner` (`fullName`, `returnedCount`); `GET /api/admin/users` nhận `keyword` và trả `stats` (`items`, `claims`, `reports`); `GET /api/admin/items` nhận `keyword`; `GET /api/admin/dashboard` trả thêm `monthlyItems`, `growth`, `queue`, `recentLogs`.
 
 ## 8. Nhắn tin
 

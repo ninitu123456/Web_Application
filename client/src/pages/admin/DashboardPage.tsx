@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useResource } from "../../lib/hooks";
 import { invalidate } from "../../lib/api";
 import type { Dashboard } from "../../lib/extended-types";
@@ -109,7 +109,11 @@ function CategoryDonut({ rows }: { rows: Dashboard["categories"] }) {
 }
 
 export function DashboardPage() {
-  const result = useResource<Dashboard>("/admin/dashboard");
+  const [params, setParams] = useSearchParams();
+  const days = ["7", "90"].includes(params.get("khoang") || "")
+    ? params.get("khoang")!
+    : "30";
+  const result = useResource<Dashboard>("/admin/dashboard", { days });
   if (result.loading) return <Loading />;
   if (result.error)
     return <ErrorState error={result.error} retry={invalidate} />;
@@ -128,8 +132,8 @@ export function DashboardPage() {
       label: "Tổng bài đăng",
       sub:
         itemsChange === null
-          ? `${number(growth?.newItems30 ?? 0)} bài trong 30 ngày`
-          : `${itemsChange >= 0 ? "+" : ""}${itemsChange}% so với 30 ngày trước`,
+          ? `${number(growth?.newItems30 ?? 0)} bài trong ${days} ngày`
+          : `${itemsChange >= 0 ? "+" : ""}${itemsChange}% so với ${days} ngày trước`,
       to: "/quan-tri/bai-dang",
     },
     {
@@ -137,7 +141,7 @@ export function DashboardPage() {
       tone: "green",
       value: data.items.returned,
       label: "Đồ đã trao lại",
-      sub: `+${number(growth?.returned30 ?? 0)} trong 30 ngày`,
+      sub: `+${number(growth?.returned30 ?? 0)} trong ${days} ngày`,
       to: "/quan-tri/bai-dang?status=RETURNED",
     },
     {
@@ -204,6 +208,21 @@ export function DashboardPage() {
           </p>
         </div>
         <div className="actions">
+          <label className="admin-range">
+            <span className="sr-only">Khoảng thời gian</span>
+            <select
+              value={days}
+              onChange={(e) =>
+                setParams(
+                  e.target.value === "30" ? {} : { khoang: e.target.value },
+                )
+              }
+            >
+              <option value="7">7 ngày qua</option>
+              <option value="30">30 ngày qua</option>
+              <option value="90">90 ngày qua</option>
+            </select>
+          </label>
           <Button variant="secondary" onClick={invalidate}>
             <Icon name="refresh" /> Làm mới
           </Button>
@@ -296,7 +315,7 @@ export function DashboardPage() {
         </section>
       </div>
       <section className="admin-card" aria-labelledby="activity-title">
-        <h2 id="activity-title">Số thao tác 30 ngày gần đây</h2>
+        <h2 id="activity-title">Số thao tác {days} ngày gần đây</h2>
         <ActivityChart rows={data.recentActivity} />
       </section>
     </div>

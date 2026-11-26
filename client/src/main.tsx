@@ -19,7 +19,10 @@ import { NotificationsPage } from "./pages/NotificationsPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { MyReportsPage } from "./pages/MyReportsPage";
 import { SavedItemsPage } from "./pages/SavedItemsPage";
-import { AdminContactPage, AdminDisputesPage } from "./pages/admin/SupportPages";
+import {
+  AdminContactPage,
+  AdminDisputesPage,
+} from "./pages/admin/SupportPages";
 import { AdminLayout } from "./pages/admin/AdminLayout";
 import { DashboardPage } from "./pages/admin/DashboardPage";
 import { AdminUsersPage, AdminUserDetailPage } from "./pages/admin/UsersPage";

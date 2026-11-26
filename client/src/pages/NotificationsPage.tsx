@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "../components/Icon";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   notificationRoute,
@@ -42,9 +43,10 @@ export function NotificationsPage() {
   useEffect(() => {
     notifications.refresh();
   }, [notifications.refresh]);
+  const filter = params.get("loc") || "";
   const result = useResource<Notification[]>(
     "/notifications",
-    { page: params.get("page") || "1", limit: 10 },
+    { page: params.get("page") || "1", limit: 15, filter: filter || undefined },
     notifications.revision,
   );
   const [busy, setBusy] = useState(false);
@@ -99,67 +101,146 @@ export function NotificationsPage() {
           {error}
         </p>
       )}
+      <div
+        className="segmented notification-tabs"
+        role="tablist"
+        aria-label="Lọc thông báo"
+      >
+        {NOTIFICATION_TABS.map(([key, label]) => (
+          <button
+            key={key || "all"}
+            type="button"
+            role="tab"
+            aria-selected={filter === key}
+            onClick={() => setParams(key ? { loc: key } : {})}
+          >
+            {label}
+            {key === "unread" &&
+              notifications.count > 0 &&
+              ` · ${notifications.count}`}
+          </button>
+        ))}
+      </div>
       {result.loading ? (
         <Loading />
       ) : result.error ? (
         <ErrorState error={result.error} retry={invalidate} />
       ) : result.data?.data.length ? (
-        <div className="stack">
-          {result.data.data.map((notification) => (
-            <article
-              data-notification-id={notification.id}
-              key={notification.id}
-              className={`panel notification-row ${notification.isRead ? "" : "unread"}`}
-            >
-              <div>
-                <span className="badge">
-                  {notification.isRead ? "Đã đọc" : "Chưa đọc"}
-                </span>
-                {navigableNotifications.has(notification.type) ? (
-                  <button
-                    type="button"
-                    className="notification-open"
-                    disabled={busy}
-                    onClick={() => void open(notification)}
+        <div className="notification-card">
+          {groupByDay(result.data.data).map(([label, rows]) => (
+            <section key={label} aria-label={label}>
+              <h2>{label}</h2>
+              {rows.map((notification) => {
+                const look = notificationLook(notification.type);
+                return (
+                  <article
+                    data-notification-id={notification.id}
+                    key={notification.id}
+                    className={`notification-row ${notification.isRead ? "" : "unread"}`}
                   >
-                    <span>{notification.message}</span>
-                    <span className="notification-cta">
-                      {notification.type === "CLAIM_APPROVED"
-                        ? "Xem yêu cầu đã duyệt →"
-                        : "Xem nội dung thông báo →"}
+                    <span className={`notification-icon ${look.tone}`}>
+                      <Icon name={look.icon} width="18" height="18" />
                     </span>
-                  </button>
-                ) : (
-                  <>
-                    <p>{notification.message}</p>
-                    <small className="muted">
-                      Thông báo này chưa có liên kết đích.
-                    </small>
-                  </>
-                )}
-                <small className="muted">
-                  {dateLabel(notification.createdAt)}
-                </small>
-              </div>
-              {!notification.isRead && (
-                <Button
-                  variant="secondary"
-                  disabled={busy}
-                  onClick={() => void mark(notification.id)}
-                >
-                  Đánh dấu đã đọc
-                </Button>
-              )}
-            </article>
+                    <div className="notification-body">
+                      {navigableNotifications.has(notification.type) ? (
+                        <button
+                          type="button"
+                          className="notification-open"
+                          disabled={busy}
+                          onClick={() => void open(notification)}
+                        >
+                          <span>{notification.message}</span>
+                          <span className="notification-cta">
+                            {notification.type === "CLAIM_APPROVED"
+                              ? "Xem yêu cầu đã duyệt →"
+                              : "Xem nội dung thông báo →"}
+                          </span>
+                        </button>
+                      ) : (
+                        <p>{notification.message}</p>
+                      )}
+                      <small className="muted">
+                        {relative(notification.createdAt)}
+                      </small>
+                    </div>
+                    {notification.isRead ? (
+                      <span className="sr-only">Đã đọc</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="notification-mark"
+                        disabled={busy}
+                        aria-label="Đánh dấu đã đọc"
+                        title="Đánh dấu đã đọc"
+                        onClick={() => void mark(notification.id)}
+                      >
+                        <i aria-hidden="true" />
+                      </button>
+                    )}
+                  </article>
+                );
+              })}
+            </section>
           ))}
         </div>
       ) : (
-        <EmptyState title="Bạn chưa có thông báo" />
+        <EmptyState
+          title={
+            filter
+              ? "Không có thông báo trong mục này"
+              : "Bạn chưa có thông báo"
+          }
+        />
       )}
       <Pagination
         data={result.data?.pagination}
-        change={(page) => setParams({ page: String(page) })}
+        change={(page) =>
+          setParams(
+            filter
+              ? { loc: filter, page: String(page) }
+              : { page: String(page) },
+          )
+        }
       />
     </section>
   );
+}
+
+const NOTIFICATION_TABS = [
+  ["", "Tất cả"],
+  ["unread", "Chưa đọc"],
+  ["match", "AI ghép cặp"],
+  ["claim", "Yêu cầu & trao đồ"],
+  ["system", "Hệ thống"],
+] as const;
+function notificationLook(type: string): {
+  icon: "sparkle" | "shield" | "check" | "close" | "flag" | "bell";
+  tone: string;
+} {
+  if (type === "NEW_MATCH" || type === "AI_VISUAL_SIMILAR_ITEM")
+    return { icon: "sparkle", tone: "violet" };
+  if (type === "CLAIM_COMPLETED") return { icon: "check", tone: "green" };
+  if (type === "CLAIM_REJECTED") return { icon: "close", tone: "red" };
+  if (type.startsWith("CLAIM")) return { icon: "shield", tone: "amber" };
+  if (type.startsWith("REPORT")) return { icon: "flag", tone: "blue" };
+  return { icon: "bell", tone: "blue" };
+}
+function groupByDay(rows: Notification[]) {
+  const today = new Date().toDateString();
+  const groups: [string, Notification[]][] = [];
+  for (const row of rows) {
+    const label =
+      new Date(row.createdAt).toDateString() === today ? "Hôm nay" : "Trước đó";
+    const last = groups.at(-1);
+    if (last && last[0] === label) last[1].push(row);
+    else groups.push([label, [row]]);
+  }
+  return groups;
+}
+function relative(value: string) {
+  const minutes = Math.round((Date.now() - new Date(value).getTime()) / 60000);
+  if (minutes < 1) return "Vừa xong";
+  if (minutes < 60) return `${minutes} phút trước`;
+  if (minutes < 1440) return `${Math.round(minutes / 60)} giờ trước`;
+  return dateLabel(value);
 }

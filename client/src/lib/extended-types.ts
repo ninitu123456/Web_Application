@@ -66,6 +66,7 @@ export interface Dashboard {
   reports: { total: number; byStatus: Record<ReportStatus, number> };
   categories: { id: number; name: string; count: number }[];
   recentActivity: { date: string; count: number }[];
+  days?: number;
   monthlyItems?: { month: string; lost: number; found: number }[];
   growth?: {
     newUsers30: number;

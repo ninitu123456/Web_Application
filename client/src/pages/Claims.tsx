@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, errorText, invalidate } from "../lib/api";
 import { useResource } from "../lib/hooks";
-import type { Claim, VerificationQuestion } from "../lib/types";
+import type { Claim, Item, VerificationQuestion } from "../lib/types";
 import { ReportButton } from "../components/ReportButton";
 import { HandoverPanel } from "../components/HandoverPanel";
 import {
@@ -312,9 +312,48 @@ export function ReceivedClaims({
     </section>
   );
 }
+/** Requests on the user's own FOUND posts that still need a decision or handover. */
+function ReceivedForMe() {
+  const mine = useResource<Item[]>("/items/mine", { limit: 100 });
+  if (mine.loading) return <Loading />;
+  if (mine.error) return <ErrorState error={mine.error} retry={invalidate} />;
+  const active = (mine.data?.data ?? []).filter(
+    (item) =>
+      item.type === "FOUND" &&
+      (item.status === "CLAIM_PENDING" || item.status === "CLAIMED"),
+  );
+  if (!active.length)
+    return (
+      <EmptyState title="Chưa có yêu cầu nào cần bạn xử lý">
+        <p className="muted">
+          Khi có người gửi yêu cầu nhận lại đồ bạn nhặt được, yêu cầu sẽ hiện ở
+          đây để bạn đối chiếu câu trả lời và chấp thuận.
+        </p>
+      </EmptyState>
+    );
+  return (
+    <div className="received-groups">
+      {active.map((item) => (
+        <section key={item.id} className="received-group">
+          <header>
+            <Link to={`/do-vat/${item.id}?tab=claims#received-claims`}>
+              {item.title}
+            </Link>
+            <StatusBadge status={item.status} group="item" />
+          </header>
+          <ReceivedClaims
+            itemId={item.id}
+            canAct={item.visibility !== "HIDDEN"}
+          />
+        </section>
+      ))}
+    </div>
+  );
+}
 export function MyClaimsPage() {
   const [params, setParams] = useSearchParams();
-  const result = useResource<Claim[]>("/claims/mine", {
+  const received = params.get("tab") === "gui-den-toi";
+  const result = useResource<Claim[]>(received ? null : "/claims/mine", {
     page: params.get("page") || "1",
     limit: 10,
   });
@@ -328,112 +367,147 @@ export function MyClaimsPage() {
           {arrival.error}
         </p>
       )}
-      <h1>Yêu cầu nhận đồ tôi đã gửi</h1>
-      <p className="page-lead">
-        Yêu cầu gửi đến tin của bạn được duyệt ngay trong trang chi tiết tin.
-      </p>
-      {result.loading ? (
-        <Loading />
-      ) : result.error ? (
-        <ErrorState error={result.error} retry={invalidate} />
-      ) : result.data?.data.length ? (
-        <div className="claim-list">
-          {result.data.data.map((claim) => (
-            <article
-              className="panel claim-card"
-              key={claim.id}
-              id={`claim-${claim.id}`}
-              tabIndex={-1}
-            >
-              <div className="section-heading">
-                <div>
-                  <h2>
-                    {claim.item?.visibility === "HIDDEN" ? (
-                      claim.item.title
-                    ) : (
-                      <Link to={`/do-vat/${claim.itemId}`}>
-                        {claim.item?.title || `Bài đăng #${claim.itemId}`} ↗
-                      </Link>
-                    )}
-                  </h2>
-                  <p className="muted">
-                    {claim.item?.location} · {dateLabel(claim.submittedAt)}
-                  </p>
-                </div>
-                <StatusBadge status={claim.status} group="claim" />
-              </div>
-              {claim.status !== "REJECTED" && (
-                <ClaimStepper status={claim.status} />
-              )}
-              {claim.item && (
-                <div className="claim-item-state">
-                  Trạng thái bài đăng:{" "}
-                  <StatusBadge status={claim.item.status} group="item" />
-                </div>
-              )}
-              {claim.item?.visibility === "HIDDEN" && (
-                <p className="notice">
-                  Bài đăng đã được gỡ khỏi phần công khai. Lịch sử yêu cầu và
-                  bằng chứng của bạn vẫn được giữ; hãy theo dõi kết quả tại đây.
-                </p>
-              )}
-              <details className="proof">
-                <summary>Bằng chứng bạn đã gửi (riêng tư)</summary>
-                <p>{claim.proofDescription}</p>
-              </details>
-              {claim.status === "PENDING" && (
-                <p className="notice">
-                  Đang chờ chủ bài kiểm tra bằng chứng. Bạn có thể theo dõi kết
-                  quả tại đây hoặc trong Thông báo.
-                </p>
-              )}
-              {claim.status === "REJECTED" && (
-                <p className="notice">
-                  Yêu cầu đã bị từ chối. Bạn không thể gửi lại yêu cầu cho bài
-                  này; hãy tiếp tục tìm kiếm đồ vật phù hợp.
-                </p>
-              )}
-              <ReportButton
-                targetType="CLAIM"
-                targetId={claim.id}
-                label="Báo cáo yêu cầu này"
-              />
-              {claim.status === "APPROVED" && (
-                <p className="notice">
-                  Yêu cầu đã được chấp thuận. Hẹn lịch nhận đồ bên dưới; chủ bài
-                  hoàn tất sau khi trao đồ.
-                  {claim.item?.visibility !== "HIDDEN" && (
-                    <Link
-                      className="button secondary"
-                      to={`/do-vat/${claim.itemId}#contact-action`}
-                    >
-                      Liên hệ người nhặt →
-                    </Link>
-                  )}
-                </p>
-              )}
-              {claim.status === "APPROVED" && (
-                <HandoverPanel claimId={claim.id} role="CLAIMANT" />
-              )}
-              {claim.completedAt && (
-                <p className="muted">
-                  Đã bàn giao ngày {dateLabel(claim.completedAt)}
-                </p>
-              )}
-            </article>
-          ))}
-        </div>
+      <div
+        className="segmented claims-switch"
+        role="tablist"
+        aria-label="Loại yêu cầu"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={received}
+          onClick={() => setParams({ tab: "gui-den-toi" })}
+        >
+          Gửi đến tôi
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={!received}
+          onClick={() => setParams({})}
+        >
+          Tôi đã gửi
+        </button>
+      </div>
+      {received ? (
+        <>
+          <h1>Yêu cầu gửi đến tôi</h1>
+          <p className="page-lead">
+            Đối chiếu câu trả lời xác minh và bằng chứng trước khi chấp thuận.
+          </p>
+          <ReceivedForMe />
+        </>
       ) : (
-        <EmptyState title="Bạn chưa gửi yêu cầu nào">
-          <Link className="button secondary" to="/kham-pha">
-            Khám phá đồ vật ↗
-          </Link>
-        </EmptyState>
+        <>
+          <h1>Yêu cầu nhận đồ tôi đã gửi</h1>
+          <p className="page-lead">
+            Theo dõi tiến trình và hẹn lịch nhận đồ cho từng yêu cầu.
+          </p>
+          {result.loading ? (
+            <Loading />
+          ) : result.error ? (
+            <ErrorState error={result.error} retry={invalidate} />
+          ) : result.data?.data.length ? (
+            <div className="claim-list">
+              {result.data.data.map((claim) => (
+                <article
+                  className="panel claim-card"
+                  key={claim.id}
+                  id={`claim-${claim.id}`}
+                  tabIndex={-1}
+                >
+                  <div className="section-heading">
+                    <div>
+                      <h2>
+                        {claim.item?.visibility === "HIDDEN" ? (
+                          claim.item.title
+                        ) : (
+                          <Link to={`/do-vat/${claim.itemId}`}>
+                            {claim.item?.title || `Bài đăng #${claim.itemId}`} ↗
+                          </Link>
+                        )}
+                      </h2>
+                      <p className="muted">
+                        {claim.item?.location} · {dateLabel(claim.submittedAt)}
+                      </p>
+                    </div>
+                    <StatusBadge status={claim.status} group="claim" />
+                  </div>
+                  {claim.status !== "REJECTED" && (
+                    <ClaimStepper status={claim.status} />
+                  )}
+                  {claim.item && (
+                    <div className="claim-item-state">
+                      Trạng thái bài đăng:{" "}
+                      <StatusBadge status={claim.item.status} group="item" />
+                    </div>
+                  )}
+                  {claim.item?.visibility === "HIDDEN" && (
+                    <p className="notice">
+                      Bài đăng đã được gỡ khỏi phần công khai. Lịch sử yêu cầu
+                      và bằng chứng của bạn vẫn được giữ; hãy theo dõi kết quả
+                      tại đây.
+                    </p>
+                  )}
+                  <details className="proof">
+                    <summary>Bằng chứng bạn đã gửi (riêng tư)</summary>
+                    <p>{claim.proofDescription}</p>
+                  </details>
+                  {claim.status === "PENDING" && (
+                    <p className="notice">
+                      Đang chờ chủ bài kiểm tra bằng chứng. Bạn có thể theo dõi
+                      kết quả tại đây hoặc trong Thông báo.
+                    </p>
+                  )}
+                  {claim.status === "REJECTED" && (
+                    <p className="notice">
+                      Yêu cầu đã bị từ chối. Bạn không thể gửi lại yêu cầu cho
+                      bài này; hãy tiếp tục tìm kiếm đồ vật phù hợp.
+                    </p>
+                  )}
+                  <ReportButton
+                    targetType="CLAIM"
+                    targetId={claim.id}
+                    label="Báo cáo yêu cầu này"
+                  />
+                  {claim.status === "APPROVED" && (
+                    <p className="notice">
+                      Yêu cầu đã được chấp thuận. Hẹn lịch nhận đồ bên dưới; chủ
+                      bài hoàn tất sau khi trao đồ.
+                      {claim.item?.visibility !== "HIDDEN" && (
+                        <Link
+                          className="button secondary"
+                          to={`/do-vat/${claim.itemId}#contact-action`}
+                        >
+                          Liên hệ người nhặt →
+                        </Link>
+                      )}
+                    </p>
+                  )}
+                  {claim.status === "APPROVED" && (
+                    <HandoverPanel claimId={claim.id} role="CLAIMANT" />
+                  )}
+                  {claim.completedAt && (
+                    <p className="muted">
+                      Đã bàn giao ngày {dateLabel(claim.completedAt)}
+                    </p>
+                  )}
+                </article>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="Bạn chưa gửi yêu cầu nào">
+              <Link className="button secondary" to="/kham-pha">
+                Khám phá đồ vật ↗
+              </Link>
+            </EmptyState>
+          )}
+          <Pagination
+            data={result.data?.pagination}
+            change={(page) => setParams({ page: String(page) })}
+          />
+        </>
       )}
-      <Pagination
-        data={result.data?.pagination}
-        change={(page) => setParams({ page: String(page) })}
-      />
     </section>
   );
 }

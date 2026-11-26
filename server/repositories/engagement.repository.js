@@ -55,7 +55,8 @@ export function createEngagementRepository(pool) {
     async userStats(userId) {
       const [[posts]] = await execute(`SELECT COUNT(*) AS total,
         COALESCE(SUM(type = 'LOST'), 0) AS lost, COALESCE(SUM(type = 'FOUND'), 0) AS found,
-        COALESCE(SUM(status IN ('OPEN','CLAIM_PENDING')), 0) AS active, COALESCE(SUM(status = 'RETURNED'), 0) AS returned
+        COALESCE(SUM(status IN ('OPEN','CLAIM_PENDING')), 0) AS active, COALESCE(SUM(status = 'RETURNED'), 0) AS returned,
+        COALESCE(SUM(status = 'OPEN'), 0) AS s_open, COALESCE(SUM(status = 'CLAIM_PENDING'), 0) AS s_claim_pending, COALESCE(SUM(status = 'CLAIMED'), 0) AS s_claimed, COALESCE(SUM(status = 'CLOSED'), 0) AS s_closed
         FROM items WHERE user_id = ?`, [userId]);
       const [[claims]] = await execute(`SELECT COUNT(*) AS sent, COALESCE(SUM(status = 'PENDING'), 0) AS pending,
         COALESCE(SUM(status = 'APPROVED'), 0) AS approved, COALESCE(SUM(status = 'COMPLETED'), 0) AS completed

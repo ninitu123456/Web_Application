@@ -11,6 +11,16 @@ const knownErrors = new Set(['ITEM_UNAVAILABLE', 'INVALID_RECIPIENT', 'EMAIL_UNA
   'RESEND_RATE_LIMIT', 'RESEND_AUTH', 'RESEND_REJECTED', 'RESEND_FAILED', 'RESEND_IDEMPOTENCY_CONFLICT',
   'RESEND_IDEMPOTENCY_PENDING', 'EMAIL_LEASE_LOST', 'EMAIL_RETRY_WINDOW_EXPIRED', 'EMAIL_SNAPSHOT_INVALID', 'EMAIL_LEGACY_UNKNOWN']);
 
+// InnoDB rolls the whole transaction back on deadlock, so a pure-database
+// transaction (no provider call inside) is safe to run again.
+export async function retryOnDeadlock(operation, attempts = 3) {
+  for (let attempt = 1; ; attempt++) {
+    try { return await operation(); } catch (error) {
+      if (error?.code !== 'ER_LOCK_DEADLOCK' || attempt >= attempts) throw error;
+      await new Promise(resolve => setTimeout(resolve, 20 * attempt + Math.floor(Math.random() * 20)));
+    }
+  }
+}
 export function createEmailWorker(pool, mailer, { heartbeatMs = 30000 } = {}) {
   if (!Number.isSafeInteger(heartbeatMs) || heartbeatMs < 1 || heartbeatMs > 60000) throw new Error('Invalid email lease heartbeat');
   async function renew(job, lease) {
@@ -27,7 +37,7 @@ export function createEmailWorker(pool, mailer, { heartbeatMs = 30000 } = {}) {
     const matchId = /^MATCH:([1-9]\d*)$/.exec(job.event_key)?.[1];
     // Discovery must not establish a stale RR read view inside the transaction.
     const [[pair]] = matchId ? await query(pool, 'SELECT lost_item_id,found_item_id FROM matches WHERE match_id=?', [matchId]) : [[]];
-    return transaction(pool, async connection => {
+    return retryOnDeadlock(() => transaction(pool, async connection => {
       const run = (sql, values = []) => connection.query({ sql, timeout: databaseTimeout }, values);
       // Account-status writers and moderation: role -> user -> numeric Items ->
       // Match -> outbox. Queue claiming never waits for any of these Item locks.
@@ -92,11 +102,11 @@ export function createEmailWorker(pool, mailer, { heartbeatMs = 30000 } = {}) {
       payload.emailDelivery = { ...delivery, outcome: 'UNKNOWN' };
       await run('UPDATE email_outbox SET payload=?,lease_until=DATE_ADD(UTC_TIMESTAMP(),INTERVAL 2 MINUTE) WHERE job_id=? AND lease_token=?', [JSON.stringify(payload), job.job_id, lease]);
       return { ...payload.emailDelivery, priorOutcome };
-    });
+    }));
   }
   async function failed(job, lease, error, dispatch) {
     const code = knownErrors.has(error.code) ? error.code : 'SEND_FAILED';
-    await transaction(pool, async connection => {
+    await retryOnDeadlock(() => transaction(pool, async connection => {
       const run = (sql, values = []) => connection.query({ sql, timeout: databaseTimeout }, values);
       const [[current]] = await run("SELECT *,UNIX_TIMESTAMP(UTC_TIMESTAMP(3))*1000 AS now_ms FROM email_outbox WHERE job_id=? AND status='PROCESSING' AND lease_token=? AND lease_until>UTC_TIMESTAMP() FOR UPDATE", [job.job_id, lease]);
       if (!current) return;
@@ -110,13 +120,13 @@ export function createEmailWorker(pool, mailer, { heartbeatMs = 30000 } = {}) {
       const terminal = Number(current.attempts) >= 5 || error.permanent || expired || code === 'INVALID_RECIPIENT';
       await run("UPDATE email_outbox SET status=?,payload=?,next_attempt_at=DATE_ADD(UTC_TIMESTAMP(),INTERVAL ? SECOND),last_error=?,lease_token=NULL,lease_until=NULL WHERE job_id=? AND lease_token=?",
         [terminal ? 'FAILED' : 'PENDING', JSON.stringify(payload), delay, expired ? 'EMAIL_RETRY_WINDOW_EXPIRED' : code, job.job_id, lease]);
-    });
+    }));
   }
   return {
     async tick() {
       if (!mailer.configured) return false;
       const lease = randomUUID();
-      const job = await transaction(pool, async connection => {
+      const job = await retryOnDeadlock(() => transaction(pool, async connection => {
         const run = (sql, values = []) => connection.query({ sql, timeout: databaseTimeout }, values);
         await run(`UPDATE email_outbox SET status=CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(payload,'$.emailDelivery.outcome'))='ACCEPTED' THEN 'SENT' WHEN attempts>=5 THEN 'FAILED' ELSE 'PENDING' END,
           sent_at=IF(JSON_UNQUOTE(JSON_EXTRACT(payload,'$.emailDelivery.outcome'))='ACCEPTED',COALESCE(sent_at,UTC_TIMESTAMP()),sent_at),lease_token=NULL,lease_until=NULL,
@@ -128,7 +138,7 @@ export function createEmailWorker(pool, mailer, { heartbeatMs = 30000 } = {}) {
         if (!job) return;
         await run("UPDATE email_outbox SET status='PROCESSING',attempts=attempts+1,lease_token=?,lease_until=DATE_ADD(UTC_TIMESTAMP(),INTERVAL 2 MINUTE) WHERE job_id=?", [lease, job.job_id]);
         return job;
-      });
+      }));
       if (!job) return false;
       let dispatch, heartbeat, renewing = Promise.resolve();
       const abort = new AbortController();

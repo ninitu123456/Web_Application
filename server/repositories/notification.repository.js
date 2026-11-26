@@ -11,9 +11,12 @@ export function createNotificationRepository(pool, execute = (sql, values = []) 
         if (error.code !== 'ER_DUP_ENTRY' || !/uq_notifications_user_event/.test(error.sqlMessage ?? '')) throw error;
       }
     },
-    async list(userId, { page, limit }) {
-      const [[count]] = await execute('SELECT COUNT(*) AS total FROM notifications WHERE user_id=?', [userId]);
-      const [rows] = await execute('SELECT notification_id, type, message, is_read, created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC, notification_id DESC LIMIT ? OFFSET ?', [userId, limit, (page - 1) * limit]);
+    async list(userId, { page, limit, filter }) {
+      // Groups mirror the tabs on the notifications page.
+      const match = "type IN ('NEW_MATCH','AI_VISUAL_SIMILAR_ITEM')", claim = "type LIKE 'CLAIM%'";
+      const extra = { unread: ' AND is_read=FALSE', match: ` AND ${match}`, claim: ` AND ${claim}`, system: ` AND NOT ${match} AND NOT ${claim}` }[filter] ?? '';
+      const [[count]] = await execute(`SELECT COUNT(*) AS total FROM notifications WHERE user_id=?${extra}`, [userId]);
+      const [rows] = await execute(`SELECT notification_id, type, message, is_read, created_at FROM notifications WHERE user_id=?${extra} ORDER BY created_at DESC, notification_id DESC LIMIT ? OFFSET ?`, [userId, limit, (page - 1) * limit]);
       return { rows, total: count.total };
     },
     async resolveTarget(userId,id) {

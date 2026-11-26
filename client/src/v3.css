@@ -2371,3 +2371,37 @@ body {
 .detail-panel .util-row .report-button { color: var(--lost); }
 .ai-found-card, .recent-chats { padding: 18px 20px; }
 .overview-grid > .todo-card { align-self: start; }
+
+/* ---------- My items filters, claim tabs, notifications, reports ---------- */
+.my-filters { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin: 0 0 18px; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-row button, .segmented button { border: 1px solid var(--line-strong); background: #fff; border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; transition: background .2s, color .2s, border-color .2s; }
+.chip-row button span { font-size: 12px; opacity: .8; }
+.chip-row button[aria-pressed="true"], .segmented button[aria-pressed="true"], .segmented button[aria-selected="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+.segmented { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: #fff; border: 1px solid var(--line); }
+.segmented button { border: 0; padding: 7px 14px; }
+.claims-switch { margin-bottom: 18px; }
+.received-groups { display: grid; gap: 22px; }
+.received-group > header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.received-group > header a { font-size: 18px; font-weight: 700; color: var(--ink); text-decoration: none; }
+.received-group > header a:hover { color: var(--primary); }
+.my-row-body .card-note { margin: 4px 0 0; }
+.notification-tabs { margin: 0 0 16px; flex-wrap: wrap; }
+.notification-card { background: #fff; border: 1px solid var(--line); border-radius: 24px; box-shadow: var(--shadow-card); padding: 8px 8px 12px; }
+.notification-card h2 { margin: 14px 14px 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.notification-card .notification-row { display: grid !important; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: start; padding: 12px 14px !important; border-radius: 16px; border: 0 !important; background: transparent !important; box-shadow: none !important; }
+.notification-card .notification-row:hover { background: #f6f9ff !important; }
+.notification-card .notification-row.unread .notification-open > span:first-child, .notification-card .notification-row.unread p { font-weight: 700; }
+.notification-icon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; }
+.notification-icon.violet { background: #ede9fe; color: #6941c6; } .notification-icon.amber { background: #fef0c7; color: #b54708; }
+.notification-icon.green { background: #dcfae6; color: #079455; } .notification-icon.red { background: #fee4e2; color: #d92d20; } .notification-icon.blue { background: #e8efff; color: #1d6bff; }
+.notification-body { display: grid; gap: 4px; min-width: 0; }
+.notification-body p { margin: 0; }
+.notification-mark { border: 0; background: transparent; padding: 8px; cursor: pointer; border-radius: 999px; }
+.notification-mark i { display: block; width: 9px; height: 9px; border-radius: 999px; background: var(--primary); }
+.notification-mark:hover { background: var(--primary-soft); }
+.report-table { background: #fff; border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow-card); overflow-x: auto; }
+.report-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.report-table th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 14px 16px; background: #f8faff; }
+.report-table td { padding: 14px 16px; border-top: 1px solid #eef2f8; vertical-align: top; }
+.report-table td small { display: block; margin-top: 3px; }

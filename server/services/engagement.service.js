@@ -63,7 +63,8 @@ export function createEngagementService(repository) {
     async userStats(identity) {
       const { posts, claims, incoming, views, saved } = await repository.userStats(identity.id);
       return {
-        posts: { total: count(posts.total), lost: count(posts.lost), found: count(posts.found), active: count(posts.active), returned: count(posts.returned) },
+        posts: { total: count(posts.total), lost: count(posts.lost), found: count(posts.found), active: count(posts.active), returned: count(posts.returned),
+          byStatus: { OPEN: count(posts.s_open), CLAIM_PENDING: count(posts.s_claim_pending), CLAIMED: count(posts.s_claimed), RETURNED: count(posts.returned), CLOSED: count(posts.s_closed) } },
         claims: { sent: count(claims.sent), pending: count(claims.pending), approved: count(claims.approved), completed: count(claims.completed) },
         incomingPendingClaims: count(incoming.pending), totalViews: count(views.total), savedItems: count(saved.total)
       };

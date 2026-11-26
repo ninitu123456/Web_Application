@@ -1031,3 +1031,4 @@
 .link-button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; text-decoration: underline; justify-self: center; }
 .admin-user-panel.detail { max-width: 520px; }
 .admin-filters { align-items: flex-end; }
+.admin-range select { min-height: 44px; padding: 0 36px 0 14px; border: 1px solid #dbe3f1; border-radius: 12px; background: #fff; font: inherit; font-weight: 600; }

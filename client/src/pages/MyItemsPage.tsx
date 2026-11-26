@@ -1,7 +1,8 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useResource } from "../lib/hooks";
 import { invalidate } from "../lib/api";
-import type { Item } from "../lib/types";
+import type { Item, ItemStatus, UserStats } from "../lib/types";
+import { itemProgress } from "../components/OverviewWidgets";
 import { Icon } from "../components/Icon";
 import {
   dateLabel,
@@ -14,10 +15,41 @@ import {
 } from "../components/ui";
 export function MyItemsPage() {
   const [params, setParams] = useSearchParams();
+  const status = params.get("trang-thai") || "";
+  const type = params.get("loai") || "";
   const result = useResource<Item[]>("/items/mine", {
     page: params.get("page") || "1",
     limit: 12,
+    status: status || undefined,
+    type: type || undefined,
   });
+  const stats = useResource<UserStats>("/users/me/stats").data?.data;
+  const setFilter = (key: string, value: string) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    next.delete("page");
+    setParams(next);
+  };
+  const chips: [string, string, number | undefined][] = [
+    ["", "Tất cả", stats?.posts.total],
+    ...(
+      [
+        ["OPEN", "Đang mở"],
+        ["CLAIM_PENDING", "Chờ duyệt"],
+        ["CLAIMED", "Chờ bàn giao"],
+        ["RETURNED", "Đã trao lại"],
+        ["CLOSED", "Đã đóng"],
+      ] as [ItemStatus, string][]
+    ).map(
+      ([key, label]) =>
+        [key, label, stats?.posts.byStatus?.[key]] as [
+          string,
+          string,
+          number | undefined,
+        ],
+    ),
+  ];
   const total = result.data?.pagination?.total;
   return (
     <section className="page-section my-page">
@@ -33,6 +65,37 @@ export function MyItemsPage() {
         <Link className="button primary" to="/dang-bai">
           <Icon name="plus" width="17" height="17" /> Đăng tin mới
         </Link>
+      </div>
+      <div className="my-filters">
+        <div className="chip-row" role="group" aria-label="Lọc theo trạng thái">
+          {chips.map(([key, label, count]) => (
+            <button
+              key={key || "all"}
+              type="button"
+              aria-pressed={status === key}
+              onClick={() => setFilter("trang-thai", key)}
+            >
+              {label}
+              {count !== undefined && <span>{count}</span>}
+            </button>
+          ))}
+        </div>
+        <div className="segmented" role="group" aria-label="Lọc theo loại tin">
+          {[
+            ["", "Mọi loại"],
+            ["LOST", "Bị mất"],
+            ["FOUND", "Nhặt được"],
+          ].map(([key, label]) => (
+            <button
+              key={key || "all"}
+              type="button"
+              aria-pressed={type === key}
+              onClick={() => setFilter("loai", key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
       {result.loading ? (
         <Loading />
@@ -68,14 +131,25 @@ export function MyItemsPage() {
                     {item.location?.name || `Địa điểm #${item.locationId}`} ·{" "}
                     {dateLabel(item.eventDate)} · Bài #{item.id}
                   </small>
+                  <p className="card-note">{itemProgress(item)}</p>
                 </div>
                 <div className="my-item-actions">
                   {item.type === "FOUND" && (
                     <Link
-                      className="primary-action"
-                      to={`/do-vat/${item.id}?tab=claims`}
+                      className={
+                        item.status === "CLAIM_PENDING" ? "primary-action" : ""
+                      }
+                      to={
+                        item.status === "CLAIMED"
+                          ? "/yeu-cau-cua-toi?tab=gui-den-toi"
+                          : `/do-vat/${item.id}?tab=claims`
+                      }
                     >
-                      Yêu cầu nhận đồ
+                      {item.status === "CLAIM_PENDING"
+                        ? "Duyệt yêu cầu"
+                        : item.status === "CLAIMED"
+                          ? "Hẹn bàn giao"
+                          : "Yêu cầu nhận đồ"}
                     </Link>
                   )}
                   {editable && (
@@ -93,7 +167,13 @@ export function MyItemsPage() {
           })}
         </div>
       ) : (
-        <EmptyState title="Bạn chưa có bài đăng nào">
+        <EmptyState
+          title={
+            status || type
+              ? "Không có tin nào khớp bộ lọc"
+              : "Bạn chưa có bài đăng nào"
+          }
+        >
           <Link className="button secondary" to="/dang-bai">
             Đăng bài đầu tiên ↗
           </Link>

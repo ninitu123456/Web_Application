@@ -1,3 +1,4 @@
+import { HttpError } from '../utils/http-error.js';
 import { validateCreateItem, validateUpdateItem, validateSearch, positiveId } from '../validation/item.validation.js';
 import { listPagination } from '../validation/list-pagination.js';
 
@@ -5,7 +6,14 @@ export function createItemController(service) {
   return {
     async create(request, response) { const data = await service.create(request.user, validateCreateItem(request.body)); response.status(201).json({ success: true, message: 'Tạo Item thành công', data }); },
     async list(request, response) { const result = await service.list(validateSearch(request.query)); response.json({ success: true, data: result.data, pagination: result.pagination }); },
-    async mine(request, response) { const result = await service.list(listPagination(request.query), request.user.id); response.json({ success: true, ...result }); },
+    async mine(request, response) {
+      const { status, type, ...rest } = request.query ?? {};
+      const options = listPagination(rest);
+      if (status !== undefined) { if (!['OPEN', 'CLAIM_PENDING', 'CLAIMED', 'RETURNED', 'CLOSED'].includes(status)) throw new HttpError(400, 'Dữ liệu không hợp lệ'); options.status = status; }
+      if (type !== undefined) { if (!['LOST', 'FOUND'].includes(type)) throw new HttpError(400, 'Dữ liệu không hợp lệ'); options.type = type; }
+      const result = await service.list(options, request.user.id);
+      response.json({ success: true, ...result });
+    },
     async get(request, response) { response.json({ success: true, data: await service.get(positiveId(request.params.id), request.user) }); },
     async update(request, response) { response.json({ success: true, message: 'Cập nhật Item thành công', data: await service.update(request.user, positiveId(request.params.id), validateUpdateItem(request.body)) }); },
     async close(request, response) { response.json({ success: true, message: 'Đóng Item thành công', data: await service.close(request.user, positiveId(request.params.id)) }); },

@@ -9,6 +9,8 @@ describe("foundMessage", () => {
     expect(text).toContain("“Ví da nâu” (tin #4)");
     expect(text).toContain("Ngày nhặt: 20/11/2026");
     expect(text).not.toContain("Ghi chú");
-    expect(foundMessage(item, "A", "2026-11-20", "Để ở bảo vệ")).toContain("Ghi chú: Để ở bảo vệ");
+    expect(foundMessage(item, "A", "2026-11-20", "Để ở bảo vệ")).toContain(
+      "Ghi chú: Để ở bảo vệ",
+    );
   });
 });

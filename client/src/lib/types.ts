@@ -29,6 +29,9 @@ export interface Item {
   images: { id: number; url: string }[];
   verificationQuestions?: VerificationQuestion[];
   owner?: { id: number; fullName: string; returnedCount: number };
+  /** Admin list only. */
+  ownerName?: string;
+  stats?: { views: number; reports: number };
   savedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -55,18 +58,40 @@ export interface Handover {
   } | null;
   ownerConfirmedAt: string | null;
   claimantConfirmedAt: string | null;
-  dispute: { reason: string; by: number | null; at: string; resolvedAt: string | null } | null;
+  dispute: {
+    reason: string;
+    by: number | null;
+    at: string;
+    resolvedAt: string | null;
+  } | null;
   ownerId: number;
   claimantId: number;
 }
 export interface UserStats {
-  posts: { total: number; lost: number; found: number; active: number; returned: number };
-  claims: { sent: number; pending: number; approved: number; completed: number };
+  posts: {
+    total: number;
+    lost: number;
+    found: number;
+    active: number;
+    returned: number;
+    byStatus?: Record<ItemStatus, number>;
+  };
+  claims: {
+    sent: number;
+    pending: number;
+    approved: number;
+    completed: number;
+  };
   incomingPendingClaims: number;
   totalViews: number;
   savedItems: number;
 }
-export interface ItemStats { views: number; saves: number; claims: number; pendingClaims: number }
+export interface ItemStats {
+  views: number;
+  saves: number;
+  claims: number;
+  pendingClaims: number;
+}
 export type ContactTopic = "GENERAL" | "ACCOUNT" | "ITEM" | "REPORT" | "OTHER";
 export interface ContactMessage {
   id: number;

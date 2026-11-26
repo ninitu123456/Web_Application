@@ -15,6 +15,16 @@ export function createAdminRepository(pool, execute = (sql, values = []) => quer
     withTransaction(operation) {
       return transaction(pool, (connection) => operation(createAdminRepository(pool, (sql, values = []) => connection.query({ sql, timeout: databaseTimeout }, values))));
     },
+    async itemCounts(ids) {
+      if (!ids.length) return [];
+      const marks = ids.map(() => '?').join(',');
+      const [rows] = await execute(`SELECT i.item_id,
+        (SELECT COUNT(*) FROM item_views v WHERE v.item_id = i.item_id) AS views,
+        (SELECT COUNT(*) FROM reports r WHERE r.item_id = i.item_id) AS reports,
+        (SELECT full_name FROM users u WHERE u.user_id = i.user_id) AS owner_name
+        FROM items i WHERE i.item_id IN (${marks})`, ids);
+      return rows;
+    },
     async queue() {
       const [[row]] = await execute(`SELECT
         (SELECT COUNT(*) FROM reports WHERE status IN ('PENDING','REVIEWING')) AS reports,
@@ -22,7 +32,8 @@ export function createAdminRepository(pool, execute = (sql, values = []) => quer
         (SELECT COUNT(*) FROM contact_messages WHERE status='NEW') AS contacts`);
       return row;
     },
-    async dashboard() {
+    async dashboard(days = 30) {
+      const window = [7, 30, 90].includes(days) ? days : 30;
       const [[users]] = await execute("SELECT COUNT(*) AS total, SUM(account_status='ACTIVE') AS active, SUM(account_status='SUSPENDED') AS suspended FROM users");
       const [[items]] = await execute("SELECT COUNT(*) AS total, SUM(type='LOST') AS lost, SUM(type='FOUND') AS found, SUM(status='RETURNED') AS returned FROM items");
       const [[claims]] = await execute('SELECT COUNT(*) AS total FROM claims');
@@ -32,13 +43,13 @@ export function createAdminRepository(pool, execute = (sql, values = []) => quer
       const [claimStatuses] = await execute('SELECT status, COUNT(*) AS total FROM claims GROUP BY status');
       const [reportStatuses] = await execute('SELECT status, COUNT(*) AS total FROM reports GROUP BY status');
       const [categories] = await execute('SELECT c.category_id AS id, c.name, COUNT(i.item_id) AS total FROM categories c LEFT JOIN items i ON i.category_id=c.category_id GROUP BY c.category_id, c.name ORDER BY total DESC, c.name LIMIT 20');
-      const [recentActivity] = await execute("SELECT DATE(created_at) AS date, COUNT(*) AS total FROM activity_logs WHERE created_at >= UTC_DATE() - INTERVAL 29 DAY GROUP BY DATE(created_at) ORDER BY date");
+      const [recentActivity] = await execute(`SELECT DATE(created_at) AS date, COUNT(*) AS total FROM activity_logs WHERE created_at >= UTC_DATE() - INTERVAL ${window - 1} DAY GROUP BY DATE(created_at) ORDER BY date`);
       const [monthly] = await execute("SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, SUM(type='LOST') AS lost, SUM(type='FOUND') AS found FROM items WHERE created_at >= DATE_FORMAT(UTC_DATE() - INTERVAL 11 MONTH, '%Y-%m-01') GROUP BY month ORDER BY month");
       const [[growth]] = await execute(`SELECT
-        (SELECT COUNT(*) FROM users WHERE created_at >= UTC_TIMESTAMP() - INTERVAL 30 DAY) AS users_30,
-        (SELECT COUNT(*) FROM items WHERE created_at >= UTC_TIMESTAMP() - INTERVAL 30 DAY) AS items_30,
-        (SELECT COUNT(*) FROM items WHERE created_at >= UTC_TIMESTAMP() - INTERVAL 60 DAY AND created_at < UTC_TIMESTAMP() - INTERVAL 30 DAY) AS items_prev_30,
-        (SELECT COUNT(*) FROM claims WHERE completed_at >= UTC_TIMESTAMP() - INTERVAL 30 DAY) AS returned_30`);
+        (SELECT COUNT(*) FROM users WHERE created_at >= UTC_TIMESTAMP() - INTERVAL ${window} DAY) AS users_30,
+        (SELECT COUNT(*) FROM items WHERE created_at >= UTC_TIMESTAMP() - INTERVAL ${window} DAY) AS items_30,
+        (SELECT COUNT(*) FROM items WHERE created_at >= UTC_TIMESTAMP() - INTERVAL ${window * 2} DAY AND created_at < UTC_TIMESTAMP() - INTERVAL ${window} DAY) AS items_prev_30,
+        (SELECT COUNT(*) FROM claims WHERE completed_at >= UTC_TIMESTAMP() - INTERVAL ${window} DAY) AS returned_30`);
       const [[queue]] = await execute(`SELECT
         (SELECT COUNT(*) FROM reports WHERE status IN ('PENDING','REVIEWING')) AS reports,
         (SELECT COUNT(*) FROM reports WHERE status='PENDING' AND created_at < UTC_TIMESTAMP() - INTERVAL 1 DAY) AS reports_overdue,

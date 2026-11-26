@@ -45,35 +45,61 @@ export function MyReportsPage() {
     limit: 10,
   });
   return (
-    <section className="page-section narrow">
+    <section className="page-section">
       <h1>Báo cáo của tôi</h1>
+      <p className="page-lead">
+        Theo dõi kết quả các báo cáo vi phạm bạn đã gửi.
+      </p>
       {result.loading ? (
         <Loading />
       ) : result.error ? (
         <ErrorState error={result.error} retry={invalidate} />
       ) : result.data?.data.length ? (
-        <div className="stack">
-          {result.data.data.map((report) => (
-            <article className="panel" key={report.id}>
-              <div className="section-heading">
-                <h2>Báo cáo #{report.id}</h2>
-                <StatusBadge status={report.status} group="report" />
-              </div>
-              <TargetReference type={report.targetType} id={report.targetId} />
-              <p className="pre-wrap">
-                <strong>{report.reason}</strong>
-              </p>
-              {report.description && (
-                <p className="pre-wrap">{report.description}</p>
-              )}
-              <small className="muted">
-                Gửi {dateLabel(report.createdAt)}
-                {report.reviewedAt
-                  ? ` · Xử lý gần nhất ${dateLabel(report.reviewedAt)}`
-                  : ""}
-              </small>
-            </article>
-          ))}
+        <div className="report-table">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Đối tượng</th>
+                <th scope="col">Lý do</th>
+                <th scope="col">Ngày gửi</th>
+                <th scope="col">Trạng thái</th>
+                <th scope="col">Kết quả</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.data.data.map((report) => (
+                <tr key={report.id}>
+                  <td>
+                    <TargetReference
+                      type={report.targetType}
+                      id={report.targetId}
+                    />
+                    <small className="muted">Báo cáo #{report.id}</small>
+                  </td>
+                  <td>
+                    <strong className="pre-wrap">{report.reason}</strong>
+                    {report.description && (
+                      <small className="muted pre-wrap">
+                        {report.description}
+                      </small>
+                    )}
+                  </td>
+                  <td>{dateLabel(report.createdAt)}</td>
+                  <td>
+                    <StatusBadge status={report.status} group="report" />
+                  </td>
+                  <td>
+                    {RESULT[report.status]}
+                    {report.reviewedAt && (
+                      <small className="muted">
+                        Cập nhật {dateLabel(report.reviewedAt)}
+                      </small>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       ) : (
         <EmptyState title="Bạn chưa gửi báo cáo nào" />
@@ -85,3 +111,10 @@ export function MyReportsPage() {
     </section>
   );
 }
+
+const RESULT: Record<string, string> = {
+  PENDING: "Đang chờ ban quản trị xem",
+  REVIEWING: "Ban quản trị đang xem xét",
+  RESOLVED: "Đã xử lý vi phạm",
+  DISMISSED: "Không vi phạm quy tắc",
+};

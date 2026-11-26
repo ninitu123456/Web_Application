@@ -80,7 +80,17 @@ export function AdminItemsPage() {
       ) : result.error ? (
         <ErrorState error={result.error} retry={invalidate} />
       ) : result.data?.data.length ? (
-        <Table columns={["Bài đăng", "Loại", "Trạng thái", "Thao tác"]}>
+        <Table
+          columns={[
+            "Bài đăng",
+            "Loại",
+            "Người đăng",
+            "Trạng thái",
+            "Lượt xem",
+            "Báo cáo",
+            "Thao tác",
+          ]}
+        >
           {result.data.data.map((item) => (
             <tr key={item.id}>
               <td>
@@ -95,8 +105,7 @@ export function AdminItemsPage() {
                   <span>
                     <strong>{item.title}</strong>
                     <small>
-                      #{item.id} · {item.category?.name ?? "Đồ vật"} · Chủ bài #
-                      {item.userId}
+                      #{item.id} · {item.category?.name ?? "Đồ vật"}
                     </small>
                   </span>
                 </span>
@@ -105,10 +114,19 @@ export function AdminItemsPage() {
                 <StatusBadge status={item.type} group="itemType" />
               </td>
               <td>
+                <Link to={`/quan-tri/nguoi-dung/${item.userId}`}>
+                  {item.ownerName ?? `#${item.userId}`}
+                </Link>
+              </td>
+              <td>
                 <StatusBadge status={item.status} group="item" />
                 {item.visibility === "HIDDEN" && (
                   <span className="badge">Đã gỡ</span>
                 )}
+              </td>
+              <td>{item.stats?.views ?? "—"}</td>
+              <td className={item.stats?.reports ? "admin-num-alert" : ""}>
+                {item.stats?.reports ?? "—"}
               </td>
               <td>
                 <Link
