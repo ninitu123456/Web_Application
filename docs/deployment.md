@@ -47,7 +47,7 @@ Chỉ liệt kê tên biến. Giá trị nằm trong dashboard Vercel và Railwa
 | `VITE_AI_VISUAL_SUGGESTIONS_ENABLED` | | | `true` |
 | `VITE_AI_VISUAL_SUGGESTIONS_PREVIEW_FIXTURE` | | | `false` |
 
-Worker có thêm biến build `ONNXRUNTIME_NODE_INSTALL_CUDA=skip` để không tải thư viện GPU không dùng tới. Biến `VITE_*` được đóng vào bundle công khai nên không bao giờ chứa secret.
+File `.npmrc` ở gốc repository đặt `onnxruntime-node-install-cuda=skip` để `npm ci` (CI, API, worker) không tải thư viện GPU: bản tải đó không còn tồn tại (404) và FindIt chỉ chạy CLIP trên CPU. Biến `VITE_*` được đóng vào bundle công khai nên không bao giờ chứa secret.
 
 ## Gợi ý bằng hình ảnh (AI)
 
@@ -76,6 +76,8 @@ Không xóa bảng AI. Bật lại theo thứ tự ngược và chạy `--rebuil
 
 `npm run db:migrate` chỉ áp dụng migration còn thiếu theo manifest, kiểm tra checksum và dừng khi schema lệch. Trên production không chạy `db:setup` hay `db:seed`; hai lệnh này tự từ chối khi `NODE_ENV=production`. Không sửa hay đổi tên file migration đã phát hành. Thay đổi schema luôn đi bằng file migration mới.
 
+Migration hiện có 36 file. Bản cập nhật giao diện v3 thêm 6 bảng (019–024): `item_verification_questions`, `claim_answers`, `saved_items`, `item_views`, `contact_messages`, `claim_handovers`. Các bảng này chỉ thêm mới, không sửa bảng cũ; Railway tự chạy `npm run db:migrate` (pre-deploy) trước khi bật bản API mới.
+
 ## Sao lưu và khôi phục
 
 Service `db-backup` chạy hằng ngày:
@@ -98,7 +100,8 @@ Khôi phục khi cần:
 ## Kiểm tra sau triển khai
 
 - `GET /api/health` trả 200.
-- Trang chủ, Khám phá, đăng nhập, đăng bài có ảnh và nhắn tin hoạt động trên cả điện thoại và máy tính.
+- Trang chủ, Khám phá, đăng nhập, đăng bài có ảnh và nhắn tin hoạt động trên máy tính (giao diện điện thoại của bản v3 chưa hoàn thiện).
+- Lưu tin, gửi yêu cầu có câu hỏi xác minh, hẹn lịch bàn giao trong Tin nhắn, form Liên hệ và trang Quản trị (tổng quan, hộp thư liên hệ, khiếu nại) hoạt động.
 - Log worker có heartbeat mỗi 60 giây, và job của ảnh mới chuyển sang hoàn tất.
 
 ## Hạn chế hiện tại
