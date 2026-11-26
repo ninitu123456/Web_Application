@@ -9,6 +9,9 @@ env:
   # Coverage artifacts require the exact same runtime in every job. A moving
   # major can resolve to different patch releases across hosted runners.
   COVERAGE_NODE_VERSION: '24.22.2'
+  # onnxruntime-node otherwise tries a CUDA download that no longer exists
+  # (404). CPU inference is all the AI worker and tests use.
+  ONNXRUNTIME_NODE_INSTALL_CUDA: skip
 jobs:
   frontend:
     runs-on: ubuntu-24.04

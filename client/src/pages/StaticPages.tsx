@@ -84,26 +84,6 @@ export function AboutPage() {
           ))}
         </ul>
       </section>
-      <section aria-labelledby="team-title">
-        <h2 id="team-title" className="section-title">
-          Nhóm phát triển
-        </h2>
-        <div className="team-grid">
-          {[
-            ["T", "Nguyễn Ngọc Thiên Tú", "Sinh viên · 24521911"],
-            ["Đ", "Lương Quốc Đạt", "Sinh viên · 24520273"],
-            ["B", "ThS. Nguyễn Thanh Bình", "Giảng viên hướng dẫn"],
-          ].map(([initial, name, role]) => (
-            <div className="v3-card team-card" key={name}>
-              <span className="avatar large">{initial}</span>
-              <div>
-                <strong>{name}</strong>
-                <small>{role}</small>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
     </section>
   );
 }
