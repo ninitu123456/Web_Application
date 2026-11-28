@@ -1,0 +1,461 @@
+{
+  "fixtures": true,
+  "results": [
+    {
+      "name": "home",
+      "width": 390,
+      "height": 844,
+      "scroll": 469,
+      "offenders": [
+        {
+          "tag": "DIV",
+          "class": "header-actions"
+        },
+        {
+          "tag": "A",
+          "class": "button primary"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "mobile-toggle icon-button"
+        },
+        {
+          "tag": "DIV",
+          "class": "hero-stats glass"
+        },
+        {
+          "tag": "DIV",
+          "class": ""
+        },
+        {
+          "tag": "DIV",
+          "class": ""
+        },
+        {
+          "tag": "STRONG",
+          "class": ""
+        },
+        {
+          "tag": "SPAN",
+          "class": "stat-value"
+        }
+      ]
+    },
+    {
+      "name": "explore",
+      "width": 390,
+      "height": 844,
+      "scroll": 469,
+      "offenders": [
+        {
+          "tag": "DIV",
+          "class": "header-actions"
+        },
+        {
+          "tag": "A",
+          "class": "button primary"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "mobile-toggle icon-button"
+        }
+      ]
+    },
+    {
+      "name": "detail",
+      "width": 390,
+      "height": 844,
+      "scroll": 469,
+      "offenders": [
+        {
+          "tag": "DIV",
+          "class": "header-actions"
+        },
+        {
+          "tag": "A",
+          "class": "button primary"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "mobile-toggle icon-button"
+        }
+      ]
+    },
+    {
+      "name": "ai-matching",
+      "width": 390,
+      "height": 844,
+      "scroll": 412,
+      "offenders": [
+        {
+          "tag": "DIV",
+          "class": "header-actions"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "mobile-toggle icon-button"
+        }
+      ]
+    },
+    {
+      "name": "item-form",
+      "width": 390,
+      "height": 844,
+      "scroll": 412,
+      "offenders": [
+        {
+          "tag": "DIV",
+          "class": "header-actions"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "mobile-toggle icon-button"
+        }
+      ]
+    },
+    {
+      "name": "claim-review",
+      "width": 390,
+      "height": 844,
+      "scroll": 412,
+      "offenders": [
+        {
+          "tag": "DIV",
+          "class": "header-actions"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "mobile-toggle icon-button"
+        }
+      ]
+    },
+    {
+      "name": "chat",
+      "width": 390,
+      "height": 844,
+      "scroll": 481,
+      "offenders": [
+        {
+          "tag": "DIV",
+          "class": "header-actions"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "mobile-toggle icon-button"
+        },
+        {
+          "tag": "DIV",
+          "class": "chat-side-image"
+        },
+        {
+          "tag": "IMG",
+          "class": ""
+        },
+        {
+          "tag": "DIV",
+          "class": "chat-side-body"
+        },
+        {
+          "tag": "DIV",
+          "class": "badges"
+        },
+        {
+          "tag": "SPAN",
+          "class": "badge status-found"
+        },
+        {
+          "tag": "SPAN",
+          "class": "badge status-approved"
+        }
+      ]
+    },
+    {
+      "name": "admin",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "home",
+      "width": 320,
+      "height": 700,
+      "scroll": 469,
+      "offenders": [
+        {
+          "tag": "DIV",
+          "class": "header-actions"
+        },
+        {
+          "tag": "A",
+          "class": "button primary"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "mobile-toggle icon-button"
+        },
+        {
+          "tag": "DIV",
+          "class": "hero-stats glass"
+        },
+        {
+          "tag": "DIV",
+          "class": ""
+        },
+        {
+          "tag": "DIV",
+          "class": ""
+        },
+        {
+          "tag": "STRONG",
+          "class": ""
+        },
+        {
+          "tag": "SPAN",
+          "class": "stat-value"
+        }
+      ]
+    },
+    {
+      "name": "explore",
+      "width": 320,
+      "height": 700,
+      "scroll": 469,
+      "offenders": [
+        {
+          "tag": "DIV",
+          "class": "header-actions"
+        },
+        {
+          "tag": "A",
+          "class": "button primary"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "mobile-toggle icon-button"
+        }
+      ]
+    },
+    {
+      "name": "detail",
+      "width": 320,
+      "height": 700,
+      "scroll": 469,
+      "offenders": [
+        {
+          "tag": "DIV",
+          "class": "header-actions"
+        },
+        {
+          "tag": "A",
+          "class": "button primary"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "mobile-toggle icon-button"
+        }
+      ]
+    },
+    {
+      "name": "ai-matching",
+      "width": 320,
+      "height": 700,
+      "scroll": 412,
+      "offenders": [
+        {
+          "tag": "DIV",
+          "class": "header-actions"
+        },
+        {
+          "tag": "DIV",
+          "class": "account"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "account-trigger"
+        },
+        {
+          "tag": "SPAN",
+          "class": "avatar"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "mobile-toggle icon-button"
+        },
+        {
+          "tag": "DIV",
+          "class": "match-card visual-suggestion-card"
+        },
+        {
+          "tag": "ARTICLE",
+          "class": "item-card"
+        },
+        {
+          "tag": "DIV",
+          "class": "match-reasons"
+        }
+      ]
+    },
+    {
+      "name": "item-form",
+      "width": 320,
+      "height": 700,
+      "scroll": 412,
+      "offenders": [
+        {
+          "tag": "DIV",
+          "class": "header-actions"
+        },
+        {
+          "tag": "DIV",
+          "class": "account"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "account-trigger"
+        },
+        {
+          "tag": "SPAN",
+          "class": "avatar"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "mobile-toggle icon-button"
+        }
+      ]
+    },
+    {
+      "name": "claim-review",
+      "width": 320,
+      "height": 700,
+      "scroll": 412,
+      "offenders": [
+        {
+          "tag": "DIV",
+          "class": "header-actions"
+        },
+        {
+          "tag": "DIV",
+          "class": "account"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "account-trigger"
+        },
+        {
+          "tag": "SPAN",
+          "class": "avatar"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "mobile-toggle icon-button"
+        }
+      ]
+    },
+    {
+      "name": "chat",
+      "width": 320,
+      "height": 700,
+      "scroll": 481,
+      "offenders": [
+        {
+          "tag": "DIV",
+          "class": "header-actions"
+        },
+        {
+          "tag": "DIV",
+          "class": "account"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "account-trigger"
+        },
+        {
+          "tag": "SPAN",
+          "class": "avatar"
+        },
+        {
+          "tag": "BUTTON",
+          "class": "mobile-toggle icon-button"
+        },
+        {
+          "tag": "DIV",
+          "class": "panel chat-main"
+        },
+        {
+          "tag": "HEADER",
+          "class": "chat-heading"
+        },
+        {
+          "tag": "DIV",
+          "class": ""
+        }
+      ]
+    },
+    {
+      "name": "admin",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "home",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "explore",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "detail",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "ai-matching",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "item-form",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "claim-review",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "chat",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "admin",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    }
+  ],
+  "errors": [],
+  "requests": 154
+}

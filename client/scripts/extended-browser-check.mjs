@@ -139,7 +139,7 @@ export async function extendedBrowserCheck({
     );
     await expect(
       adminPage
-        .locator(".stat-card")
+        .locator(".admin-kpi")
         .filter({ hasText: "Người dùng" })
         .locator("strong"),
     ).toHaveText(Number(usersCount.total).toLocaleString("vi-VN"));
@@ -150,13 +150,21 @@ export async function extendedBrowserCheck({
 
     // Full name saves through PATCH /users/me and immediately updates the shared account menu.
     await page.goto(url + "/ho-so");
+    // Wait for the profile's initial GET before typing into the controlled form.
+    await page.waitForLoadState("networkidle");
     await page
       .getByLabel("Họ và tên", { exact: true })
       .fill("Sinh viên đã cập nhật");
     await page
-      .getByRole("button", { name: "Lưu hồ sơ →", exact: true })
+      .getByRole("button", { name: "Lưu thay đổi", exact: true })
       .click();
-    await expect(page.locator(".account-name")).toHaveText(
+    await expect(
+      page.getByText("Đã cập nhật họ tên.", { exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Menu tài khoản", exact: true })
+      .click();
+    await expect(page.locator(".account-head strong")).toHaveText(
       "Sinh viên đã cập nhật",
     );
     await page.reload();
@@ -211,7 +219,9 @@ export async function extendedBrowserCheck({
     await createClaim(adminToken, notificationItem, "Notification claim proof");
     await page.waitForTimeout(1600);
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-    await expect(page.locator(".notification-count")).toBeVisible();
+    await expect(
+      page.locator('.header a[href="/thong-bao"] .header-count'),
+    ).toBeVisible();
     await expect(
       page.locator(".notification-row.unread").first(),
     ).toBeVisible();
@@ -236,9 +246,9 @@ export async function extendedBrowserCheck({
     );
 
     // Reports derive the target from Item/owner/Claim context; duplicate reports are explicit 409s.
-    const reportItem = await found(userToken, "Report target item");
+    const reportItem = await found(adminToken, "Report target item");
     await page.goto(`${url}/do-vat/${reportItem.id}`);
-    await report(page, "Báo cáo bài đăng", "Kiểm tra báo cáo bài");
+    await report(page, "Báo cáo tin", "Kiểm tra báo cáo bài");
     const [[itemReport]] = await query(
       pool,
       "SELECT report_id AS id,target_type,item_id FROM reports WHERE reporter_id=? AND item_id=?",
@@ -247,7 +257,7 @@ export async function extendedBrowserCheck({
     assert.equal(itemReport.target_type, "ITEM");
     assert.equal(Number(itemReport.item_id), reportItem.id);
     await page
-      .getByRole("button", { name: "Báo cáo bài đăng", exact: true })
+      .getByRole("button", { name: "Báo cáo tin", exact: true })
       .click();
     await page.getByLabel("Lý do báo cáo").fill("Báo cáo trùng");
     await page
@@ -259,15 +269,12 @@ export async function extendedBrowserCheck({
     await page
       .getByRole("button", { name: "Đóng hộp thoại", exact: true })
       .click();
-    await report(page, "Báo cáo chủ bài", "Kiểm tra báo cáo tài khoản");
+    await report(page, "Báo cáo", "Kiểm tra báo cáo tài khoản");
     await page.goto(`${url}/do-vat/${notificationItem.id}?tab=claims`);
     await report(page, "Báo cáo yêu cầu này", "Kiểm tra báo cáo Claim");
     await page.goto(url + "/bao-cao-cua-toi");
     await expect(
-      page.getByRole("heading", {
-        name: `Báo cáo #${itemReport.id}`,
-        exact: true,
-      }),
+      page.getByText(`Báo cáo #${itemReport.id}`, { exact: true }),
     ).toBeVisible();
     const ownReports = await request(
       page,

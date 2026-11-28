@@ -1,0 +1,41 @@
+﻿{
+    "date":  "2026-11-28",
+    "timezone":  "Asia/Saigon",
+    "branch":  "fix/findit-v3-mobile-responsive",
+    "baseCommit":  "7203947123f64f32f5a0afaef69d18bac7f881c5",
+    "uiCommit":  "b7a301b",
+    "unitTests":  {
+                      "files":  17,
+                      "failed":  0,
+                      "passed":  126
+                  },
+    "typecheck":  "PASS",
+    "prettier":  "PASS",
+    "browserIntegration":  {
+                               "database":  "Temporary isolated MySQL; stopped and deleted",
+                               "skipped":  0,
+                               "tests":  19,
+                               "failed":  0,
+                               "passed":  19
+                           },
+    "responsive":  {
+                       "horizontalOverflow":  0,
+                       "routes":  35,
+                       "viewports":  8,
+                       "checks":  280,
+                       "consoleErrors":  0
+                   },
+    "desktop":  {
+                    "pixelIdentical":  7,
+                    "samples":  8,
+                    "timestampOnly":  1
+                },
+    "screenshots":  58,
+    "productionDataUsed":  false,
+    "limitations":  [
+                        "Chrome headless only; physical iOS/Android keyboard and safe area unverified",
+                        "AI ranking and CLIP not reevaluated; safe synthetic fixture data",
+                        "Existing production build chunk size warning"
+                    ],
+    "productionBuild":  "PASS (exit 0; existing chunk-size warning)"
+}

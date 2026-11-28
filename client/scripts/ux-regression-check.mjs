@@ -608,8 +608,12 @@ export async function uxRegressionCheck({
     await readState(completed, 1);
     await expect(page.locator("#claim-" + claim.id)).toBeFocused();
     // One browser context switches accounts: previously fetched private suggestions cannot persist.
-    await page.locator('summary[aria-label="Menu tài khoản"]').click();
-    await page.getByRole("button", { name: "Đăng xuất", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Menu tài khoản", exact: true })
+      .click();
+    await page
+      .getByRole("menuitem", { name: "Đăng xuất", exact: true })
+      .click();
     await page.goto(url + "/do-vat/" + itemId);
     await expect(page.locator(".unified-suggestions")).toHaveCount(0);
     await login(page, peerEmail, "/do-vat/" + itemId);

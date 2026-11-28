@@ -461,7 +461,8 @@ export async function browserCheck({
       "Never automatically repeat an ambiguous Item POST",
     );
     await pageB.unroute("**/api/items");
-    await pageB.goto(url);
+    // v3 has a separate Home page. Continue search assertions on Explore.
+    await pageB.goto(`${url}/kham-pha`);
 
     const lostTitle = title + " counterpart";
     const otherToken = await pageB.evaluate(() =>
@@ -501,9 +502,7 @@ export async function browserCheck({
     await expect(
       pageB.getByRole("button", { name: "Gửi yêu cầu nhận lại" }),
     ).toBeVisible();
-    await pageB
-      .getByRole("link", { name: "← Khám phá đồ vật", exact: true })
-      .click();
+    await pageB.getByRole("link", { name: "← Khám phá", exact: true }).click();
     assert.equal(
       new URL(pageB.url()).searchParams.get("keyword"),
       title,
@@ -655,8 +654,12 @@ export async function browserCheck({
     await expect(pageB.getByText("Đã bàn giao", { exact: true })).toBeVisible();
     await pageB.reload();
     await expect(pageB.getByText("Đã bàn giao", { exact: true })).toBeVisible();
-    await pageA.locator('summary[aria-label="Menu tài khoản"]').click();
-    await pageA.getByRole("button", { name: "Đăng xuất", exact: true }).click();
+    await pageA
+      .getByRole("button", { name: "Menu tài khoản", exact: true })
+      .click();
+    await pageA
+      .getByRole("menuitem", { name: "Đăng xuất", exact: true })
+      .click();
     assert.equal(
       await pageA.evaluate(() => sessionStorage.getItem("findit.session")),
       null,

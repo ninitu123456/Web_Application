@@ -1,0 +1,74 @@
+{
+  "base": "7203947",
+  "results": [
+    {
+      "name": "before-admin-1440.png",
+      "width": 1440,
+      "height": 1358,
+      "changedPixels": 776,
+      "bounds": {
+        "minX": 416,
+        "minY": 77,
+        "maxX": 520,
+        "maxY": 92
+      },
+      "result": "Live dashboard update timestamp only"
+    },
+    {
+      "name": "before-ai-matching-1440.png",
+      "width": 1440,
+      "height": 2725,
+      "changedPixels": 0,
+      "bounds": null,
+      "result": "Pixel identical"
+    },
+    {
+      "name": "before-chat-1440.png",
+      "width": 1440,
+      "height": 900,
+      "changedPixels": 0,
+      "bounds": null,
+      "result": "Pixel identical"
+    },
+    {
+      "name": "before-claim-review-1440.png",
+      "width": 1440,
+      "height": 3010,
+      "changedPixels": 0,
+      "bounds": null,
+      "result": "Pixel identical"
+    },
+    {
+      "name": "before-detail-1440.png",
+      "width": 1440,
+      "height": 2183,
+      "changedPixels": 0,
+      "bounds": null,
+      "result": "Pixel identical"
+    },
+    {
+      "name": "before-explore-1440.png",
+      "width": 1440,
+      "height": 1654,
+      "changedPixels": 0,
+      "bounds": null,
+      "result": "Pixel identical"
+    },
+    {
+      "name": "before-home-1440.png",
+      "width": 1440,
+      "height": 2871,
+      "changedPixels": 0,
+      "bounds": null,
+      "result": "Pixel identical"
+    },
+    {
+      "name": "before-item-form-1440.png",
+      "width": 1440,
+      "height": 1368,
+      "changedPixels": 0,
+      "bounds": null,
+      "result": "Pixel identical"
+    }
+  ]
+}

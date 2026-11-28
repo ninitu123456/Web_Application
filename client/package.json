@@ -10,6 +10,7 @@
     "preview": "vite preview --host localhost",
     "test": "vitest run",
     "test:browser": "node scripts/test-browser.mjs",
+    "test:responsive": "node scripts/mobile-responsive-check.mjs",
     "format": "prettier --write src scripts vite.config.ts",
     "format:check": "prettier --check src scripts vite.config.ts"
   },

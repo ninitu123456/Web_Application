@@ -10,15 +10,17 @@ export async function adminRefreshCheck({ page, url, artifacts, reportId }) {
   await expect(
     page.getByRole("heading", { name: "Tổng quan hệ thống", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".admin-donut")).toBeVisible();
+  await expect(page.locator(".admin-ring")).toBeVisible();
   assert.equal(
     await page.locator(".header").count(),
     0,
     "Public header is absent in admin",
   );
   await expect(
-    page.getByRole("link", { name: /báo cáo đang xem xét/ }),
-  ).toHaveAttribute("href", "/quan-tri/bao-cao?status=REVIEWING");
+    page.locator(
+      '.admin-queue-list a[href="/quan-tri/bao-cao?status=PENDING"]',
+    ),
+  ).toContainText("Báo cáo vi phạm");
   await page.locator(".admin-chart-point").first().focus();
   await expect(page.locator(".admin-chart-point").first()).toHaveAttribute(
     "data-tooltip",
@@ -119,7 +121,7 @@ export async function adminRefreshCheck({ page, url, artifacts, reportId }) {
     null,
     "Changing the status resets pagination",
   );
-  await page.route("**/api/admin/dashboard", (route) =>
+  await page.route("**/api/admin/dashboard**", (route) =>
     route.fulfill({
       status: 503,
       contentType: "application/json",
@@ -130,10 +132,10 @@ export async function adminRefreshCheck({ page, url, artifacts, reportId }) {
   await expect(
     page.getByRole("alert").filter({ hasText: "Chưa thể tải nội dung" }),
   ).toBeVisible();
-  await page.unroute("**/api/admin/dashboard");
+  await page.unroute("**/api/admin/dashboard**");
   await page.getByRole("button", { name: "Thử tải lại", exact: true }).click();
-  await expect(page.locator(".admin-donut")).toBeVisible();
-  await page.route("**/api/admin/dashboard", async (route) => {
+  await expect(page.locator(".admin-ring")).toBeVisible();
+  await page.route("**/api/admin/dashboard**", async (route) => {
     const response = await route.fetch();
     const body = await response.json();
     const data = body.data;
@@ -148,6 +150,12 @@ export async function adminRefreshCheck({ page, url, artifacts, reportId }) {
     data.matches.total = 0;
     data.categories = [];
     data.recentActivity = [];
+    data.monthlyItems = [];
+    data.recentLogs = [];
+    if (data.queue)
+      for (const key of Object.keys(data.queue)) data.queue[key] = 0;
+    if (data.growth)
+      for (const key of Object.keys(data.growth)) data.growth[key] = 0;
     await route.fulfill({ response, json: body });
   });
   await page.reload();
@@ -157,18 +165,15 @@ export async function adminRefreshCheck({ page, url, artifacts, reportId }) {
       exact: true,
     }),
   ).toBeVisible();
-  await expect(page.locator(".admin-donut strong")).toHaveText("0");
+  await expect(page.locator(".admin-kpi strong").first()).toHaveText("0");
   assert.doesNotMatch(await page.locator("main").innerText(), /NaN|Infinity/);
   await expect(
-    page.getByRole("heading", {
-      name: "Chưa có dữ liệu danh mục",
-      exact: true,
-    }),
+    page.getByText("Chưa có bài đăng.", { exact: true }),
   ).toBeVisible();
   await page.screenshot({
     path: resolve(artifacts, "mobile-admin-dashboard-empty.png"),
     fullPage: true,
   });
-  await page.unroute("**/api/admin/dashboard");
+  await page.unroute("**/api/admin/dashboard**");
   await page.setViewportSize({ width: 1440, height: 1000 });
 }

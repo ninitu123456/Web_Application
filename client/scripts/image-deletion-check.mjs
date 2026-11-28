@@ -132,7 +132,7 @@ export async function imageDeletionCheck({
     };
     await page.goto(edit);
     await expect(
-      page.getByRole("heading", { name: "Chỉnh sửa bài đăng", exact: true }),
+      page.getByRole("heading", { name: "Sửa tin đăng", exact: true }),
     ).toBeVisible();
     await page.evaluate(() => {
       const create = URL.createObjectURL,
@@ -352,7 +352,7 @@ export async function imageDeletionCheck({
     await page.reload();
     await expect(savedButtons()).toHaveCount(0);
     await expect(
-      page.getByRole("heading", { name: "Chỉnh sửa bài đăng", exact: true }),
+      page.getByRole("heading", { name: "Sửa tin đăng", exact: true }),
     ).toBeVisible();
     // Stale GET from an abandoned form cannot overwrite a different Item form.
     const upload = await page.request.post(detail + "/images", {
