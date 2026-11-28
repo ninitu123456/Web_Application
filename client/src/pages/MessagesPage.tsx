@@ -45,6 +45,7 @@ export function MessagesPage() {
   const [contextRefresh, setContextRefresh] = useState(0);
   const [active, setActive] = useState(0);
   const [scheduleSignal, setScheduleSignal] = useState(0);
+  const [contextOpen, setContextOpen] = useState(false);
   const contextResult = useResource<ConversationContext>(
     selected ? `/conversations/${selected}/context` : null,
     {},
@@ -119,6 +120,7 @@ export function MessagesPage() {
     setText(drafts.current.get(selected) || "");
     setError("");
     setActive(0);
+    setContextOpen(false);
     pending.current = null;
   }, [selected]);
   useEffect(() => {
@@ -290,7 +292,7 @@ export function MessagesPage() {
       window.visualViewport?.removeEventListener("resize", measure);
       window.visualViewport?.removeEventListener("scroll", measure);
     };
-  }, []);
+  }, [selected, contextOpen]);
   const peer = conversations.find((chat) => chat.id === selected)?.peer;
   return (
     <section ref={frame} className="page-section messages-page">
@@ -308,7 +310,7 @@ export function MessagesPage() {
         </p>
       )}
       <div
-        className={`chat-layout ${selected ? "chat-selected has-side" : ""}`}
+        className={`chat-layout ${selected ? "chat-selected has-side" : ""}${contextOpen ? " context-open" : ""}`}
       >
         <aside
           className="panel chat-list"
@@ -383,6 +385,20 @@ export function MessagesPage() {
                     {connected ? "● Đã kết nối" : "● Đang kết nối lại…"}
                   </small>
                 </div>
+                <button
+                  type="button"
+                  className="chat-context-toggle icon-button"
+                  aria-label={
+                    contextOpen
+                      ? "Đóng thông tin trao đổi"
+                      : "Mở thông tin trao đổi"
+                  }
+                  aria-expanded={contextOpen}
+                  aria-controls="chat-context"
+                  onClick={() => setContextOpen((value) => !value)}
+                >
+                  <Icon name={contextOpen ? "close" : "box"} />
+                </button>
               </header>
               <div
                 className="chat-history"
@@ -480,7 +496,9 @@ export function MessagesPage() {
           )}
         </div>
         {selected && (
-          <ChatSide context={context} active={active} select={setActive} />
+          <div id="chat-context" className="chat-context">
+            <ChatSide context={context} active={active} select={setActive} />
+          </div>
         )}
       </div>
     </section>

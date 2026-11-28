@@ -1,0 +1,1967 @@
+{
+  "fixtures": true,
+  "results": [
+    {
+      "name": "home",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "explore",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "detail",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "ai-matching",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "item-form",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "item-edit",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "my-items",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "saved",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "profile",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "claims",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "claim-review",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "chat-list",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "chat",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "notifications",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "reports",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "login",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "register",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "reset",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "reset-token",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "about",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "contact",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "search-first",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "not-found",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "admin",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "admin-items",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "admin-item-detail",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "admin-users",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "admin-user-detail",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "admin-claims",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "admin-reports",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "admin-report-detail",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "admin-activity",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "admin-lookups",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "admin-contacts",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "admin-disputes",
+      "width": 320,
+      "height": 700,
+      "scroll": 320,
+      "offenders": []
+    },
+    {
+      "name": "home",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "explore",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "detail",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "ai-matching",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "item-form",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "item-edit",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "my-items",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "saved",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "profile",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "claims",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "claim-review",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "chat-list",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "chat",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "notifications",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "reports",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "login",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "register",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "reset",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "reset-token",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "about",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "contact",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "search-first",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "not-found",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "admin",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "admin-items",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "admin-item-detail",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "admin-users",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "admin-user-detail",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "admin-claims",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "admin-reports",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "admin-report-detail",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "admin-activity",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "admin-lookups",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "admin-contacts",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "admin-disputes",
+      "width": 360,
+      "height": 800,
+      "scroll": 360,
+      "offenders": []
+    },
+    {
+      "name": "home",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "explore",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "detail",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "ai-matching",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "item-form",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "item-edit",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "my-items",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "saved",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "profile",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "claims",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "claim-review",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "chat-list",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "chat",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "notifications",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "reports",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "login",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "register",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "reset",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "reset-token",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "about",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "contact",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "search-first",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "not-found",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "admin",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "admin-items",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "admin-item-detail",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "admin-users",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "admin-user-detail",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "admin-claims",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "admin-reports",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "admin-report-detail",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "admin-activity",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "admin-lookups",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "admin-contacts",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "admin-disputes",
+      "width": 375,
+      "height": 812,
+      "scroll": 375,
+      "offenders": []
+    },
+    {
+      "name": "home",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "explore",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "detail",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "ai-matching",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "item-form",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "item-edit",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "my-items",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "saved",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "profile",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "claims",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "claim-review",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "chat-list",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "chat",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "notifications",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "reports",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "login",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "register",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "reset",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "reset-token",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "about",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "contact",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "search-first",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "not-found",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "admin",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "admin-items",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "admin-item-detail",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "admin-users",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "admin-user-detail",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "admin-claims",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "admin-reports",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "admin-report-detail",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "admin-activity",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "admin-lookups",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "admin-contacts",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "admin-disputes",
+      "width": 390,
+      "height": 844,
+      "scroll": 390,
+      "offenders": []
+    },
+    {
+      "name": "home",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "explore",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "detail",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "ai-matching",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "item-form",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "item-edit",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "my-items",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "saved",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "profile",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "claims",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "claim-review",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "chat-list",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "chat",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "notifications",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "reports",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "login",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "register",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "reset",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "reset-token",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "about",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "contact",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "search-first",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "not-found",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "admin",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "admin-items",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "admin-item-detail",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "admin-users",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "admin-user-detail",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "admin-claims",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "admin-reports",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "admin-report-detail",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "admin-activity",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "admin-lookups",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "admin-contacts",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "admin-disputes",
+      "width": 414,
+      "height": 896,
+      "scroll": 414,
+      "offenders": []
+    },
+    {
+      "name": "home",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "explore",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "detail",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "ai-matching",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "item-form",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "item-edit",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "my-items",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "saved",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "profile",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "claims",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "claim-review",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "chat-list",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "chat",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "notifications",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "reports",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "login",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "register",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "reset",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "reset-token",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "about",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "contact",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "search-first",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "not-found",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "admin",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "admin-items",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "admin-item-detail",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "admin-users",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "admin-user-detail",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "admin-claims",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "admin-reports",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "admin-report-detail",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "admin-activity",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "admin-lookups",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "admin-contacts",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "admin-disputes",
+      "width": 768,
+      "height": 1024,
+      "scroll": 768,
+      "offenders": []
+    },
+    {
+      "name": "home",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "explore",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "detail",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "ai-matching",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "item-form",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "item-edit",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "my-items",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "saved",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "profile",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "claims",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "claim-review",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "chat-list",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "chat",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "notifications",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "reports",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "login",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "register",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "reset",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "reset-token",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "about",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "contact",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "search-first",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "not-found",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "admin",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "admin-items",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "admin-item-detail",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "admin-users",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "admin-user-detail",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "admin-claims",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "admin-reports",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "admin-report-detail",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "admin-activity",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "admin-lookups",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "admin-contacts",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "admin-disputes",
+      "width": 1024,
+      "height": 768,
+      "scroll": 1024,
+      "offenders": []
+    },
+    {
+      "name": "home",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "explore",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "detail",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "ai-matching",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "item-form",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "item-edit",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "my-items",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "saved",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "profile",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "claims",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "claim-review",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "chat-list",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "chat",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "notifications",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "reports",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "login",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "register",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "reset",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "reset-token",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "about",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "contact",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "search-first",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "not-found",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "admin",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "admin-items",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "admin-item-detail",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "admin-users",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "admin-user-detail",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "admin-claims",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "admin-reports",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "admin-report-detail",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "admin-activity",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "admin-lookups",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "admin-contacts",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    },
+    {
+      "name": "admin-disputes",
+      "width": 1440,
+      "height": 900,
+      "scroll": 1440,
+      "offenders": []
+    }
+  ],
+  "errors": [],
+  "requests": 1890
+}

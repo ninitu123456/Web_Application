@@ -198,8 +198,9 @@ export async function aiUiBrowserCheck({
     }
     await panel.getByRole("link", { name: found.title, exact: true }).click();
     await expect(
-      page.getByRole("heading", { name: "Nhận lại đồ như thế nào?" }),
+      page.getByRole("region", { name: "Tiến trình bàn giao" }),
     ).toBeVisible();
+    await expect(page.locator(".progress-steps li")).toHaveCount(4);
     await expect(
       page.getByRole("button", { name: "Gửi yêu cầu nhận lại" }),
     ).toBeVisible();

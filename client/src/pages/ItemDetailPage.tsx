@@ -79,6 +79,7 @@ function Detail({ item }: { item: Item }) {
     claimsReady,
   });
   const [selected, setSelected] = useState(0);
+  const touch = useRef<{ x: number; y: number } | null>(null);
   const [claimOpen, setClaimOpen] = useState(false);
   const [foundOpen, setFoundOpen] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
@@ -183,14 +184,52 @@ function Detail({ item }: { item: Item }) {
       )}
       <div className="detail-grid">
         <div className="gallery">
-          <div className="gallery-main">
+          <div
+            className="gallery-main"
+            role={item.images.length > 1 ? "region" : undefined}
+            aria-label={item.images.length > 1 ? "Ảnh đồ vật" : undefined}
+            tabIndex={item.images.length > 1 ? 0 : undefined}
+            onKeyDown={(event) => {
+              if (
+                item.images.length < 2 ||
+                !["ArrowLeft", "ArrowRight"].includes(event.key)
+              )
+                return;
+              event.preventDefault();
+              setSelected(
+                (index) =>
+                  (index +
+                    (event.key === "ArrowRight" ? 1 : -1) +
+                    item.images.length) %
+                  item.images.length,
+              );
+            }}
+            onTouchStart={(event) => {
+              const point = event.touches[0];
+              touch.current = { x: point.clientX, y: point.clientY };
+            }}
+            onTouchEnd={(event) => {
+              const start = touch.current;
+              touch.current = null;
+              const point = event.changedTouches[0];
+              if (!start || !point || item.images.length < 2) return;
+              const dx = point.clientX - start.x,
+                dy = point.clientY - start.y;
+              if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy))
+                setSelected(
+                  (index) =>
+                    (index + (dx < 0 ? 1 : -1) + item.images.length) %
+                    item.images.length,
+                );
+            }}
+          >
             <ItemImage
               src={item.images[Math.min(selected, item.images.length - 1)]?.url}
               title={item.title}
               category={item.category?.name}
             />
             {item.images.length > 1 && (
-              <span className="gallery-count">
+              <span className="gallery-count" role="status" aria-live="polite">
                 {Math.min(selected, item.images.length - 1) + 1} /{" "}
                 {item.images.length}
               </span>

@@ -45,6 +45,7 @@ import "@fontsource/caveat/700.css";
 import "./styles.css";
 import "./redesign.css";
 import "./v3.css";
+import "./mobile.css";
 // The home page bundles GSAP; load it on demand so other pages stay light.
 const HomePage = lazy(() =>
   import("./pages/HomePage").then((module) => ({ default: module.HomePage })),

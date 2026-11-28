@@ -21,12 +21,34 @@ export function Layout() {
   const [open, setOpen] = useState(false);
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
   useEffect(() => {
     setMenu(false);
     setOpen(false);
   }, [location.pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: KeyboardEvent | MouseEvent) => {
+      if (event instanceof KeyboardEvent) {
+        if (event.key !== "Escape") return;
+        setOpen(false);
+        toggleRef.current?.focus();
+      } else if (
+        !toggleRef.current?.contains(event.target as Node) &&
+        !document.getElementById("navigation")?.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("keydown", close);
+    document.addEventListener("mousedown", close);
+    return () => {
+      document.removeEventListener("keydown", close);
+      document.removeEventListener("mousedown", close);
+    };
+  }, [open]);
   useEffect(() => {
     if (!menu) return;
     const close = (event: MouseEvent | KeyboardEvent) => {
@@ -178,6 +200,7 @@ export function Layout() {
               </>
             )}
             <button
+              ref={toggleRef}
               className="mobile-toggle icon-button"
               aria-expanded={open}
               aria-controls="navigation"
