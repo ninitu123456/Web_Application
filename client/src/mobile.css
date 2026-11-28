@@ -1,0 +1,751 @@
+/* Responsive v3 layer. Keep the 1440px desktop design as the reference.
+   Scroll is local to tabs, thumbnails, tables and the message history. */
+.chat-context {
+  min-width: 0;
+}
+.chat-context-toggle {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .header-inner {
+    gap: 16px;
+    padding-inline: 24px;
+  }
+  .header-actions {
+    margin-left: auto;
+  }
+  .mobile-toggle {
+    display: inline-grid;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .header .navigation {
+    display: none;
+    position: absolute;
+    inset: calc(100% + 8px) 16px auto;
+    flex: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: var(--shadow-pop);
+    max-height: calc(100dvh - 160px);
+    overflow-y: auto;
+  }
+  .header .navigation.open {
+    display: flex;
+  }
+  .navigation a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 10px 16px;
+    border-radius: 12px;
+  }
+  .navigation a.active {
+    background: var(--primary-soft) !important;
+    box-shadow: none;
+  }
+  .messages-page .chat-layout,
+  .messages-page .chat-layout.has-side {
+    grid-template-columns: minmax(220px, 30%) minmax(0, 1fr);
+  }
+  .chat-context-toggle {
+    display: inline-grid;
+    margin-left: auto;
+    flex: none;
+  }
+  .chat-context {
+    display: none;
+  }
+  .context-open .chat-context {
+    display: block;
+    grid-column: 2;
+  }
+  .chat-context .chat-side {
+    position: static;
+  }
+  .chat-heading > div {
+    min-width: 0;
+  }
+  .handover-form,
+  .handover-form:has(textarea) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin-shell .admin-topbar:not(.has-record) {
+    display: flex;
+  }
+}
+
+@media (max-width: 960px) {
+  .filter-panel {
+    flex-basis: 100%;
+  }
+  .filter-panel-head {
+    gap: 8px;
+  }
+  .admin-shell .admin-topbar:not(.has-record) {
+    display: flex;
+  }
+}
+
+@media (max-width: 760px) {
+  .main {
+    padding: 20px 16px calc(104px + env(safe-area-inset-bottom));
+  }
+  .main.main-wide {
+    padding: 0;
+  }
+  .main > .page-section {
+    padding: 0;
+  }
+  .v3-wrap {
+    padding-inline: 16px;
+  }
+  .header-inner {
+    min-height: 64px;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .header .brand {
+    gap: 4px;
+    font-size: 21px;
+    flex: none;
+  }
+  .header .brand svg {
+    width: 28px;
+  }
+  .header-actions {
+    gap: 4px;
+  }
+  .header-actions .button {
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+  /* Login remains in the quick nav; registration stays in the header. */
+  .header-actions > .button.secondary,
+  .header-actions > a[href="/tin-nhan"] {
+    display: none;
+  }
+  .account-trigger {
+    min-height: 44px;
+    min-width: 44px;
+    justify-content: center;
+  }
+  .account-trigger > svg {
+    display: none;
+  }
+  .account-menu {
+    width: min(290px, calc(100vw - 24px));
+    right: -44px;
+    max-height: calc(100dvh - 164px);
+    overflow-y: auto;
+  }
+  .account-head > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .bottom-nav a {
+    font-size: 11px;
+  }
+  .bottom-nav a.active {
+    color: #fff;
+    background: #ffffff16;
+    border-radius: 14px;
+  }
+  .bottom-nav a.bottom-post {
+    color: #fff;
+    background: var(--grad);
+  }
+  .footer {
+    margin-top: 48px;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom));
+  }
+  .footer-inner {
+    gap: 28px;
+    padding-inline: 20px;
+  }
+  .footer-inner nav {
+    flex-wrap: wrap;
+    gap: 24px;
+  }
+  .page-title,
+  .page-section h1,
+  .explore-head h1 {
+    font-size: clamp(28px, 7vw, 36px);
+  }
+  .section-row,
+  .section-heading,
+  .wizard-heading {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .section-row > *,
+  .section-heading > *,
+  .field,
+  .form-row > *,
+  .detail-grid > *,
+  .hub-name,
+  .poster-box > div,
+  .ai-found-row > span,
+  .handover-panel header > div {
+    min-width: 0;
+  }
+  .button,
+  .tabs button,
+  .seg button,
+  .seg a,
+  .chip,
+  .link-more,
+  .text-button,
+  .button.small,
+  .table-actions .button,
+  .reset-filters {
+    min-height: 44px;
+  }
+  .button {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+  .segmented,
+  .chip-row {
+    flex-wrap: wrap;
+  }
+  .chip-row button,
+  .notification-mark {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  input,
+  select,
+  textarea,
+  .field input,
+  .field select,
+  .field textarea,
+  .home .home-search input,
+  .sf-search input {
+    min-width: 0;
+    max-width: 100%;
+    font-size: 16px;
+  }
+  .tabs,
+  .seg {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+  .badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .badge {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .tabs button,
+  .seg button {
+    padding-inline: 12px;
+  }
+  .item-grid,
+  .item-grid.four,
+  .item-grid.three,
+  .item-grid.matches-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+    gap: 16px;
+  }
+  .item-card,
+  .match-card {
+    min-width: 0;
+  }
+  .item-card h3,
+  .card-location,
+  .match-reasons,
+  .description,
+  .claim-card,
+  .claim-answers,
+  .handover-panel,
+  .notification-body,
+  .filter-chip {
+    overflow-wrap: anywhere;
+  }
+  .filter-chip {
+    max-width: 100%;
+  }
+  .filter-chip button {
+    min-width: 44px;
+    height: 44px;
+  }
+  .home-hero-wrap {
+    padding-top: 16px;
+  }
+  .home-hero {
+    min-height: 0;
+    padding: 28px 20px;
+    border-radius: 24px;
+    gap: 0;
+  }
+  .home .home-title {
+    font-size: clamp(38px, 10vw, 58px);
+    margin-top: 16px;
+  }
+  .home .home-lead {
+    font-size: 16px;
+    margin-top: 14px;
+  }
+  .home .home-search {
+    flex-wrap: wrap;
+    padding: 12px;
+    margin-top: 20px;
+  }
+  .home .home-search .button {
+    width: 100%;
+  }
+  .hero-entries {
+    gap: 8px;
+  }
+  .hero-entry {
+    gap: 8px;
+    padding: 12px 10px;
+    align-items: flex-start;
+    font-size: 14px;
+  }
+  .hero-entry .entry-icon {
+    width: 32px;
+    height: 32px;
+  }
+  .hero-entry small {
+    display: block;
+  }
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    padding: 16px 12px;
+    width: 100%;
+    margin-top: 20px;
+  }
+  .hero-stats > div {
+    gap: 8px;
+  }
+  .hero-stats strong {
+    font-size: 20px;
+  }
+  .hero-stats small {
+    font-size: 12px;
+  }
+  .hero-visual {
+    display: none;
+  }
+  .hero-fade {
+    background: rgb(243 247 255 / 90%);
+  }
+  .home-section {
+    margin-top: 48px;
+  }
+  .home-h2 {
+    font-size: clamp(28px, 8vw, 36px);
+  }
+  .home .section-row > div:first-child {
+    flex-basis: 100%;
+  }
+  .how-grid {
+    margin-top: 24px;
+    gap: 16px;
+  }
+  .how-card {
+    padding: 22px;
+  }
+  .ai-banner {
+    padding: 28px 20px;
+    border-radius: 24px;
+    gap: 24px;
+  }
+  .ai-banner h2 {
+    font-size: 30px;
+  }
+  .ai-pair {
+    min-height: 220px;
+  }
+  .explore-page {
+    padding-top: 8px;
+  }
+  .search-bar {
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    padding: 12px;
+  }
+  .search-bar .field {
+    flex-basis: 100%;
+  }
+  .search-bar input {
+    min-height: 44px;
+  }
+  .search-bar .button {
+    width: 100%;
+  }
+  .filter-panel {
+    padding: 16px;
+  }
+  .detail-v3 .detail-grid {
+    gap: 20px;
+  }
+  .detail-v3 .detail-panel,
+  .detail-tabs {
+    padding: 20px 16px;
+    border-radius: 20px;
+  }
+  .detail-v3 h1 {
+    font-size: 30px;
+    line-height: 1.2;
+  }
+  .crumbs {
+    flex-wrap: wrap;
+  }
+  .fact-rows > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .fact-rows dt {
+    width: auto;
+    font-size: 14px;
+  }
+  .fact-rows dd {
+    padding-left: 50px;
+    overflow-wrap: anywhere;
+  }
+  .detail-v3 .thumbnails {
+    display: flex;
+    gap: 8px;
+    padding: 4px;
+    scroll-snap-type: x proximity;
+  }
+  .detail-v3 .thumbnails button {
+    width: 76px;
+    height: 60px;
+    flex: 0 0 76px;
+    scroll-snap-align: start;
+  }
+  .gallery-main {
+    touch-action: pan-y pinch-zoom;
+  }
+  .poster-box {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+  .poster-box > .report-button {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .cta-box {
+    padding: 16px;
+  }
+  .util-row {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .util-row > * {
+    flex: 1 1 120px;
+    min-width: 0;
+  }
+  .form-layout,
+  .form-row,
+  .sf-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .form-layout > .item-form,
+  .form-preview {
+    flex: none;
+    width: 100%;
+    max-width: none;
+  }
+  .item-form {
+    padding: 20px 16px;
+    margin-top: 0;
+  }
+  .sf-search {
+    min-width: 0;
+    flex-wrap: wrap;
+    padding: 12px;
+  }
+  .sf-search input {
+    width: 0;
+  }
+  .sf-search .button {
+    width: 100%;
+  }
+  .sf-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 24px 20px;
+    gap: 16px;
+  }
+  .sf-footer {
+    position: static;
+    flex-wrap: wrap;
+    padding: 20px;
+    margin-top: 24px;
+    border-radius: 20px;
+  }
+  .sf-footer > div,
+  .sf-footer > .button {
+    flex-basis: 100%;
+  }
+  .search-first {
+    padding-bottom: 0;
+  }
+  .hub-row {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px 16px;
+  }
+  .hub-avatar {
+    width: 80px;
+    height: 80px;
+    font-size: 30px;
+  }
+  .hub-name {
+    flex-basis: calc(100% - 92px);
+    padding-top: 48px;
+  }
+  .hub-name h1 {
+    font-size: 24px;
+  }
+  .hub-name p {
+    overflow-wrap: anywhere;
+  }
+  .hub-row > .button {
+    width: 100%;
+  }
+  .account-tabs {
+    padding-inline: 8px;
+    scroll-padding-inline: 8px;
+  }
+  .account-tabs a {
+    flex: none;
+    min-height: 44px;
+  }
+  .stat-grid {
+    gap: 12px;
+  }
+  .stat-card {
+    padding: 16px;
+  }
+  .todo-card li {
+    flex-wrap: wrap;
+  }
+  .todo-card li > div {
+    min-width: 0;
+  }
+  .ai-found-row {
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+  .claim-card .actions,
+  .handover-panel .actions,
+  dialog .actions {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .claim-card .actions > .button,
+  .handover-panel .actions > .button {
+    flex: 1 1 160px;
+    white-space: normal;
+  }
+  .handover-panel {
+    padding: 16px 12px;
+  }
+  dialog {
+    max-height: calc(100dvh - 24px);
+    width: calc(100vw - 24px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-padding-block: 16px;
+  }
+  .modal-inner {
+    padding: 20px 16px;
+  }
+  .toasts {
+    left: 12px;
+    right: 12px;
+    bottom: calc(96px + env(safe-area-inset-bottom));
+    max-width: none;
+  }
+  .toast {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .auth-shell {
+    padding: 16px;
+  }
+  .auth-frame {
+    min-height: calc(100dvh - 32px);
+  }
+  .auth-side {
+    min-width: 0;
+    padding: 24px 0;
+  }
+  .auth-box h1 {
+    font-size: 30px;
+  }
+  .about-hero,
+  .contact-page,
+  .not-found,
+  .value-grid,
+  .team-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .contact-form .two,
+  .rules ul {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rules {
+    padding: 24px 20px;
+  }
+  .about-art .robot,
+  .nf-robot {
+    max-width: 100%;
+  }
+  .not-found > div {
+    min-width: 0;
+  }
+  .not-found .actions {
+    flex-wrap: wrap;
+  }
+  .messages-page .chat-layout,
+  .messages-page .chat-layout.has-side {
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: 8px;
+    gap: 0;
+  }
+  .messages-page .chat-main {
+    display: none;
+    padding: 0;
+  }
+  .messages-page .chat-selected .chat-main {
+    display: flex;
+  }
+  .messages-page .chat-selected .chat-list {
+    display: none;
+  }
+  .messages-page .chat-list {
+    min-width: 0;
+    overflow-y: auto;
+  }
+  .chat-heading {
+    padding: 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .chat-back {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin: 0;
+    font-size: 14px;
+  }
+  .chat-heading h2 {
+    font-size: 16px;
+  }
+  .chat-heading .avatar {
+    display: none;
+  }
+  .chat-heading > div {
+    flex: 1;
+  }
+  .chat-heading small {
+    font-size: 12px;
+  }
+  .messages-page .chat-history {
+    padding: 12px;
+  }
+  .chat-bubble {
+    max-width: 92%;
+    font-size: 16px;
+  }
+  .chat-compose {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 52px;
+    padding: 10px;
+    gap: 8px;
+  }
+  .chat-tool {
+    grid-column: 1 / -1;
+    justify-self: start;
+    min-height: 44px;
+  }
+  .chat-compose textarea {
+    width: 100%;
+  }
+  .messages-page .chat-layout.context-open {
+    grid-template-rows: minmax(0, 1fr) minmax(0, 45%);
+    gap: 8px;
+  }
+  .context-open .chat-context {
+    grid-column: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .messages-page .chat-layout:not(.context-open) {
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .admin-dash-head,
+  .admin-card-head {
+    flex-wrap: wrap;
+  }
+  .admin-dash-head > .actions {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .admin-card,
+  .admin-kpi {
+    padding: 16px;
+  }
+  .admin-kpis {
+    gap: 10px;
+  }
+  .admin-kpi small {
+    font-size: 13px;
+  }
+  .admin-category {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .admin-shell .admin-filters input,
+  .admin-shell .admin-filters select {
+    font-size: 16px;
+  }
+  .table-scroll,
+  .report-table {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .hero-entries,
+  .type-choices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .type-choices label {
+    min-height: 112px;
+  }
+  .hero-stats > div {
+    flex-wrap: wrap;
+  }
+  .stat-grid,
+  .admin-kpis {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
